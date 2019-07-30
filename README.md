@@ -1,3 +1,6 @@
+## Description
+A simple nodejs server for stressing cpu
+
 ## Install
 ```
 npm install
