@@ -16,6 +16,7 @@ npm start
 Alternatively you can use a docker image
 ```
 docker pull altrdev/high-cpu-node:latest
+docker run -p 3000:3000 altrdev/high-cpu-node:latest
 ```
 
 The server exposes on port 3000:
