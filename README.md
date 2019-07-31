@@ -1,5 +1,5 @@
 ## Description
-A simple nodejs server for stressing cpu
+A simple nodejs server for stressing cpu with fibonacci
 
 ## Install
 ```
@@ -25,15 +25,11 @@ The server exposes on port 3000:
 
 `/stress` for stress a cpu 
 
-You can use a query string parameter `seconds` to stress a cpu for those seconds.
+You can use a query string parameter `number` to stress a cpu with a sequence calculation.
 
 ## Example
 ```
 http://127.0.0.1:3000/stress
+http://127.0.0.1:3000/stress?number=50
 ``` 
-Default `seconds` set at 1
-
-```
-http://127.0.0.1:3000/stress?seconds=10
-```
-Duration of stress test set at 10 seconds
+If you don't specify `number` or you passing a no number string, the default sequence is 45

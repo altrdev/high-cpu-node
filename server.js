@@ -2,6 +2,9 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const R = require('ramda');
+const {fork} = require('child_process');
+const child = fork(`${__dirname}/fibonacci.js`);
+let {EventEmitter} = require('events');
 
 const config = {
     name: 'high-cpu-node',
@@ -10,20 +13,22 @@ const config = {
 };
 
 const app = express();
-
-let shouldRun = true;
+let event = new EventEmitter();
 
 app.use(bodyParser.json());
 app.use(cors());
 
-app.get('/', (req, res) => {
-    res.status(200).send('Status: OK');
+app.get('/', async (req, res) => {
+    res.status(200).end('Status: OK');
 });
 
-app.get('/stress', (req, res) => {
-    stress(req.query.seconds);
-    res.status(200).send("I'm still alive");
+app.get('/stress', async (req, res) => {
+    let fiboNumber = parseInt(req.query.number);
+    fiboNumber = isNaN(fiboNumber)  ? 45 : fiboNumber;
+    stress(fiboNumber, res);
 });
+
+child.on("message",(msg)=> event.emit(msg.event,msg.value));
 
 app.listen(config.port, config.host, (e)=> {
     if(e) {
@@ -33,19 +38,13 @@ app.listen(config.port, config.host, (e)=> {
     console.log(`${config.name} running on ${config.host}:${config.port}`);
 });
 
-function stress(seconds) {
-    shouldRun = true;
-    const ms = R.isNil(seconds) ? 1000 : seconds * 1000;
-    console.log(`Starting stress cpu for ${seconds} seconds`);
-    blockCpuFor(ms);
+function stress(number, res) {
+    let eventNumber = Math.random() * 100;
+
+    child.send({num:number,event:eventNumber});
+
+    event.once(eventNumber, (value) => {
+        res.status(200).end(`I'm still alive after fibonacci calculation with result: ${value}`);
+    })
 }
 
-function blockCpuFor(ms) {
-    let now = new Date().getTime();
-    let result = 0;
-    while(shouldRun) {
-        result += Math.random() * Math.random();
-        if (new Date().getTime() > now +ms)
-            return;
-    }
-}
