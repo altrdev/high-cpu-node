@@ -1,5 +1,5 @@
 ## Description
-A simple nodejs server for stressing cpu with fibonacci
+A simple nodejs server for stressing cpu with fibonacci sequence
 
 ## Install
 ```
