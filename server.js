@@ -1,5 +1,4 @@
 const express = require('express');
-const bodyParser = require('body-parser');
 const cors = require('cors');
 const R = require('ramda');
 const {fork} = require('child_process');
@@ -15,7 +14,7 @@ const config = {
 const app = express();
 let event = new EventEmitter();
 
-app.use(bodyParser.json());
+app.use(express.json());
 app.use(cors());
 
 app.get('/', async (req, res) => {
