@@ -1,51 +1,73 @@
-## Description
-A simple nodejs server for stressing cpu with fibonacci sequence
+# high-cpu-node
+
+A simple Node.js server for stressing the CPU with a recursive Fibonacci calculation. Useful for testing autoscaling, load balancers and container CPU limits.
+
+> **Warning:** this server is meant to burn CPU on purpose. Don't expose it to the public internet.
 
 ## Install
+
 ```
 npm install
 ```
 
 ## Usage
-On your local machine: 
+
+On your local machine:
 
 ```
 npm start
 ```
 
-Alternatively you can use a docker image
+Or with Docker:
+
 ```
 docker pull altrdev/high-cpu-node:latest
 docker run -p 3000:3000 altrdev/high-cpu-node:latest
 ```
 
-The server exposes on port 3000:
+## Endpoints
 
-`/` for health check
+The server listens on port 3000.
 
-`/stress` for stress a cpu 
+| Endpoint  | Description                                  |
+|-----------|----------------------------------------------|
+| `/`       | Health check, returns `Status: OK`           |
+| `/stress` | Runs a Fibonacci calculation to load a CPU   |
 
-You can use a query string parameter `number` to stress a cpu with a sequence calculation.
+`/stress` accepts an optional query string parameter `number`, the sequence length to calculate:
 
-Requests are spread round-robin over a pool of worker processes (one per core by default), so concurrent requests can saturate multiple cores. A worker that crashes is restarted automatically.
+- if omitted or not a number, it defaults to `45`
+- if outside the range `0..MAX_NUMBER`, the server answers `400`
 
-## Example
+The calculation time grows exponentially with `number`.
+
 ```
 http://127.0.0.1:3000/stress
 http://127.0.0.1:3000/stress?number=40
-``` 
-If you don't specify `number` or you passing a no number string, the default sequence is 45.
-A `number` outside the range `0..MAX_NUMBER` gets a `400` response.
+```
+
+## How it works
+
+Requests are spread round-robin over a pool of worker processes (one per core by default), so concurrent requests can saturate multiple cores. A worker that crashes is restarted automatically, and the request it was serving gets a `500`.
 
 ## Configuration
+
 Environment variables:
 
-| Variable     | Default         | Description                              |
-|--------------|-----------------|------------------------------------------|
-| `PORT`       | `3000`          | Port the server listens on               |
-| `WORKERS`    | number of cores | Number of worker processes               |
-| `MAX_NUMBER` | `50`            | Highest `number` accepted by `/stress`   |
+| Variable     | Default         | Description                            |
+|--------------|-----------------|----------------------------------------|
+| `PORT`       | `3000`          | Port the server listens on             |
+| `WORKERS`    | number of cores | Number of worker processes             |
+| `MAX_NUMBER` | `50`            | Highest `number` accepted by `/stress` |
 
 ```
 docker run -p 3000:3000 -e WORKERS=2 altrdev/high-cpu-node:latest
 ```
+
+## Changelog
+
+- **2.0.0**: `/stress` rejects `number` outside `0..MAX_NUMBER` with `400` (previously unbounded). Added the worker pool and the `PORT`, `WORKERS`, `MAX_NUMBER` variables.
+
+## License
+
+MIT
