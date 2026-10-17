@@ -1,7 +1,8 @@
-FROM node:21-alpine
-RUN mkdir -p /usr/src/app
+FROM node:22-alpine
 WORKDIR /usr/src/app
+COPY package*.json ./
+RUN npm ci --omit=dev
 COPY . .
-RUN npm install
+USER node
 EXPOSE 3000
-CMD ["npm", "run", "start"]
+CMD ["node", "server.js"]

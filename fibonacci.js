@@ -1,6 +1,5 @@
-process.on("message", (msg) => {
-    "use strict";
-    process.send({value: fibo(msg.num-1),event:msg.event})
+process.on("message", ({id, num}) => {
+    process.send({id, value: fibo(num - 1)});
 });
 
 function fibo(n) {
