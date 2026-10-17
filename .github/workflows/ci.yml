@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Smoke test
+        run: |
+          PORT=3100 WORKERS=1 node server.js &
+          SERVER_PID=$!
+          sleep 2
+          test "$(curl -sf localhost:3100/)" = "Status: OK"
+          curl -sf "localhost:3100/stress?number=20" | grep -q "result: 6765"
+          test "$(curl -s -o /dev/null -w '%{http_code}' 'localhost:3100/stress?number=999')" = "400"
+          kill $SERVER_PID
+
+      - name: Build Docker image
+        run: docker build -t high-cpu-node .
