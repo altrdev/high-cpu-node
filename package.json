@@ -1,6 +1,6 @@
 {
   "author": "altrdev",
-  "name": "high-cpu-node",
+  "name": "stress-node",
   "version": "2.2.0",
   "description": "A simple nodejs server for stressing cpu",
   "main": "server.js",

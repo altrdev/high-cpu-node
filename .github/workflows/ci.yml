@@ -30,4 +30,4 @@ jobs:
           kill $SERVER_PID
 
       - name: Build Docker image
-        run: docker build -t high-cpu-node .
+        run: docker build -t stress-node .

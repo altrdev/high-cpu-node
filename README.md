@@ -1,4 +1,4 @@
-# high-cpu-node
+# stress-node
 
 A simple Node.js server for stressing the CPU with a recursive Fibonacci calculation. Useful for testing autoscaling, load balancers and container CPU limits.
 
@@ -21,8 +21,8 @@ npm start
 Or with Docker:
 
 ```
-docker pull altrdev/high-cpu-node:latest
-docker run -p 3000:3000 altrdev/high-cpu-node:latest
+docker pull altrdev/stress-node:latest
+docker run -p 3000:3000 altrdev/stress-node:latest
 ```
 
 ## Endpoints
@@ -91,7 +91,7 @@ Environment variables:
 | `MAX_NUMBER` | `50`            | Highest `number` accepted by `/stress` |
 
 ```
-docker run -p 3000:3000 -e WORKERS=2 altrdev/high-cpu-node:latest
+docker run -p 3000:3000 -e WORKERS=2 altrdev/stress-node:latest
 ```
 
 ## Changelog

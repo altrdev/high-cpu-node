@@ -4,7 +4,7 @@ const os = require('os');
 const {fork} = require('child_process');
 
 const config = {
-    name: 'high-cpu-node',
+    name: 'stress-node',
     port: parseInt(process.env.PORT) || 3000,
     host: '0.0.0.0',
     workers: parseInt(process.env.WORKERS) || os.cpus().length,
