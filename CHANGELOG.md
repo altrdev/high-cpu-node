@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
+## 2.4.1 - 2026-10-18
+
+### Fixed
+- `cli.js watch`: the disk directory is on its own line and shortened from the left, so a long path no longer wraps the free space onto another line.
+
 ## 2.4.0 - 2026-10-18
 
 ### Added

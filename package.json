@@ -1,7 +1,7 @@
 {
   "author": "altrdev",
   "name": "stress-node",
-  "version": "2.4.0",
+  "version": "2.4.1",
   "description": "A simple nodejs server for stressing cpu",
   "main": "server.js",
   "scripts": {
