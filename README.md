@@ -337,6 +337,16 @@ for i in $(seq 8); do curl -s "http://127.0.0.1:3000/stress?number=40" & done; w
 
 Lower or raise `number` to tune how long each request keeps a core busy.
 
+## Development
+
+```
+npm run dev     # restarts the server when a file changes
+npm run watch   # terminal view of a running server
+npm test        # starts real servers on free ports and checks them
+```
+
+The tests use `node:test`, which comes with Node.js, so there is nothing to install. They cover every endpoint and its limits, the budgets of `/memory` and `/disk`, a worker that crashes, an unusable `DISK_DIR`, the cleanup of the files on startup and shutdown, `/metrics` and the `watch` command. CI also runs them on Node 22, 24 and 26, checks the Docker image and validates `/metrics` with `promtool`.
+
 ## Changelog
 
 See [CHANGELOG.md](https://github.com/altrdev/stress-node/blob/main/CHANGELOG.md) and the [GitHub releases](https://github.com/altrdev/stress-node/releases).

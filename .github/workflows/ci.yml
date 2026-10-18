@@ -8,45 +8,48 @@ on:
 
 jobs:
   test:
+    name: Tests (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [22, 24, 26]
     steps:
       - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: ${{ matrix.node-version }}
           cache: npm
 
       - run: npm ci
 
-      - name: Smoke test
+      - name: Changelog has a section for this version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          grep -q "^## $VERSION " CHANGELOG.md || { echo "CHANGELOG.md has no section for $VERSION"; exit 1; }
+
+      - run: npm test
+
+      # How the memory shows up for the OS depends on the platform, so it is checked here on Linux
+      - name: Memory is returned to the OS
         run: |
           PORT=3100 WORKERS=1 node server.js &
           SERVER_PID=$!
           sleep 2
-          test "$(curl -sf localhost:3100/)" = "Status: OK"
-          curl -sf "localhost:3100/stress?number=20" | grep -q "result: 6765"
-          test "$(curl -s -o /dev/null -w '%{http_code}' 'localhost:3100/stress?number=999')" = "400"
-          curl -sf "localhost:3100/delay?ms=100" | grep -q "100 ms"
-          test "$(curl -s -o /dev/null -w '%{http_code}' 'localhost:3100/status/503')" = "503"
-          test "$(curl -s -o /dev/null -w '%{http_code}' 'localhost:3100/status/999')" = "400"
-          test "$(curl -s -o /dev/null -w '%{http_code}' 'localhost:3100/memory?mb=999999')" = "400"
           BASE_RSS=$(ps -o rss= -p $SERVER_PID)
           curl -sf "localhost:3100/memory?mb=200&hold=1" | grep -q "Allocated 200 MB"
-          curl -sf localhost:3100/info | jq -e '.memory.heldMb == 200'
-          curl -sf localhost:3100/metrics | grep -q '^stress_node_memory_held_bytes 209715200$'
           HELD_RSS=$(ps -o rss= -p $SERVER_PID)
           test $((HELD_RSS - BASE_RSS)) -gt 150000
           sleep 3
           test $(($(ps -o rss= -p $SERVER_PID) - BASE_RSS)) -lt 100000
-          test "$(curl -s -o /dev/null -w '%{http_code}' 'localhost:3100/disk?mb=999999')" = "400"
-          curl -sf "localhost:3100/disk?mb=20&hold=0" | grep -q "Wrote 20 MB"
-          sleep 1
-          test -z "$(ls /tmp | grep stress-node-disk- || true)"
-          curl -sf localhost:3100/info | jq -e '.name == "stress-node" and .memory.heldMb == 0 and .disk.heldMb == 0 and .delay.inFlight == 0'
-          node cli.js watch --once --url http://localhost:3100 | grep -q "Memory held"
-          curl -sf localhost:3100/metrics | grep -q '^stress_node_http_requests_total{route="/memory",code="200"} 1$'
           kill $SERVER_PID
+
+  image:
+    name: Docker image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
 
       - name: Build Docker image
         run: docker build -t stress-node .
@@ -67,6 +70,9 @@ jobs:
             sleep 1
           done
           test "$(docker inspect -f '{{.State.Health.Status}}' sn)" = healthy
+
+      - name: Check /metrics with promtool
+        run: curl -sf localhost:3200/metrics | docker run -i --rm --entrypoint promtool prom/prometheus:v3.5.0 check metrics
 
       - name: Container logs
         if: failure()

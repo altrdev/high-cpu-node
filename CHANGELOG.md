@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
+## Unreleased
+
+### Added
+- Tests with `node:test` (`npm test`): endpoints and limits, budgets, a crashing worker, an unusable `DISK_DIR`, cleanup of the files, `/metrics` and `watch`.
+
+### Changed
+- CI runs the tests on Node 22, 24 and 26, fails when `CHANGELOG.md` has no section for the version in `package.json`, and validates `/metrics` with `promtool`.
+
 ## 2.5.1 - 2026-10-18
 
 ### Changed
