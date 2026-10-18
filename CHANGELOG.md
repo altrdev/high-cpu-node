@@ -2,11 +2,14 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
-## Unreleased
+## 2.5.0 - 2026-10-18
 
 ### Added
 - `/metrics` endpoint: the figures of `/info` in the Prometheus text format, plus `stress_node_http_requests_total` by route and status code.
 - Banner for the repository social preview (`docs/social-preview.svg` and `docs/social-preview.png`).
+
+### Changed
+- The README badges are on one line, so Docker Hub shows them in a row.
 
 ## 2.4.1 - 2026-10-18
 
