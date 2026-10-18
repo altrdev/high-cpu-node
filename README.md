@@ -4,7 +4,7 @@
 
 **Break your containers on purpose.** torchio is a small Node.js server that burns CPU, holds memory, fills disk, answers slowly or returns any HTTP status, all on demand over HTTP. Use it to see how your setup behaves under pressure: autoscaling, resource limits, OOM kills, probes, timeouts and retries.
 
-*Torchio* is the Italian word for the press that squeezes wine and oil, as in *mettere sotto torchio*: to put under pressure. Put your containers under the press. It was called `stress-node` before, and `high-cpu-node` when it could only burn CPU.
+*Torchio* is the Italian word for the press that squeezes wine and oil, as in *mettere sotto torchio*: to put under pressure. Put your containers under the press. It began in 2019 as `high-cpu-node`, when it could only burn CPU.
 
 ![torchio watch: bars and history of busy workers, held memory, process RSS and held disk, while a load runs](https://raw.githubusercontent.com/altrdev/torchio/refs/heads/main/docs/watch.svg)
 
@@ -183,7 +183,7 @@ Returns a JSON document with what the server is doing right now. It takes no par
 ```json
 {
   "name": "torchio",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "uptimeSeconds": 321,
   "stress": { "workers": 4, "inFlight": 2, "perWorker": [1, 1, 0, 0] },
   "delay": { "inFlight": 3 },

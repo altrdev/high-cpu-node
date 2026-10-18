@@ -2,11 +2,16 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
+## 3.0.1 - 2026-10-18
+
+### Changed
+- Documentation: the history of the names in the README and in this changelog was simplified.
+
 ## 3.0.0 - 2026-10-18
 
 ### Changed
-- **Breaking:** the project is renamed from `stress-node` to **Torchio**. The Docker image is `altrdev/torchio`, the package is `torchio` and the repository is `github.com/altrdev/torchio`. The `altrdev/stress-node` image no longer exists, and `altrdev/high-cpu-node` stays deprecated.
-- **Breaking:** the Prometheus metrics start with `torchio_` instead of `stress_node_`. `process_resident_memory_bytes` keeps its name.
+- **Breaking:** the project is now called **Torchio** (it was `high-cpu-node` before). The Docker image is `altrdev/torchio`, the package is `torchio` and the repository is `github.com/altrdev/torchio`. `altrdev/high-cpu-node` stays deprecated.
+- **Breaking:** the Prometheus metrics start with `torchio_`. `process_resident_memory_bytes` keeps its name.
 - The `name` in `/info` is `torchio`, and the files of `/disk` are called `torchio-disk-*`.
 
 ## 2.5.3 - 2026-10-18
@@ -38,7 +43,7 @@ All notable changes to this project are documented here. The GitHub release of e
 ## 2.5.0 - 2026-10-18
 
 ### Added
-- `/metrics` endpoint: the figures of `/info` in the Prometheus text format, plus `stress_node_http_requests_total` by route and status code.
+- `/metrics` endpoint: the figures of `/info` in the Prometheus text format, plus a counter of the requests answered, by route and status code.
 - Banner for the repository social preview (`docs/social-preview.svg` and `docs/social-preview.png`).
 
 ### Changed
@@ -86,7 +91,7 @@ All notable changes to this project are documented here. The GitHub release of e
 ## 2.2.1 - 2026-10-18
 
 ### Changed
-- Project renamed to `stress-node`. The Docker image is published as `altrdev/stress-node`; `altrdev/high-cpu-node` is deprecated and this is its last release.
+- The image `altrdev/high-cpu-node` is deprecated, and this is its last release.
 
 ## 2.2.0 - 2026-10-18
 
