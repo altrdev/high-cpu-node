@@ -4,7 +4,7 @@
 
 **Break your containers on purpose.** stress-node is a small Node.js server that burns CPU, holds memory, fills disk, answers slowly or returns any HTTP status, all on demand over HTTP. Use it to see how your setup behaves under pressure: autoscaling, resource limits, OOM kills, probes, timeouts and retries.
 
-![stress-node watch: bars and history of busy workers, held memory, process RSS and held disk, while a load runs](https://raw.githubusercontent.com/altrdev/stress-node/main/docs/watch.svg)
+![stress-node watch: bars and history of busy workers, held memory, process RSS and held disk, while a load runs](https://raw.githubusercontent.com/altrdev/stress-node/refs/heads/main/docs/watch.svg)
 
 Source code and issues: https://github.com/altrdev/stress-node
 
