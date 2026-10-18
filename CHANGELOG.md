@@ -4,6 +4,9 @@ All notable changes to this project are documented here. The GitHub release of e
 
 ## Unreleased
 
+### Added
+- Project logo (`docs/logo.svg` and `docs/logo.png`), shown in the README.
+
 ### Changed
 - `npm run dev` uses `node --watch` instead of `nodemon`, which is no longer a dependency.
 

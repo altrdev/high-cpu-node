@@ -1,5 +1,7 @@
 # stress-node
 
+![stress-node logo](https://raw.githubusercontent.com/altrdev/stress-node/main/docs/logo.png)
+
 A simple Node.js server that stresses a machine or a container on demand: CPU load, memory, disk space, slow responses and arbitrary HTTP status codes. Useful for testing autoscaling, resource limits, OOM kills, probes, timeouts and retries.
 
 Source code and issues: https://github.com/altrdev/stress-node

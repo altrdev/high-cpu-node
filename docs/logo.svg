@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="stress-node">
+  <rect width="256" height="256" rx="56" fill="#0f172a"/>
+  <rect x="52" y="124" width="40" height="84" rx="10" fill="#22c55e"/>
+  <rect x="108" y="84" width="40" height="124" rx="10" fill="#f59e0b"/>
+  <rect x="164" y="44" width="40" height="164" rx="10" fill="#ef4444"/>
+  <rect x="40" y="214" width="176" height="8" rx="4" fill="#94a3b8"/>
+</svg>
