@@ -27,6 +27,8 @@ Then try it:
 curl "http://127.0.0.1:3000/stress?number=40"
 ```
 
+To restart the server automatically when you edit the code, use `npm run dev` instead of `npm start`.
+
 ## Endpoints
 
 The server listens on port 3000.

@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
+## Unreleased
+
+### Changed
+- `npm run dev` uses `node --watch` instead of `nodemon`, which is no longer a dependency.
+
 ## 2.3.1 - 2026-10-18
 
 ### Changed
