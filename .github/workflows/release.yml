@@ -26,9 +26,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v6
         with:
-          images: |
-            altrdev/stress-node
-            altrdev/high-cpu-node
+          images: altrdev/stress-node
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
@@ -45,7 +43,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           platforms: ${{ env.TARGET_PLATFORMS }}
 
-      - name: Update Docker Hub description (stress-node)
+      - name: Update Docker Hub description
         uses: peter-evans/dockerhub-description@v5
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -53,12 +51,3 @@ jobs:
           repository: altrdev/stress-node
           short-description: Node.js server that stresses the CPU on demand. For testing autoscaling and CPU limits.
           readme-filepath: ./README.md
-
-      - name: Update Docker Hub description (deprecated high-cpu-node)
-        uses: peter-evans/dockerhub-description@v5
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_PASSWORD }}
-          repository: altrdev/high-cpu-node
-          short-description: "DEPRECATED: renamed to altrdev/stress-node. Please pull altrdev/stress-node."
-          readme-filepath: ./DEPRECATED.md

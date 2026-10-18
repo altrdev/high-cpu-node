@@ -96,7 +96,7 @@ docker run -p 3000:3000 -e WORKERS=2 altrdev/stress-node:latest
 
 ## Changelog
 
-- **2.2.1**: Project renamed to `stress-node`. The Docker image is published as `altrdev/stress-node`; `altrdev/high-cpu-node` is deprecated and kept in sync for a transition period.
+- **2.2.1**: Project renamed to `stress-node`. The Docker image is published as `altrdev/stress-node`; `altrdev/high-cpu-node` is deprecated and 2.2.1 is its last release.
 - **2.2.0**: Updated to Express 5, Node 26 base image and `cors` 2.8.6.
 - **2.1.0**: Docker image has a `HEALTHCHECK`; the Docker Hub description is synced from this README on release.
 - **2.0.0**: `/stress` rejects `number` outside `0..MAX_NUMBER` with `400` (previously unbounded). Added the worker pool and the `PORT`, `WORKERS`, `MAX_NUMBER` variables.
