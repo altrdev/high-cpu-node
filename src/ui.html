@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>torchio</title>
+<link rel="icon" id="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Crect width='256' height='256' rx='56' fill='%230f172a'/%3E%3Crect x='52' y='124' width='40' height='84' rx='10' fill='%2322c55e'/%3E%3Crect x='108' y='84' width='40' height='124' rx='10' fill='%23f59e0b'/%3E%3Crect x='164' y='44' width='40' height='164' rx='10' fill='%23ef4444'/%3E%3Crect x='40' y='214' width='176' height='8' rx='4' fill='%2394a3b8'/%3E%3C/svg%3E">
 <style>
 :root {
     --bg: #f5f5f3; --card: #ffffff; --line: #e1e1dc; --text: #1f1f1d; --dim: #6b6b66; --faint: #9a9a94;
@@ -252,6 +253,19 @@ function buildControls(info) {
     ].forEach(buildControl);
 }
 
+// ---- tab: the logo and the title tell at a glance when the server is not ready or not there
+let tabState = null;
+function setTab(state, title) {
+    document.title = title;
+    if (state === tabState) return;
+    tabState = state;
+    const bars = state === 'ok' ? ['#22c55e', '#f59e0b', '#ef4444'] : ['#ef4444', '#ef4444', '#ef4444'];
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><rect width="256" height="256" rx="56" fill="${state === 'ok' ? '#0f172a' : '#450a0a'}"/>`
+        + `<rect x="52" y="124" width="40" height="84" rx="10" fill="${bars[0]}"/><rect x="108" y="84" width="40" height="124" rx="10" fill="${bars[1]}"/>`
+        + `<rect x="164" y="44" width="40" height="164" rx="10" fill="${bars[2]}"/><rect x="40" y="214" width="176" height="8" rx="4" fill="#94a3b8"/></svg>`;
+    $('icon').href = `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
 // ---- the loop
 let built = false;
 let ticking = false;
@@ -269,7 +283,6 @@ async function tick() {
             buildGauge('fd', 'File descriptors held');
             buildGauge('req', 'Requests by status');
             buildControls(info);
-            document.title = `${info.name} ${info.version}`;
         }
         $('lost').style.display = 'none';
         $('name').textContent = info.name;
@@ -280,6 +293,8 @@ async function tick() {
         ready.className = 'pill' + (state.ready ? '' : ' bad');
         ready.textContent = state.ready ? 'ready' : state.secondsLeft === null ? 'not ready, until /ready/on' : `not ready, ready again in ${state.secondsLeft} s`;
 
+        setTab(state.ready ? 'ok' : 'bad', state.ready ? `${info.name} ${info.version}` : `${info.name} · not ready`);
+
         const status = [`/stress in progress: ${info.stress.inFlight}`, `/delay waiting: ${info.delay.inFlight}`];
         if (info.stress.burn) status.unshift(`/cpu: ${info.stress.burn.percent}% on every worker, ${info.stress.burn.secondsLeft} s left`);
         $('status').replaceChildren(...status.map((text) => el('span', '', text)));
@@ -288,6 +303,7 @@ async function tick() {
         if (info.fd) draw('fd', {v: info.fd.held, max: info.fd.limit, text: `${info.fd.held} / ${info.fd.limit}`, cap: 'held by /fd'});
         requests(metrics);
     } catch (e) {
+        setTab('bad', 'torchio · unreachable');
         $('lost').style.display = 'block';
         $('lost').textContent = `Cannot reach the server (${e.name === 'TimeoutError' ? 'timed out' : e.message}). Trying again every second.`;
     }

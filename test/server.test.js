@@ -480,6 +480,7 @@ describe('/ui', () => {
             assert.match(response.headers.get('content-type'), /^text\/html/);
             const html = await response.text();
             assert.match(html, /<title>torchio<\/title>/);
+            assert.match(html, /<link rel="icon"/);
             const script = html.match(/<script>([\s\S]*)<\/script>/)[1];
             assert.doesNotThrow(() => new (require('node:vm').Script)(script), 'the script of the page has a syntax error');
             // what the page calls must exist

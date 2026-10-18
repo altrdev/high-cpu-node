@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
+## 3.3.1 - 2026-10-18
+
+### Added
+- The control panel has a favicon (the logo). When the server is not ready or can't be reached, the tab turns red and its title says so, so you can tell from another tab.
+
 ## 3.3.0 - 2026-10-18
 
 ### Added
