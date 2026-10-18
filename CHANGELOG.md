@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
-## Unreleased
+## 2.3.2 - 2026-10-18
 
 ### Added
 - Project logo (`docs/logo.svg` and `docs/logo.png`), shown in the README.
