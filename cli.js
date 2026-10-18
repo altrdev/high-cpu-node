@@ -32,6 +32,11 @@ function duration(seconds) {
     return h ? `${h}h${m}m${s}s` : m ? `${m}m${s}s` : `${s}s`;
 }
 
+// Keeps the end of a long path, which is the part that tells directories apart
+function shorten(text, max) {
+    return text.length > max ? `…${text.slice(text.length - max + 1)}` : text;
+}
+
 function row(label, value, max, text, history, sparkMax, neutral = false) {
     return `${label.padEnd(14)}${bar(value, max, neutral)}  ${text.padEnd(26)} ${paint(36, spark(history, sparkMax))}`;
 }
@@ -53,7 +58,8 @@ function render(url, info, history) {
         row('Process RSS', info.memory.processRssMb, rssMax, rssText, history.rss, rssMax, !rssLimit),
         row('Disk held', info.disk.heldMb, info.disk.limitMb, diskText, history.disk, info.disk.limitMb),
         '',
-        `/stress in progress: ${info.stress.inFlight}   /delay waiting: ${info.delay.inFlight}   disk ${info.disk.dir}: ${free}`,
+        `/stress in progress: ${info.stress.inFlight}   /delay waiting: ${info.delay.inFlight}`,
+        `disk dir: ${shorten(info.disk.dir, 40)}   ${free}`,
     ].join('\n');
 }
 
