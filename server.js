@@ -10,6 +10,8 @@ const config = {
     workers: parseInt(process.env.WORKERS) || os.cpus().length,
     defaultNumber: 45,
     maxNumber: parseInt(process.env.MAX_NUMBER) || 50,
+    defaultDelayMs: 1000,
+    maxDelayMs: parseInt(process.env.MAX_DELAY_MS) || 60000,
 };
 
 const app = express();
@@ -61,6 +63,26 @@ app.get('/stress', (req, res) => {
         return res.status(400).end(`number must be between 0 and ${config.maxNumber}`);
     }
     stress(number, res);
+});
+
+// Answers after `ms` milliseconds without blocking the event loop
+app.get('/delay', (req, res) => {
+    let ms = parseInt(req.query.ms);
+    if (isNaN(ms)) ms = config.defaultDelayMs;
+    if (ms < 0 || ms > config.maxDelayMs) {
+        return res.status(400).end(`ms must be between 0 and ${config.maxDelayMs}`);
+    }
+    const timer = setTimeout(() => res.status(200).end(`Answered after ${ms} ms`), ms);
+    res.on('close', () => clearTimeout(timer));
+});
+
+// Answers with the requested HTTP status code, to test probes and retries
+app.get('/status/:code', (req, res) => {
+    const code = Number(req.params.code);
+    if (!Number.isInteger(code) || code < 200 || code > 599) {
+        return res.status(400).end('code must be an integer between 200 and 599');
+    }
+    res.status(code).end(`Status: ${code}`);
 });
 
 function stress(number, res) {

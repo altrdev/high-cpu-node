@@ -27,6 +27,9 @@ jobs:
           test "$(curl -sf localhost:3100/)" = "Status: OK"
           curl -sf "localhost:3100/stress?number=20" | grep -q "result: 6765"
           test "$(curl -s -o /dev/null -w '%{http_code}' 'localhost:3100/stress?number=999')" = "400"
+          curl -sf "localhost:3100/delay?ms=100" | grep -q "100 ms"
+          test "$(curl -s -o /dev/null -w '%{http_code}' 'localhost:3100/status/503')" = "503"
+          test "$(curl -s -o /dev/null -w '%{http_code}' 'localhost:3100/status/999')" = "400"
           kill $SERVER_PID
 
       - name: Build Docker image

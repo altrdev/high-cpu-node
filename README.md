@@ -29,10 +29,12 @@ docker run -p 3000:3000 altrdev/stress-node:latest
 
 The server listens on port 3000.
 
-| Endpoint  | Description                                  |
-|-----------|----------------------------------------------|
-| `/`       | Health check, returns `Status: OK`           |
-| `/stress` | Runs a Fibonacci calculation to load a CPU   |
+| Endpoint        | Description                                                  |
+|-----------------|--------------------------------------------------------------|
+| `/`             | Health check, returns `Status: OK`                           |
+| `/stress`       | Runs a Fibonacci calculation to load a CPU                   |
+| `/delay`        | Answers after a delay, to test timeouts and slow backends    |
+| `/status/:code` | Answers with the given HTTP status, to test probes and retries |
 
 `/stress` accepts an optional query string parameter `number`, the sequence length to calculate:
 
@@ -40,6 +42,10 @@ The server listens on port 3000.
 - if outside the range `0..MAX_NUMBER`, the server answers `400`
 
 The calculation time grows exponentially with `number`.
+
+`/delay` accepts an optional `ms` parameter (default `1000`). The wait does not block the server, so other requests are served normally. A value outside `0..MAX_DELAY_MS` gets a `400`.
+
+`/status/:code` answers with the status you ask for, for example `/status/503`. Codes must be integers from `200` to `599`, otherwise you get a `400`.
 
 ```
 http://127.0.0.1:3000/stress
@@ -89,6 +95,7 @@ Environment variables:
 | `PORT`       | `3000`          | Port the server listens on             |
 | `WORKERS`    | number of cores | Number of worker processes             |
 | `MAX_NUMBER` | `50`            | Highest `number` accepted by `/stress` |
+| `MAX_DELAY_MS` | `60000`       | Highest `ms` accepted by `/delay`      |
 
 ```
 docker run -p 3000:3000 -e WORKERS=2 altrdev/stress-node:latest
