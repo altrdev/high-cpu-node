@@ -181,7 +181,7 @@ Returns a JSON document with what the server is doing right now. It takes no par
 ```json
 {
   "name": "stress-node",
-  "version": "2.5.2",
+  "version": "2.5.3",
   "uptimeSeconds": 321,
   "stress": { "workers": 4, "inFlight": 2, "perWorker": [1, 1, 0, 0] },
   "delay": { "inFlight": 3 },

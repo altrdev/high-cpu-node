@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
-## Unreleased
+## 2.5.3 - 2026-10-18
 
 ### Changed
 - README reorganised to start with what the tool does: a short pitch, the animated terminal view, a 30 seconds try-out and scenarios (OOM kills, autoscaling, probes and timeouts, disk, metrics), followed by the reference.
