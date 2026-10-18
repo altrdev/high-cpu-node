@@ -462,6 +462,36 @@ describe('/cpu, /leak and START_DELAY_SECONDS', () => {
     });
 });
 
+describe('/ui', () => {
+    test('is not there unless UI=1', async () => {
+        const server = await startServer();
+        try {
+            assert.equal((await server.get('/ui')).status, 404);
+        } finally {
+            await server.stop();
+        }
+    });
+
+    test('serves the control panel with UI=1, and its script is valid', async () => {
+        const server = await startServer({UI: '1'});
+        try {
+            const response = await server.get('/ui');
+            assert.equal(response.status, 200);
+            assert.match(response.headers.get('content-type'), /^text\/html/);
+            const html = await response.text();
+            assert.match(html, /<title>torchio<\/title>/);
+            const script = html.match(/<script>([\s\S]*)<\/script>/)[1];
+            assert.doesNotThrow(() => new (require('node:vm').Script)(script), 'the script of the page has a syntax error');
+            // what the page calls must exist
+            for (const path of ['/info', '/metrics', '/cpu', '/leak', '/memory', '/disk', '/fd', '/ready/off', '/ready/on', '/delay', '/crash', '/stress']) {
+                assert.ok(script.includes(`'${path}`) || script.includes(`path: '${path}`), `the page does not use ${path}`);
+            }
+        } finally {
+            await server.stop();
+        }
+    });
+});
+
 describe('cli watch', () => {
     test('--once prints the figures of a running server', async () => {
         const server = await startServer();

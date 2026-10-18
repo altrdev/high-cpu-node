@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>torchio</title>
+<style>
+:root {
+    --bg: #f5f5f3; --card: #ffffff; --line: #e1e1dc; --text: #1f1f1d; --dim: #6b6b66; --faint: #9a9a94;
+    --green: #3b6d11; --yellow: #ba7517; --red: #c0392b; --blue: #378add; --track: #ececE8;
+    --ok-bg: #eaf3de; --bad-bg: #fceaea; --accent: #185fa5;
+}
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #161615; --card: #1f1f1d; --line: #33332f; --text: #ecece8; --dim: #a3a39d; --faint: #75756f;
+        --green: #639922; --yellow: #d29922; --red: #e24b4a; --blue: #58a6ff; --track: #2b2b28;
+        --ok-bg: #20301a; --bad-bg: #3a1f1f; --accent: #58a6ff;
+    }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 960px; margin: 0 auto; padding: 20px 16px 40px; }
+header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+h1 { font-size: 18px; margin: 0; font-weight: 600; }
+.dim { color: var(--dim); }
+.pill { margin-left: auto; font-size: 12px; padding: 3px 10px; border-radius: 8px; background: var(--ok-bg); color: var(--green); }
+.pill.bad { background: var(--bad-bg); color: var(--red); }
+#status { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--dim); margin: 0 0 14px; }
+#lost { display: none; background: var(--bad-bg); color: var(--red); border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; font-size: 13px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 10px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.top p { margin: 0; font-size: 12px; color: var(--dim); }
+.top strong { font-size: 15px; font-weight: 600; white-space: nowrap; }
+.bar { height: 6px; border-radius: 3px; background: var(--track); overflow: hidden; margin: 6px 0 8px; display: flex; }
+.bar div { height: 100%; transition: width 0.3s; }
+.spark { display: flex; align-items: flex-end; gap: 1px; height: 34px; }
+.spark i { flex: 1; min-height: 2px; border-radius: 1px; background: var(--blue); opacity: 0.5; }
+.spark i:last-child { opacity: 1; }
+.cap { font-size: 11px; color: var(--faint); margin: 3px 0 0; }
+h2 { font-size: 13px; font-weight: 600; margin: 22px 0 8px; color: var(--dim); }
+.ctl h3 { font-size: 14px; margin: 0 0 8px; font-weight: 600; }
+.row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--dim); margin: 4px 0; }
+.row span { width: 56px; flex: none; }
+.row input { flex: 1; min-width: 0; accent-color: var(--accent); }
+.row b { width: 56px; text-align: right; font-weight: 600; color: var(--text); flex: none; }
+.cmd { font: 11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--faint); margin: 8px 0 0; word-break: break-all; }
+button { font: inherit; font-size: 13px; width: 100%; margin-top: 8px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--text); cursor: pointer; }
+button:hover { background: var(--bg); }
+button.danger { color: var(--red); border-color: var(--red); }
+.ctl.dangerous { border-color: var(--red); }
+#log { margin-top: 12px; font: 11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--dim); background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-height: 36px; white-space: pre-wrap; word-break: break-all; }
+</style>
+</head>
+<body>
+<main>
+    <header>
+        <h1 id="name">torchio</h1>
+        <span class="dim" id="meta"></span>
+        <span class="pill" id="ready">connecting</span>
+    </header>
+    <p id="status"></p>
+    <div id="lost"></div>
+    <div class="grid" id="gauges"></div>
+    <h2>Run a test</h2>
+    <div class="grid" id="controls"></div>
+    <div id="log">Nothing sent yet. Each button shows the request it makes.</div>
+</main>
+<script>
+'use strict';
+const HISTORY = 60;
+const $ = (id) => document.getElementById(id);
+const el = (tag, className, text) => {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+};
+const level = (ratio) => (ratio >= 0.85 ? 'var(--red)' : ratio >= 0.6 ? 'var(--yellow)' : 'var(--green)');
+// Keeps the end of a long path, which is the part that tells directories apart
+const shorten = (text, max) => (text.length > max ? `…${text.slice(text.length - max + 1)}` : text);
+const duration = (s) => {
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+    return h ? `${h}h${m}m${s % 60}s` : m ? `${m}m${s % 60}s` : `${s}s`;
+};
+
+// ---- gauges: what /info says, with the last HISTORY samples of each
+const history = {};
+const gauges = [
+    {key: 'cpu', label: 'CPU workers busy', get: (i) => ({v: i.stress.perWorker.filter((n) => n > 0).length, max: i.stress.workers, text: `${i.stress.perWorker.filter((n) => n > 0).length} / ${i.stress.workers}`, cap: 'busy with /stress'})},
+    {key: 'mem', label: 'Memory held', get: (i) => ({v: i.memory.heldMb, max: i.memory.limitMb, text: `${i.memory.heldMb} / ${i.memory.limitMb} MB`, cap: '/memory and /leak'})},
+    {key: 'rss', label: 'Process RSS', get: (i) => {
+        const limit = i.memory.containerLimitMb;
+        return {v: i.memory.processRssMb, max: limit || Math.max(i.memory.limitMb, ...(history.rss || [])), neutral: !limit,
+            text: limit ? `${i.memory.processRssMb} / ${limit} MB` : `${i.memory.processRssMb} MB`, cap: limit ? 'container limit' : 'no container limit'};
+    }},
+    {key: 'disk', label: 'Disk held', get: (i) => ({v: i.disk.heldMb, max: i.disk.limitMb, text: `${i.disk.heldMb} / ${i.disk.limitMb} MB`, cap: i.disk.freeMb === null ? 'directory not usable' : `${i.disk.freeMb} MB free in ${shorten(i.disk.dir, 24)}`})},
+];
+
+const gaugeNodes = {};
+function buildGauge(key, label) {
+    const card = el('div', 'card');
+    const top = el('div', 'top');
+    const title = el('p', '', label);
+    const value = el('strong');
+    top.append(title, value);
+    const bar = el('div', 'bar');
+    const fill = el('div');
+    bar.append(fill);
+    const spark = el('div', 'spark');
+    for (let n = 0; n < HISTORY; n++) spark.append(el('i'));
+    const cap = el('p', 'cap');
+    card.append(top, bar, spark, cap);
+    $('gauges').append(card);
+    gaugeNodes[key] = {value, fill, spark, cap, bar};
+    history[key] = [];
+}
+
+function draw(key, {v, max, text, cap, neutral}) {
+    const node = gaugeNodes[key];
+    const ratio = max > 0 ? Math.min(v / max, 1) : 0;
+    node.value.textContent = text;
+    node.cap.textContent = cap;
+    node.fill.style.width = `${ratio * 100}%`;
+    node.fill.style.background = neutral ? 'var(--blue)' : level(ratio);
+    const h = history[key];
+    h.push(v);
+    if (h.length > HISTORY) h.shift();
+    const top = max > 0 ? max : 1;
+    node.spark.querySelectorAll('i').forEach((bar, n) => {
+        const idx = n - (HISTORY - h.length);
+        const value = idx >= 0 ? h[idx] : 0;
+        bar.style.height = `${Math.max(2, Math.round(34 * Math.min(value / top, 1)))}px`;
+    });
+}
+
+// ---- requests: the counters of /metrics (the polling of this page is left out)
+let previousTotal = null;
+const classes = [['2xx', 'var(--green)'], ['3xx', 'var(--blue)'], ['4xx', 'var(--yellow)'], ['5xx', 'var(--red)']];
+function requests(metrics) {
+    const byClass = {};
+    let total = 0;
+    for (const m of metrics.matchAll(/^torchio_http_requests_total\{route="([^"]*)",code="(\d)\d\d"\} (\d+)$/gm)) {
+        if (['/info', '/metrics', '/ui', 'other'].includes(m[1])) continue;
+        byClass[m[2] + 'xx'] = (byClass[m[2] + 'xx'] || 0) + Number(m[3]);
+        total += Number(m[3]);
+    }
+    const rate = previousTotal === null ? 0 : Math.max(0, total - previousTotal);
+    previousTotal = total;
+
+    const node = gaugeNodes.req;
+    const h = history.req;
+    h.push(rate);
+    if (h.length > HISTORY) h.shift();
+    const top = Math.max(1, ...h);
+    node.spark.querySelectorAll('i').forEach((bar, n) => {
+        const idx = n - (HISTORY - h.length);
+        bar.style.height = `${Math.max(2, Math.round(34 * Math.min((idx >= 0 ? h[idx] : 0) / top, 1)))}px`;
+    });
+    node.bar.replaceChildren(...classes.map(([name, color]) => {
+        const part = el('div');
+        part.style.width = `${total ? ((byClass[name] || 0) / total) * 100 : 0}%`;
+        part.style.background = color;
+        return part;
+    }));
+    const main = classes.map(([name]) => name).sort((a, b) => (byClass[b] || 0) - (byClass[a] || 0))[0];
+    node.value.textContent = total ? `${main} ${Math.round(((byClass[main] || 0) / total) * 100)}%` : 'none yet';
+    node.cap.textContent = `${total} answered, ${rate} in the last second`;
+}
+
+// ---- controls: one card for each endpoint, with the request it will make
+const log = [];
+function send(url, button) {
+    const entry = {url, text: '…'};
+    log.unshift(entry);
+    if (log.length > 6) log.pop();
+    const show = () => ($('log').textContent = log.map((e) => `GET ${e.url}  ->  ${e.text}`).join('\n'));
+    show();
+    fetch(url, {signal: AbortSignal.timeout(120000)})
+        .then(async (res) => {
+            entry.text = `${res.status} ${(await res.text()).slice(0, 120)}`;
+        })
+        .catch((e) => {
+            entry.text = `no answer (${e.name === 'TimeoutError' ? 'timed out' : 'connection lost'})`;
+        })
+        .finally(show);
+}
+
+function buildControl(def) {
+    const card = el('div', 'card ctl' + (def.danger ? ' dangerous' : ''));
+    card.append(el('h3', '', def.title));
+    const inputs = {};
+    const cmd = el('p', 'cmd');
+    const query = () => def.params.map((p) => `${p.name}=${inputs[p.name].value}`).join('&');
+    const urlFor = (path) => (def.params.length && path === def.path ? `${path}?${query()}` : path);
+    const refresh = () => {
+        cmd.textContent = `curl "${urlFor(def.path)}"`;
+        def.params.forEach((p) => (inputs[p.name].out.textContent = `${inputs[p.name].value}${p.unit || ''}`));
+    };
+    for (const p of def.params) {
+        const row = el('div', 'row');
+        const input = document.createElement('input');
+        input.type = 'range';
+        input.min = p.min;
+        input.max = p.max;
+        input.step = p.step || 1;
+        input.value = Math.min(p.value, p.max);
+        const out = el('b');
+        input.out = out;
+        input.addEventListener('input', refresh);
+        inputs[p.name] = input;
+        row.append(el('span', '', p.label), input, out);
+        card.append(row);
+    }
+    card.append(cmd);
+    for (const action of def.actions) {
+        const button = el('button', def.danger ? 'danger' : '', action.label);
+        let armed = null;
+        button.addEventListener('click', () => {
+            if (def.danger && !armed) {
+                button.textContent = 'Click again to confirm';
+                armed = setTimeout(() => {
+                    armed = null;
+                    button.textContent = action.label;
+                }, 3000);
+                return;
+            }
+            clearTimeout(armed);
+            armed = null;
+            button.textContent = action.label;
+            send(urlFor(action.path || def.path), button);
+        });
+        card.append(button);
+    }
+    refresh();
+    $('controls').append(card);
+}
+
+function buildControls(info) {
+    const hold = info.limits.maxHoldSeconds;
+    const secs = (name, value) => ({name, label: name, min: 0, max: hold, value, step: 1, unit: ' s'});
+    [
+        {title: 'CPU level', path: '/cpu', params: [{name: 'percent', label: 'percent', min: 0, max: 100, value: 70, step: 5, unit: '%'}, secs('hold', 60)], actions: [{label: 'Start'}]},
+        {title: 'CPU request', path: '/stress', params: [{name: 'number', label: 'number', min: 0, max: info.limits.maxNumber, value: 40}], actions: [{label: 'Run'}]},
+        {title: 'Memory', path: '/memory', params: [{name: 'mb', label: 'mb', min: 1, max: info.memory.limitMb, value: 100, unit: ' MB'}, secs('hold', 20)], actions: [{label: 'Allocate'}]},
+        {title: 'Memory leak', path: '/leak', params: [{name: 'rate', label: 'rate', min: 1, max: info.memory.limitMb, value: 10, unit: ' MB/s'}, {name: 'mb', label: 'up to', min: 1, max: info.memory.limitMb, value: 200, unit: ' MB'}, secs('hold', 20)], actions: [{label: 'Start'}]},
+        {title: 'Disk', path: '/disk', params: [{name: 'mb', label: 'mb', min: 1, max: info.disk.limitMb, value: 100, unit: ' MB'}, secs('hold', 20)], actions: [{label: 'Write'}]},
+        {title: 'File descriptors', path: '/fd', params: [{name: 'count', label: 'count', min: 1, max: info.fd ? info.fd.limit : 10000, value: 500}, secs('hold', 20)], actions: [{label: 'Open'}]},
+        {title: 'Readiness', path: '/ready/off', params: [{name: 'seconds', label: 'seconds', min: 0, max: hold, value: 60, unit: ' s'}], actions: [{label: 'Make not ready'}, {label: 'Ready again', path: '/ready/on'}]},
+        {title: 'Delay', path: '/delay', params: [{name: 'ms', label: 'ms', min: 0, max: info.limits.maxDelayMs, value: 3000, step: 100}], actions: [{label: 'Wait'}]},
+        {title: 'Crash', path: '/crash', danger: true, params: [{name: 'code', label: 'exit code', min: 0, max: 255, value: 137}, secs('after', 0)], actions: [{label: 'End the process'}]},
+    ].forEach(buildControl);
+}
+
+// ---- the loop
+let built = false;
+let ticking = false;
+async function tick() {
+    if (ticking) return;
+    ticking = true;
+    try {
+        const [info, metrics] = await Promise.all([
+            fetch('/info', {signal: AbortSignal.timeout(2000)}).then((r) => r.json()),
+            fetch('/metrics', {signal: AbortSignal.timeout(2000)}).then((r) => r.text()),
+        ]);
+        if (!built) {
+            built = true;
+            gauges.forEach((g) => buildGauge(g.key, g.label));
+            buildGauge('fd', 'File descriptors held');
+            buildGauge('req', 'Requests by status');
+            buildControls(info);
+            document.title = `${info.name} ${info.version}`;
+        }
+        $('lost').style.display = 'none';
+        $('name').textContent = info.name;
+        $('meta').textContent = `${info.version} · ${location.host} · up ${duration(info.uptimeSeconds)}`;
+
+        const ready = $('ready');
+        const state = info.ready || {ready: true, secondsLeft: null};
+        ready.className = 'pill' + (state.ready ? '' : ' bad');
+        ready.textContent = state.ready ? 'ready' : state.secondsLeft === null ? 'not ready, until /ready/on' : `not ready, ready again in ${state.secondsLeft} s`;
+
+        const status = [`/stress in progress: ${info.stress.inFlight}`, `/delay waiting: ${info.delay.inFlight}`];
+        if (info.stress.burn) status.unshift(`/cpu: ${info.stress.burn.percent}% on every worker, ${info.stress.burn.secondsLeft} s left`);
+        $('status').replaceChildren(...status.map((text) => el('span', '', text)));
+
+        gauges.forEach((g) => draw(g.key, g.get(info)));
+        if (info.fd) draw('fd', {v: info.fd.held, max: info.fd.limit, text: `${info.fd.held} / ${info.fd.limit}`, cap: 'held by /fd'});
+        requests(metrics);
+    } catch (e) {
+        $('lost').style.display = 'block';
+        $('lost').textContent = `Cannot reach the server (${e.name === 'TimeoutError' ? 'timed out' : e.message}). Trying again every second.`;
+    }
+    ticking = false;
+}
+tick();
+setInterval(tick, 1000);
+</script>
+</body>
+</html>

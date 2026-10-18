@@ -134,6 +134,7 @@ The server listens on port 3000.
 | `/ready/on`     |                    | Makes `/ready` answer `200` again                           |
 | `/crash`        | `code`, `after`    | Ends the process, to test restarts and backoff              |
 | `/fd`           | `count`, `hold`    | Opens file descriptors and holds them, to test `EMFILE`     |
+| `/ui`           |                    | Control panel in the browser, only with `UI=1`              |
 | `/info`         |                    | JSON with what the server is doing and the remaining budgets |
 | `/metrics`      |                    | The same figures in the Prometheus text format               |
 
@@ -295,7 +296,7 @@ Returns a JSON document with what the server is doing right now. It takes no par
 ```json
 {
   "name": "torchio",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "uptimeSeconds": 321,
   "stress": { "workers": 4, "inFlight": 2, "perWorker": [1, 1, 0, 0], "burn": null },
   "delay": { "inFlight": 3 },
@@ -383,6 +384,20 @@ docker exec -it <container> node cli.js watch
 
 A server older than 3.1 doesn't report descriptors and readiness, so those two lines are left out. The history only covers the time the command has been running. The colour of a bar goes from green to red as it gets close to its limit; set `NO_COLOR=1` to turn colours off.
 
+## Control panel
+
+`torchio` also has a page in the browser that does the job of `watch` and lets you start the tests with sliders and buttons instead of `curl`. It is off by default, turn it on with `UI=1` and open `/ui`:
+
+```
+docker run -p 3000:3000 -e UI=1 altrdev/torchio:latest
+```
+
+![The torchio control panel: gauges with history for workers, memory, process RSS, disk, descriptors and requests, and a card for each test](https://raw.githubusercontent.com/altrdev/torchio/refs/heads/main/docs/ui.png)
+
+The gauges and their history (the last 60 seconds) come from [`/info`](#info) and [`/metrics`](#metrics), refreshed every second, and the page shows whether `/ready` is answering `200` or `503`. Each card makes the request you see written under its sliders, and the answer goes in the log at the bottom, so it is also a way to learn the API. The history lives in the page: reloading it starts again.
+
+The page makes [`/crash`](#crash) a button, which is why it is off by default (and the button asks to be clicked twice). It needs no extra dependency and no build, it is one static file.
+
 ## Configuration
 
 Environment variables:
@@ -395,6 +410,7 @@ Environment variables:
 | `MAX_DELAY_MS`     | `60000`         | Highest `ms` accepted by `/delay`                 |
 | `MAX_MEMORY_MB`    | `512`           | Total memory `/memory` can hold at once           |
 | `MAX_DISK_MB`      | `1024`          | Total disk space `/disk` can hold at once         |
+| `UI`               | off             | `1` turns on the control panel at `/ui`           |
 | `START_DELAY_SECONDS` | `0`         | Seconds the port stays closed after the start     |
 | `MAX_FD`           | `10000`         | Total descriptors `/fd` can hold at once          |
 | `MAX_HOLD_SECONDS` | `300`           | Highest `hold`, `seconds` and `after` accepted by the endpoints that take them |
@@ -542,7 +558,7 @@ src/
 test/              the tests
 ```
 
-The tests use `node:test`, which comes with Node.js, so there is nothing to install. They cover every endpoint and its limits, the budgets of `/memory`, `/disk` and `/fd`, `/cpu`, `/leak`, `START_DELAY_SECONDS`, `/ready`, `/crash`, a worker that crashes, an unusable `DISK_DIR`, the cleanup of the files on startup and shutdown, `/metrics` and the `watch` command. CI also runs them on Node 22, 24 and 26, checks the Docker image and validates `/metrics` with `promtool`.
+The tests use `node:test`, which comes with Node.js, so there is nothing to install. They cover every endpoint and its limits, the budgets of `/memory`, `/disk` and `/fd`, `/cpu`, `/leak`, `START_DELAY_SECONDS`, the control panel, `/ready`, `/crash`, a worker that crashes, an unusable `DISK_DIR`, the cleanup of the files on startup and shutdown, `/metrics` and the `watch` command. CI also runs them on Node 22, 24 and 26, checks the Docker image and validates `/metrics` with `promtool`.
 
 ## Changelog
 

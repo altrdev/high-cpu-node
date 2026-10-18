@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
+## 3.3.0 - 2026-10-18
+
+### Added
+- A control panel in the browser at `/ui`, turned on with `UI=1` (off by default, since it makes `/crash` a button). It shows what `watch` shows, with the history of the last 60 seconds, plus the requests by status, the readiness and a card with sliders and buttons for every test. It is one static page: no new dependency, no build.
+
 ## 3.2.0 - 2026-10-18
 
 ### Added

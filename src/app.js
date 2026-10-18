@@ -14,6 +14,7 @@ const createLeak = require('./routes/leak');
 const createFd = require('./routes/fd');
 const createReady = require('./routes/ready');
 const createCrash = require('./routes/crash');
+const createUi = require('./routes/ui');
 const createInfo = require('./routes/info');
 const createMetrics = require('./routes/metrics');
 
@@ -49,6 +50,7 @@ function createApp(config) {
     app.get('/ready/off', ready.off);
     app.get('/ready/on', ready.on);
     app.get('/crash', createCrash(config));
+    if (config.ui) app.get('/ui', createUi());
     app.get('/info', createInfo({config, version, startedAt, snapshot}));
     app.get('/metrics', createMetrics({version, startedAt, snapshot, counters}));
 

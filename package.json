@@ -1,7 +1,7 @@
 {
   "author": "altrdev",
   "name": "torchio",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "description": "A simple nodejs server for stressing cpu",
   "main": "server.js",
   "scripts": {
