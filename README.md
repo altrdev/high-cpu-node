@@ -35,6 +35,7 @@ The server listens on port 3000.
 | `/stress`       | Runs a Fibonacci calculation to load a CPU                   |
 | `/delay`        | Answers after a delay, to test timeouts and slow backends    |
 | `/status/:code` | Answers with the given HTTP status, to test probes and retries |
+| `/memory`       | Allocates memory and holds it for a while, to test memory limits and OOM kills |
 
 `/stress` accepts an optional query string parameter `number`, the sequence length to calculate:
 
@@ -44,6 +45,8 @@ The server listens on port 3000.
 The calculation time grows exponentially with `number`.
 
 `/delay` accepts an optional `ms` parameter (default `1000`). The wait does not block the server, so other requests are served normally. A value outside `0..MAX_DELAY_MS` gets a `400`.
+
+`/memory` allocates `mb` megabytes (default `100`) and holds them for `hold` seconds (default `10`, `0` releases immediately). It answers as soon as the memory is allocated, so you can chain requests. `MAX_MEMORY_MB` is the total that can be held at the same time: a single request above it gets a `400`, one that would exceed it together with memory already held gets a `429`. `hold` must be between `0` and `MAX_HOLD_SECONDS`.
 
 `/status/:code` answers with the status you ask for, for example `/status/503`. Codes must be integers from `200` to `599`, otherwise you get a `400`.
 
@@ -96,6 +99,8 @@ Environment variables:
 | `WORKERS`    | number of cores | Number of worker processes             |
 | `MAX_NUMBER` | `50`            | Highest `number` accepted by `/stress` |
 | `MAX_DELAY_MS` | `60000`       | Highest `ms` accepted by `/delay`      |
+| `MAX_MEMORY_MB` | `512`        | Total memory `/memory` can hold at once |
+| `MAX_HOLD_SECONDS` | `300`     | Highest `hold` accepted by `/memory`   |
 
 ```
 docker run -p 3000:3000 -e WORKERS=2 altrdev/stress-node:latest

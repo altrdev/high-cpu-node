@@ -30,6 +30,13 @@ jobs:
           curl -sf "localhost:3100/delay?ms=100" | grep -q "100 ms"
           test "$(curl -s -o /dev/null -w '%{http_code}' 'localhost:3100/status/503')" = "503"
           test "$(curl -s -o /dev/null -w '%{http_code}' 'localhost:3100/status/999')" = "400"
+          test "$(curl -s -o /dev/null -w '%{http_code}' 'localhost:3100/memory?mb=999999')" = "400"
+          BASE_RSS=$(ps -o rss= -p $SERVER_PID)
+          curl -sf "localhost:3100/memory?mb=200&hold=1" | grep -q "Allocated 200 MB"
+          HELD_RSS=$(ps -o rss= -p $SERVER_PID)
+          test $((HELD_RSS - BASE_RSS)) -gt 150000
+          sleep 3
+          test $(($(ps -o rss= -p $SERVER_PID) - BASE_RSS)) -lt 100000
           kill $SERVER_PID
 
       - name: Build Docker image

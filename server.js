@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const os = require('os');
+const v8 = require('v8');
+const vm = require('vm');
 const {fork} = require('child_process');
 
 const config = {
@@ -12,6 +14,10 @@ const config = {
     maxNumber: parseInt(process.env.MAX_NUMBER) || 50,
     defaultDelayMs: 1000,
     maxDelayMs: parseInt(process.env.MAX_DELAY_MS) || 60000,
+    defaultMemoryMb: 100,
+    maxMemoryMb: parseInt(process.env.MAX_MEMORY_MB) || 512,
+    defaultHoldSeconds: 10,
+    maxHoldSeconds: parseInt(process.env.MAX_HOLD_SECONDS) || 300,
 };
 
 const app = express();
@@ -83,6 +89,43 @@ app.get('/status/:code', (req, res) => {
         return res.status(400).end('code must be an integer between 200 and 599');
     }
     res.status(code).end(`Status: ${code}`);
+});
+
+// Allocates `mb` megabytes and holds them for `hold` seconds. MAX_MEMORY_MB is the
+// total that can be held at the same time, so concurrent requests can't grow it unbounded.
+let heldMb = 0;
+
+// Buffers are only returned to the OS when the garbage collector runs, so collect
+// right after releasing instead of waiting for V8 to decide
+v8.setFlagsFromString('--expose-gc');
+const gc = vm.runInNewContext('gc');
+
+app.get('/memory', (req, res) => {
+    let mb = parseInt(req.query.mb);
+    if (isNaN(mb)) mb = config.defaultMemoryMb;
+    let hold = parseInt(req.query.hold);
+    if (isNaN(hold)) hold = config.defaultHoldSeconds;
+
+    if (mb < 1 || mb > config.maxMemoryMb) {
+        return res.status(400).end(`mb must be between 1 and ${config.maxMemoryMb}`);
+    }
+    if (hold < 0 || hold > config.maxHoldSeconds) {
+        return res.status(400).end(`hold must be between 0 and ${config.maxHoldSeconds}`);
+    }
+    if (heldMb + mb > config.maxMemoryMb) {
+        return res.status(429).end(`${heldMb} MB already held, limit is ${config.maxMemoryMb} MB`);
+    }
+
+    heldMb += mb;
+    // fill() touches every page, otherwise the OS may not actually commit the memory
+    let buffer = Buffer.allocUnsafe(mb * 1024 * 1024).fill(1);
+    setTimeout(() => {
+        buffer = null;
+        heldMb -= mb;
+        gc();
+    }, hold * 1000);
+
+    res.status(200).end(`Allocated ${mb} MB, held for ${hold} s`);
 });
 
 function stress(number, res) {
