@@ -68,6 +68,7 @@ function render(url, info, history) {
         ...(info.fd ? [row('FDs held', info.fd.held, info.fd.limit, `${info.fd.held} / ${info.fd.limit}`, history.fd, info.fd.limit)] : []),
         '',
         `/stress in progress: ${info.stress.inFlight}   /delay waiting: ${info.delay.inFlight}`,
+        ...(info.stress.burn ? [`/cpu: ${info.stress.burn.percent}% on every worker, ${info.stress.burn.secondsLeft} s left`] : []),
         ...(info.ready ? [readiness(info.ready)] : []),
         `disk dir: ${shorten(info.disk.dir, 40)}   ${free}`,
     ].join('\n');

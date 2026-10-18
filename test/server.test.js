@@ -371,6 +371,97 @@ describe('/crash', () => {
     });
 });
 
+describe('/cpu, /leak and START_DELAY_SECONDS', () => {
+    test('/cpu keeps the workers busy for a while, and can be stopped', async () => {
+        const server = await startServer();
+        try {
+            assert.equal(await server.text('/cpu?percent=40&hold=20'), 'Burning 40% of 2 workers for 20 s');
+            const {burn} = (await server.info()).stress;
+            assert.equal(burn.percent, 40);
+            assert.ok(burn.secondsLeft > 15 && burn.secondsLeft <= 20);
+            assert.match(await server.text('/metrics'), /^torchio_cpu_burn_percent 40$/m);
+            assert.match(await server.text('/stress?number=20'), /result: 6765$/, '/stress still works while /cpu runs');
+
+            assert.equal(await server.text('/cpu?percent=0'), 'Stopped burning CPU');
+            assert.equal((await server.info()).stress.burn, null);
+            assert.match(await server.text('/metrics'), /^torchio_cpu_burn_percent 0$/m);
+
+            assert.equal((await server.get('/cpu?percent=101')).status, 400);
+            assert.equal((await server.get('/cpu?percent=-1')).status, 400);
+            assert.equal((await server.get('/cpu?hold=31')).status, 400);
+        } finally {
+            await server.stop();
+        }
+    });
+
+    test('/cpu really uses the CPU of the workers', async () => {
+        const server = await startServer({WORKERS: '1'});
+        try {
+            await server.get('/cpu?percent=100&hold=5');
+            await sleep(500);
+            const worker = execFileSync('pgrep', ['-P', String(server.child.pid)]).toString().trim();
+            const cpu = () => Number(execFileSync('ps', ['-o', 'cputime=', '-p', worker]).toString().trim().split(':').pop());
+            const before = cpu();
+            await sleep(2000);
+            assert.ok(cpu() - before >= 1, 'the worker should have spent at least a second of CPU in two');
+        } finally {
+            await server.stop();
+        }
+    });
+
+    test('/leak grows by itself within the budget of /memory and releases it', async () => {
+        const server = await startServer();
+        try {
+            assert.equal(await server.text('/leak?rate=20&mb=60&hold=1'), 'Leaking 20 MB/s up to 60 MB (3 s), then held for 1 s');
+            assert.equal((await server.info()).memory.heldMb, 20, 'the first step is taken right away');
+            await waitFor(async () => (await server.info()).memory.heldMb === 60, 4000, 'the leak to reach its ceiling');
+            await waitFor(async () => (await server.info()).memory.heldMb === 0, 4000, 'the leak to be released');
+        } finally {
+            await server.stop();
+        }
+    });
+
+    test('/leak stops growing when the budget is full and checks its parameters', async () => {
+        const server = await startServer();
+        try {
+            await server.get('/memory?mb=250&hold=4');
+            await server.get('/leak?rate=40&mb=200&hold=3');
+            await sleep(1500);
+            // 250 + 40 fits in the 300 MB budget, the next 40 does not: it stops there
+            assert.equal((await server.info()).memory.heldMb, 290);
+            await waitFor(async () => (await server.info()).memory.heldMb === 0, 6000, 'everything to be released');
+
+            await server.get('/memory?mb=300&hold=2');
+            assert.equal((await server.get('/leak?mb=10')).status, 429);
+            assert.equal((await server.get('/leak?mb=301')).status, 400);
+            assert.equal((await server.get('/leak?rate=0')).status, 400);
+        } finally {
+            await server.stop();
+        }
+    });
+
+    test('START_DELAY_SECONDS keeps the port closed for a while', async () => {
+        const started = Date.now();
+        const server = await startServer({START_DELAY_SECONDS: '2'});
+        try {
+            assert.ok(Date.now() - started >= 1800, 'it answered before the delay');
+            assert.match(server.output, /will start listening in 2 s/);
+            assert.equal(await server.text('/'), 'Status: OK');
+        } finally {
+            await server.stop();
+        }
+    });
+
+    test('a START_DELAY_SECONDS that is not a number is reported', async () => {
+        const server = await startServer({START_DELAY_SECONDS: '-1'});
+        try {
+            assert.match(server.output, /START_DELAY_SECONDS=-1 is not a non-negative integer, using 0/);
+        } finally {
+            await server.stop();
+        }
+    });
+});
+
 describe('cli watch', () => {
     test('--once prints the figures of a running server', async () => {
         const server = await startServer();
@@ -396,6 +487,17 @@ describe('cli watch', () => {
             const output = execFileSync(process.execPath, ['cli.js', 'watch', '--once', '--url', server.url], {cwd: ROOT}).toString();
             assert.match(output, /FDs held .* 40 \/ 10000/);
             assert.match(output, /readiness: NOT READY \(ready again in \d+ s\)/);
+        } finally {
+            await server.stop();
+        }
+    });
+
+    test('--once shows what /cpu is doing', async () => {
+        const server = await startServer();
+        try {
+            await server.get('/cpu?percent=30&hold=20');
+            const output = execFileSync(process.execPath, ['cli.js', 'watch', '--once', '--url', server.url], {cwd: ROOT}).toString();
+            assert.match(output, /\/cpu: 30% on every worker, \d+ s left/);
         } finally {
             await server.stop();
         }

@@ -10,6 +10,7 @@ class WorkerPool {
         this.next = 0;
         this.nextId = 0;
         this.stopping = false;
+        this.burning = null; // {percent, endsAt} of the last /cpu
         for (let i = 0; i < count; i++) {
             this.workers.push(this.spawn(i));
         }
@@ -17,6 +18,8 @@ class WorkerPool {
 
     spawn(index) {
         const worker = fork(path.join(__dirname, 'fibonacci.js'));
+
+        this.sendBurn(worker);
 
         worker.on('message', ({id, value}) => {
             const request = this.pending.get(id);
@@ -40,6 +43,16 @@ class WorkerPool {
         return worker;
     }
 
+    sendBurn(worker) {
+        if (this.burning && worker.connected) worker.send({burn: this.burning});
+    }
+
+    // Keeps every worker busy for `percent` of the time during `seconds`, 0 to stop
+    burn(percent, seconds) {
+        this.burning = {percent, endsAt: Date.now() + seconds * 1000};
+        this.workers.forEach((worker) => this.sendBurn(worker));
+    }
+
     run(number, res) {
         const id = this.nextId++;
         const worker = this.workers[this.next];
@@ -55,7 +68,9 @@ class WorkerPool {
         for (const request of this.pending.values()) {
             perWorker[this.workers.indexOf(request.worker)]++;
         }
-        return {workers: this.workers.length, inFlight: this.pending.size, perWorker};
+        const secondsLeft = this.burning ? Math.ceil((this.burning.endsAt - Date.now()) / 1000) : 0;
+        const burn = secondsLeft > 0 && this.burning.percent > 0 ? {percent: this.burning.percent, secondsLeft} : null;
+        return {workers: this.workers.length, inFlight: this.pending.size, perWorker, burn};
     }
 
     stop() {

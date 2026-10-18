@@ -9,6 +9,8 @@ const createDelay = require('./routes/delay');
 const status = require('./routes/status');
 const createMemory = require('./routes/memory');
 const createDisk = require('./routes/disk');
+const createCpu = require('./routes/cpu');
+const createLeak = require('./routes/leak');
 const createFd = require('./routes/fd');
 const createReady = require('./routes/ready');
 const createCrash = require('./routes/crash');
@@ -29,15 +31,18 @@ function createApp(config) {
     const delay = createDelay(config);
     const memory = createMemory(config);
     const disk = createDisk(config);
+    const leak = createLeak(config, memory);
     const fd = createFd(config);
     const ready = createReady(config);
     const snapshot = createSnapshot({config, pool, delay, memory, disk, fd, ready});
 
     app.get('/', (req, res) => res.status(200).end('Status: OK'));
     app.get('/stress', createStress(config, pool));
+    app.get('/cpu', createCpu(config, pool));
     app.get('/delay', delay.handler);
     app.get('/status/:code', status);
     app.get('/memory', memory.handler);
+    app.get('/leak', leak.handler);
     app.get('/disk', disk.handler);
     app.get('/fd', fd.handler);
     app.get('/ready', ready.handler);
@@ -50,6 +55,7 @@ function createApp(config) {
     const stop = () => {
         disk.removeFiles();
         fd.closeAll();
+        leak.stop();
         ready.stop();
         pool.stop();
     };

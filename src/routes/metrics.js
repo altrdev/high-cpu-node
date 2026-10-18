@@ -24,6 +24,7 @@ module.exports = function createMetrics({version, startedAt, snapshot, counters}
         metric(lines, 'torchio_stress_requests_in_flight', 'gauge', '/stress requests being calculated.', [[null, stress.inFlight]]);
         metric(lines, 'torchio_worker_requests_in_flight', 'gauge', '/stress requests being calculated, by worker.',
             stress.perWorker.map((count, index) => [{worker: index}, count]));
+        metric(lines, 'torchio_cpu_burn_percent', 'gauge', 'Share of the time each worker is kept busy by /cpu, 0 when it is not running.', [[null, stress.burn ? stress.burn.percent : 0]]);
         metric(lines, 'torchio_delay_requests_in_flight', 'gauge', '/delay requests still waiting.', [[null, delayInFlight]]);
         metric(lines, 'torchio_memory_held_bytes', 'gauge', 'Memory held by /memory.', [[null, memory.heldMb * MB]]);
         metric(lines, 'torchio_memory_limit_bytes', 'gauge', 'Total memory /memory may hold (MAX_MEMORY_MB).', [[null, memory.limitMb * MB]]);

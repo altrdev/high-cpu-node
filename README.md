@@ -66,6 +66,12 @@ A core stays busy only while a request is running, so send at least as many conc
 hey -z 60s -c 8 "http://127.0.0.1:3000/stress?number=40"
 ```
 
+To hold the CPU at a level for a while, without sending requests, use `/cpu`. A CPU based autoscaler reacts to a percentage, which this gives you directly:
+
+```
+curl "http://127.0.0.1:3000/cpu?percent=80&hold=300"
+```
+
 More about it in [Load testing](#load-testing).
 
 ### Probes, timeouts and retries
@@ -84,6 +90,15 @@ curl "http://127.0.0.1:3000/disk?mb=500&hold=60"
 ```
 
 If the write fails (disk full, read-only filesystem, directory not writable) the answer is a `507`. Point `DISK_DIR` to a mounted volume to test it.
+
+### Leaks and slow starts
+
+```
+curl "http://127.0.0.1:3000/leak?rate=10&mb=400&hold=60"
+START_DELAY_SECONDS=30 npm start
+```
+
+`/leak` grows the memory by itself, a few MB each second, so you can watch a memory alert or an autoscaler react before the OOM kill. `START_DELAY_SECONDS` keeps the port closed for a while after the start, to test startup probes, rollouts and `depends_on`.
 
 ### Readiness, restarts and descriptors
 
@@ -108,9 +123,11 @@ The server listens on port 3000.
 |-----------------|--------------------|-------------------------------------------------------------|
 | `/`             |                    | Health check, returns `Status: OK`                          |
 | `/stress`       | `number`           | Runs a Fibonacci calculation to load a CPU                  |
+| `/cpu`          | `percent`, `hold`  | Keeps the workers busy for a share of the time, to test CPU based autoscaling |
 | `/delay`        | `ms`               | Answers after a delay, to test timeouts and slow backends   |
 | `/status/:code` | `code` (in the path) | Answers with the given HTTP status, to test probes and retries |
 | `/memory`       | `mb`, `hold`       | Allocates memory and holds it, to test memory limits and OOM kills |
+| `/leak`         | `rate`, `mb`, `hold` | Memory that grows by itself up to a ceiling, to test alerts and leaks |
 | `/disk`         | `mb`, `hold`       | Writes a file and keeps it, to test disk limits and volumes |
 | `/ready`        |                    | Readiness check: `200`, or `503` after `/ready/off`         |
 | `/ready/off`    | `seconds`          | Makes `/ready` answer `503`, to test readiness probes       |
@@ -134,6 +151,23 @@ The calculation time grows exponentially with `number`.
 
 ```
 curl "http://127.0.0.1:3000/stress?number=40"
+```
+
+### `/cpu`
+
+Use [`/stress`](#stress) when the load must come from requests, so that response times show the pressure and concurrent requests queue up; use `/cpu` when you only need the CPU held at a level, as a percentage, for a while.
+
+Keeps every worker busy for `percent` of the time during `hold` seconds, instead of running one calculation. With one worker for each core (the default), `percent` is the load of the machine, which is what a CPU based autoscaler looks at. A new request replaces the previous one, and `percent=0` stops it.
+
+| Parameter | Default | Allowed range         |
+|-----------|---------|-----------------------|
+| `percent` | `50`    | `0..100`              |
+| `hold`    | `10`    | `0..MAX_HOLD_SECONDS` |
+
+The answer comes right away. `/stress` keeps working while `/cpu` runs, and what is left is in `/info` (`stress.burn`) and in `/metrics` (`torchio_cpu_burn_percent`). In a container with a CPU limit the workers compete for it, so set `WORKERS` in line with the limit.
+
+```
+curl "http://127.0.0.1:3000/cpu?percent=70&hold=120"
 ```
 
 ### `/delay`
@@ -173,6 +207,22 @@ To test an OOM kill, raise `MAX_MEMORY_MB` above the memory limit of your contai
 
 ```
 curl "http://127.0.0.1:3000/memory?mb=200&hold=30"
+```
+
+### `/leak`
+
+Allocates memory in steps of `rate` MB each second up to `mb` MB, keeps it for `hold` seconds after the last step and then releases it. It answers right away. It is a leak you can follow from the outside: `/info`, `/metrics` and `watch` show the memory growing.
+
+| Parameter | Default | Allowed range         |
+|-----------|---------|-----------------------|
+| `rate`    | `10`    | `1..MAX_MEMORY_MB`    |
+| `mb`      | `100`   | `1..MAX_MEMORY_MB`    |
+| `hold`    | `10`    | `0..MAX_HOLD_SECONDS` |
+
+It takes its memory from the same budget as [`/memory`](#memory) (`MAX_MEMORY_MB`) a step at a time. If the budget is already full the first request gets a `429`, and a leak that fills it while growing stops there and is held until `hold` ends.
+
+```
+curl "http://127.0.0.1:3000/leak?rate=20&mb=500&hold=60"
 ```
 
 ### `/disk`
@@ -245,9 +295,9 @@ Returns a JSON document with what the server is doing right now. It takes no par
 ```json
 {
   "name": "torchio",
-  "version": "3.1.1",
+  "version": "3.2.0",
   "uptimeSeconds": 321,
-  "stress": { "workers": 4, "inFlight": 2, "perWorker": [1, 1, 0, 0] },
+  "stress": { "workers": 4, "inFlight": 2, "perWorker": [1, 1, 0, 0], "burn": null },
   "delay": { "inFlight": 3 },
   "memory": { "heldMb": 200, "limitMb": 512, "processRssMb": 310, "containerLimitMb": 256 },
   "disk": { "heldMb": 100, "limitMb": 1024, "dir": "/tmp", "freeMb": 8120 },
@@ -260,6 +310,7 @@ Returns a JSON document with what the server is doing right now. It takes no par
 | Field                         | Meaning                                                                 |
 |-------------------------------|-------------------------------------------------------------------------|
 | `stress.inFlight`, `perWorker`| `/stress` requests being calculated, in total and for each worker       |
+| `stress.burn`                 | What `/cpu` is doing, `{ "percent", "secondsLeft" }`, or `null` when it is not running |
 | `delay.inFlight`              | `/delay` requests still waiting                                         |
 | `memory.heldMb`, `limitMb`    | Memory held by `/memory` and the total it may hold (`MAX_MEMORY_MB`); the difference is what a new request can still allocate |
 | `memory.processRssMb`         | Memory the whole process uses, the figure that counts for an OOM kill   |
@@ -280,6 +331,7 @@ The figures of [`/info`](#info) in the Prometheus text format, plus a counter of
 | `torchio_workers`                       | gauge   | Worker processes for `/stress`                              |
 | `torchio_stress_requests_in_flight`     | gauge   | `/stress` requests being calculated                         |
 | `torchio_worker_requests_in_flight{worker}` | gauge | The same, for each worker                                 |
+| `torchio_cpu_burn_percent`              | gauge   | Share of the time each worker is kept busy by `/cpu`, `0` when it is not running |
 | `torchio_delay_requests_in_flight`      | gauge   | `/delay` requests still waiting                             |
 | `torchio_memory_held_bytes`             | gauge   | Memory held by `/memory`                                    |
 | `torchio_memory_limit_bytes`            | gauge   | Total memory `/memory` may hold (`MAX_MEMORY_MB`)           |
@@ -343,6 +395,7 @@ Environment variables:
 | `MAX_DELAY_MS`     | `60000`         | Highest `ms` accepted by `/delay`                 |
 | `MAX_MEMORY_MB`    | `512`           | Total memory `/memory` can hold at once           |
 | `MAX_DISK_MB`      | `1024`          | Total disk space `/disk` can hold at once         |
+| `START_DELAY_SECONDS` | `0`         | Seconds the port stays closed after the start     |
 | `MAX_FD`           | `10000`         | Total descriptors `/fd` can hold at once          |
 | `MAX_HOLD_SECONDS` | `300`           | Highest `hold`, `seconds` and `after` accepted by the endpoints that take them |
 | `DISK_DIR`         | system temp dir | Directory where `/disk` writes its files          |
@@ -355,7 +408,7 @@ docker run -p 3000:3000 -e WORKERS=2 -e MAX_MEMORY_MB=2048 altrdev/torchio:lates
 
 ## Docker
 
-The image is built for `linux/amd64` and `linux/arm64`, runs as the non-root `node` user and has a `HEALTHCHECK` on `/`. Because of the non-root user, a directory you use as `DISK_DIR` (for example a mounted volume) must be writable by it.
+The image is built for `linux/amd64` and `linux/arm64`, runs as the non-root `node` user and has a `HEALTHCHECK` on `/`. With `START_DELAY_SECONDS` the container is unhealthy until the port opens, so give the healthcheck a longer `--start-period`. Because of the non-root user, a directory you use as `DISK_DIR` (for example a mounted volume) must be writable by it.
 
 ## Examples
 
@@ -489,7 +542,7 @@ src/
 test/              the tests
 ```
 
-The tests use `node:test`, which comes with Node.js, so there is nothing to install. They cover every endpoint and its limits, the budgets of `/memory`, `/disk` and `/fd`, `/ready`, `/crash`, a worker that crashes, an unusable `DISK_DIR`, the cleanup of the files on startup and shutdown, `/metrics` and the `watch` command. CI also runs them on Node 22, 24 and 26, checks the Docker image and validates `/metrics` with `promtool`.
+The tests use `node:test`, which comes with Node.js, so there is nothing to install. They cover every endpoint and its limits, the budgets of `/memory`, `/disk` and `/fd`, `/cpu`, `/leak`, `START_DELAY_SECONDS`, `/ready`, `/crash`, a worker that crashes, an unusable `DISK_DIR`, the cleanup of the files on startup and shutdown, `/metrics` and the `watch` command. CI also runs them on Node 22, 24 and 26, checks the Docker image and validates `/metrics` with `promtool`.
 
 ## Changelog
 

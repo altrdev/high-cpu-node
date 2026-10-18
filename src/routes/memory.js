@@ -44,5 +44,5 @@ module.exports = function createMemory(config) {
         res.status(200).end(`Allocated ${mb} MB, held for ${hold} s`);
     };
 
-    return {handler, budget};
+    return {handler, budget, collect: gc};
 };

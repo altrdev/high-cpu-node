@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
+## 3.2.0 - 2026-10-18
+
+### Added
+- `/cpu?percent=&hold=`: keeps every worker busy for a share of the time, to hold the CPU at a level for a while (for CPU based autoscalers). `percent=0` stops it. It shows in `/info` (`stress.burn`), in `/metrics` (`torchio_cpu_burn_percent`) and in `watch`.
+- `/leak?rate=&mb=&hold=`: memory that grows by itself, `rate` MB each second up to `mb`, then is held and released. It uses the budget of `/memory`.
+- `START_DELAY_SECONDS`: the port stays closed for that many seconds after the start, to test startup probes and slow rollouts (default `0`).
+
 ## 3.1.1 - 2026-10-18
 
 ### Added
