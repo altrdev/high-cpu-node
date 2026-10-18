@@ -15,7 +15,7 @@ function metric(lines, name, type, help, samples) {
 // The figures of /info in the Prometheus text format
 module.exports = function createMetrics({version, startedAt, snapshot, counters}) {
     return async (req, res) => {
-        const {stress, delayInFlight, memory, disk} = await snapshot();
+        const {stress, delayInFlight, memory, disk, fd, ready} = await snapshot();
         const lines = [];
 
         metric(lines, 'torchio_info', 'gauge', 'Version of the server.', [[{version}, 1]]);
@@ -33,6 +33,9 @@ module.exports = function createMetrics({version, startedAt, snapshot, counters}
         metric(lines, 'torchio_disk_held_bytes', 'gauge', 'Disk space held by /disk.', [[null, disk.heldMb * MB]]);
         metric(lines, 'torchio_disk_limit_bytes', 'gauge', 'Total disk space /disk may hold (MAX_DISK_MB).', [[null, disk.limitMb * MB]]);
         metric(lines, 'torchio_disk_free_bytes', 'gauge', 'Free space in DISK_DIR.', disk.freeBytes === null ? [] : [[null, disk.freeBytes]]);
+        metric(lines, 'torchio_fd_held', 'gauge', 'File descriptors held by /fd.', [[null, fd.held]]);
+        metric(lines, 'torchio_fd_limit', 'gauge', 'Total file descriptors /fd may hold (MAX_FD).', [[null, fd.limit]]);
+        metric(lines, 'torchio_ready', 'gauge', '1 when /ready answers 200, 0 while it answers 503.', [[null, ready.ready ? 1 : 0]]);
         metric(lines, 'torchio_http_requests_total', 'counter', 'Requests answered, by route and status code.',
             counters.entries().map(({route, code, count}) => [{route, code}, count]));
 

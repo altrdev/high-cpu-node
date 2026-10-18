@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
+## 3.1.0 - 2026-10-18
+
+### Added
+- `/ready`, `/ready/off?seconds=` and `/ready/on`: a readiness check you can switch to `503` for a while or until you switch it back, while `/` keeps answering `200`. For readiness probes and load balancers.
+- `/crash?code=&after=`: ends the process with the exit code you choose, to test restarts and backoff.
+- `/fd?count=&hold=`: opens file descriptors and holds them, to test what happens when a process runs out of them (`EMFILE`). `MAX_FD` is the total that can be held at once (default `10000`).
+- `/info` has `fd` and `ready`, `/metrics` has `torchio_fd_held`, `torchio_fd_limit` and `torchio_ready`.
+
+### Changed
+- The Kubernetes example uses `/ready` for the readiness probe.
+
 ## 3.0.1 - 2026-10-18
 
 ### Changed

@@ -9,6 +9,9 @@ const createDelay = require('./routes/delay');
 const status = require('./routes/status');
 const createMemory = require('./routes/memory');
 const createDisk = require('./routes/disk');
+const createFd = require('./routes/fd');
+const createReady = require('./routes/ready');
+const createCrash = require('./routes/crash');
 const createInfo = require('./routes/info');
 const createMetrics = require('./routes/metrics');
 
@@ -26,7 +29,9 @@ function createApp(config) {
     const delay = createDelay(config);
     const memory = createMemory(config);
     const disk = createDisk(config);
-    const snapshot = createSnapshot({config, pool, delay, memory, disk});
+    const fd = createFd(config);
+    const ready = createReady(config);
+    const snapshot = createSnapshot({config, pool, delay, memory, disk, fd, ready});
 
     app.get('/', (req, res) => res.status(200).end('Status: OK'));
     app.get('/stress', createStress(config, pool));
@@ -34,11 +39,18 @@ function createApp(config) {
     app.get('/status/:code', status);
     app.get('/memory', memory.handler);
     app.get('/disk', disk.handler);
+    app.get('/fd', fd.handler);
+    app.get('/ready', ready.handler);
+    app.get('/ready/off', ready.off);
+    app.get('/ready/on', ready.on);
+    app.get('/crash', createCrash(config));
     app.get('/info', createInfo({config, version, startedAt, snapshot}));
     app.get('/metrics', createMetrics({version, startedAt, snapshot, counters}));
 
     const stop = () => {
         disk.removeFiles();
+        fd.closeAll();
+        ready.stop();
         pool.stop();
     };
 

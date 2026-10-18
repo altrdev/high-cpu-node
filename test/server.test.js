@@ -302,6 +302,75 @@ describe('files of /disk', () => {
     });
 });
 
+describe('/ready, /crash and /fd', () => {
+    let server;
+    before(async () => {
+        server = await startServer({MAX_FD: '50'});
+    });
+    after(() => server.stop());
+
+    test('/ready switches to 503 and back, on request and by itself', async () => {
+        assert.equal((await server.get('/ready')).status, 200);
+
+        assert.equal((await server.get('/ready/off?seconds=1')).status, 200);
+        const down = await server.get('/ready');
+        assert.equal(down.status, 503);
+        assert.match(await down.text(), /^Not ready, ready again in \d s$/);
+        assert.equal((await server.info()).ready.ready, false);
+        assert.match(await server.text('/metrics'), /^torchio_ready 0$/m);
+        assert.equal((await server.get('/')).status, 200, 'the liveness check must keep answering');
+        await waitFor(async () => (await server.get('/ready')).status === 200, 3000, 'the server to be ready again');
+
+        await server.get('/ready/off?seconds=0');
+        await sleep(1200);
+        assert.equal(await server.text('/ready'), 'Not ready');
+        assert.equal((await server.get('/ready/on')).status, 200);
+        assert.equal((await server.get('/ready')).status, 200);
+        assert.match(await server.text('/metrics'), /^torchio_ready 1$/m);
+
+        assert.equal((await server.get('/ready/off?seconds=31')).status, 400);
+        assert.equal((await server.get('/ready/off?seconds=-1')).status, 400);
+    });
+
+    test('/fd holds descriptors within its budget and releases them', async () => {
+        const first = await server.get('/fd?count=30&hold=1');
+        assert.equal(first.status, 200);
+        assert.equal((await server.info()).fd.held, 30);
+        assert.equal((await server.get('/fd?count=30&hold=1')).status, 429);
+        assert.equal((await server.get('/fd?count=51')).status, 400);
+        assert.equal((await server.get('/fd?count=0')).status, 400);
+        await waitFor(async () => (await server.info()).fd.held === 0, 3000, 'the descriptors to be released');
+        assert.match(await server.text('/metrics'), /^torchio_fd_limit 50$/m);
+    });
+});
+
+describe('/crash', () => {
+    test('ends the process with the exit code asked for', async () => {
+        const server = await startServer();
+        try {
+            assert.match(await server.text('/crash?code=42'), /^Exiting with code 42$/);
+            assert.equal(await server.exited, 42);
+        } finally {
+            await server.stop();
+        }
+    });
+
+    test('can wait before exiting and checks its parameters', async () => {
+        const server = await startServer();
+        try {
+            assert.equal((await server.get('/crash?code=256')).status, 400);
+            assert.equal((await server.get('/crash?after=31')).status, 400);
+            const started = Date.now();
+            assert.match(await server.text('/crash?code=3&after=1'), /^Exiting with code 3 in 1 s$/);
+            assert.equal((await server.get('/')).status, 200, 'the server must still answer before the exit');
+            assert.equal(await server.exited, 3);
+            assert.ok(Date.now() - started >= 900);
+        } finally {
+            await server.stop();
+        }
+    });
+});
+
 describe('cli watch', () => {
     test('--once prints the figures of a running server', async () => {
         const server = await startServer();

@@ -28,5 +28,8 @@ module.exports = {
     maxHoldSeconds: positiveInt('MAX_HOLD_SECONDS', 300),
     defaultDiskMb: 100,
     maxDiskMb: positiveInt('MAX_DISK_MB', 1024),
+    defaultFd: 100,
+    maxFd: positiveInt('MAX_FD', 10000),
+    defaultNotReadySeconds: 30,
     diskDir: process.env.DISK_DIR || os.tmpdir(),
 };

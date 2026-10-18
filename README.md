@@ -85,6 +85,17 @@ curl "http://127.0.0.1:3000/disk?mb=500&hold=60"
 
 If the write fails (disk full, read-only filesystem, directory not writable) the answer is a `507`. Point `DISK_DIR` to a mounted volume to test it.
 
+### Readiness, restarts and descriptors
+
+```
+curl "http://127.0.0.1:3000/ready/off?seconds=60"
+curl -i http://127.0.0.1:3000/ready
+curl "http://127.0.0.1:3000/crash?code=1"
+curl "http://127.0.0.1:3000/fd?count=500&hold=30"
+```
+
+`/ready/off` makes `/ready` answer `503` for a while while `/` keeps answering `200`, so you can see an instance leave a Service or a load balancer without being restarted. `/crash` ends the process with the exit code you choose, to watch restarts and backoff. `/fd` holds file descriptors open, to see what a process does when it runs out of them.
+
 ### Metrics and dashboards
 
 [`/info`](#info) is a quick look at what the server holds and what is left of each budget, and [`/metrics`](#metrics) has the same figures for Prometheus.
@@ -101,6 +112,11 @@ The server listens on port 3000.
 | `/status/:code` | `code` (in the path) | Answers with the given HTTP status, to test probes and retries |
 | `/memory`       | `mb`, `hold`       | Allocates memory and holds it, to test memory limits and OOM kills |
 | `/disk`         | `mb`, `hold`       | Writes a file and keeps it, to test disk limits and volumes |
+| `/ready`        |                    | Readiness check: `200`, or `503` after `/ready/off`         |
+| `/ready/off`    | `seconds`          | Makes `/ready` answer `503`, to test readiness probes       |
+| `/ready/on`     |                    | Makes `/ready` answer `200` again                           |
+| `/crash`        | `code`, `after`    | Ends the process, to test restarts and backoff              |
+| `/fd`           | `count`, `hold`    | Opens file descriptors and holds them, to test `EMFILE`     |
 | `/info`         |                    | JSON with what the server is doing and the remaining budgets |
 | `/metrics`      |                    | The same figures in the Prometheus text format               |
 
@@ -176,6 +192,52 @@ Files are removed on shutdown, and leftovers from a previous run are removed at 
 curl "http://127.0.0.1:3000/disk?mb=200&hold=30"
 ```
 
+### `/ready`
+
+A readiness check that you can switch. It answers `200` (`Ready`) until you call `/ready/off`, then `503` (`Not ready`). The liveness check `/` is not affected, so a container that is not ready stays alive.
+
+| Endpoint     | Parameter | Default | Allowed range         | Effect                                                    |
+|--------------|-----------|---------|-----------------------|-----------------------------------------------------------|
+| `/ready/off` | `seconds` | `30`    | `0..MAX_HOLD_SECONDS` | `/ready` answers `503` for that long, `0` until `/ready/on` |
+| `/ready/on`  |           |         |                       | `/ready` answers `200` again                              |
+
+The state is in `/info` (`ready`) and in `/metrics` (`torchio_ready`). Calling `/ready/off` again restarts the countdown.
+
+```
+curl "http://127.0.0.1:3000/ready/off?seconds=60"
+curl -i http://127.0.0.1:3000/ready
+```
+
+### `/crash`
+
+Answers, then ends the whole process with the exit code you choose. Use it to test restart policies, backoff and `CrashLoopBackOff`. Nothing is cleaned up on the way out, like in a real crash; the files of `/disk` left behind are removed at the next start.
+
+| Parameter | Default | Allowed range         |
+|-----------|---------|-----------------------|
+| `code`    | `1`     | `0..255`              |
+| `after`   | `0`     | `0..MAX_HOLD_SECONDS` seconds |
+
+```
+curl "http://127.0.0.1:3000/crash?code=137&after=5"
+```
+
+Remember that anyone who can reach the server can stop it. As with the rest, don't expose it to the internet.
+
+### `/fd`
+
+Opens `count` file descriptors and closes them after `hold` seconds.
+
+| Parameter | Default | Allowed range         |
+|-----------|---------|-----------------------|
+| `count`   | `100`   | `1..MAX_FD`           |
+| `hold`    | `10`    | `0..MAX_HOLD_SECONDS` |
+
+`MAX_FD` is the total that can be held at the same time, with the same `400` and `429` rules as `/memory`. The limit of the process (`ulimit -n`) is usually lower than `MAX_FD` in a container that sets one: when it is reached the answer is a `503` that says how many could be opened, and those stay open until `hold` ends. While they are open the server may fail to accept new connections or to open files, which is the situation being tested.
+
+```
+curl "http://127.0.0.1:3000/fd?count=2000&hold=30"
+```
+
 ### `/info`
 
 Returns a JSON document with what the server is doing right now. It takes no parameters and doesn't use up any budget, so you can poll it while you test, for example with `watch -n1 curl -s http://127.0.0.1:3000/info`.
@@ -183,12 +245,14 @@ Returns a JSON document with what the server is doing right now. It takes no par
 ```json
 {
   "name": "torchio",
-  "version": "3.0.1",
+  "version": "3.1.0",
   "uptimeSeconds": 321,
   "stress": { "workers": 4, "inFlight": 2, "perWorker": [1, 1, 0, 0] },
   "delay": { "inFlight": 3 },
   "memory": { "heldMb": 200, "limitMb": 512, "processRssMb": 310, "containerLimitMb": 256 },
   "disk": { "heldMb": 100, "limitMb": 1024, "dir": "/tmp", "freeMb": 8120 },
+  "fd": { "held": 0, "limit": 10000 },
+  "ready": { "ready": true, "secondsLeft": null },
   "limits": { "maxNumber": 50, "maxDelayMs": 60000, "maxHoldSeconds": 300 }
 }
 ```
@@ -202,6 +266,8 @@ Returns a JSON document with what the server is doing right now. It takes no par
 | `memory.containerLimitMb`     | Memory limit of the container, `null` when there is none                |
 | `disk.heldMb`, `limitMb`      | Same as for memory, for `/disk` (`MAX_DISK_MB`)                         |
 | `disk.freeMb`                 | Free space in `DISK_DIR`, `null` if the directory is not usable         |
+| `fd.held`, `limit`            | File descriptors held by `/fd` and the total it may hold (`MAX_FD`)     |
+| `ready.ready`, `secondsLeft`  | What `/ready` answers, and the seconds left before it is ready again (`null` if nothing is counting down) |
 
 ### `/metrics`
 
@@ -222,6 +288,9 @@ The figures of [`/info`](#info) in the Prometheus text format, plus a counter of
 | `torchio_disk_held_bytes`               | gauge   | Disk space held by `/disk`                                  |
 | `torchio_disk_limit_bytes`              | gauge   | Total disk space `/disk` may hold (`MAX_DISK_MB`)           |
 | `torchio_disk_free_bytes`               | gauge   | Free space in `DISK_DIR`, only present when it is usable    |
+| `torchio_fd_held`                       | gauge   | File descriptors held by `/fd`                              |
+| `torchio_fd_limit`                      | gauge   | Total descriptors `/fd` may hold (`MAX_FD`)                 |
+| `torchio_ready`                         | gauge   | `1` while `/ready` answers `200`, `0` while it answers `503` |
 | `torchio_http_requests_total{route,code}` | counter | Requests answered, by route pattern (such as `/status/:code`) and status code. A request the client abandons before the answer is not counted |
 
 To collect them with Prometheus:
@@ -274,7 +343,8 @@ Environment variables:
 | `MAX_DELAY_MS`     | `60000`         | Highest `ms` accepted by `/delay`                 |
 | `MAX_MEMORY_MB`    | `512`           | Total memory `/memory` can hold at once           |
 | `MAX_DISK_MB`      | `1024`          | Total disk space `/disk` can hold at once         |
-| `MAX_HOLD_SECONDS` | `300`           | Highest `hold` accepted by `/memory` and `/disk`  |
+| `MAX_FD`           | `10000`         | Total descriptors `/fd` can hold at once          |
+| `MAX_HOLD_SECONDS` | `300`           | Highest `hold`, `seconds` and `after` accepted by the endpoints that take them |
 | `DISK_DIR`         | system temp dir | Directory where `/disk` writes its files          |
 
 A number must be a positive integer. A value that is not one is reported at startup and replaced by the default.
@@ -345,7 +415,7 @@ spec:
               memory: 256Mi
           readinessProbe:
             httpGet:
-              path: /
+              path: /ready
               port: 3000
           livenessProbe:
             httpGet:
@@ -357,6 +427,8 @@ Some things to try, after `kubectl port-forward deploy/torchio 3000:3000`:
 
 - `/stress?number=45` on several terminals keeps the container at its CPU limit, which you can watch with `kubectl top pod` or use to trigger a CPU-based autoscaler.
 - `/memory?mb=400` goes above the `256Mi` limit, so the container should be OOM killed and restarted.
+- `/ready/off?seconds=60` takes the pod out of the Service endpoints for a minute without restarting it (the readiness probe now checks `/ready`; the liveness probe still checks `/`).
+- `/crash?code=1` restarts the container, and calling it again each time shows the backoff growing.
 - `/status/503` is a quick way to check how a probe or a retry policy reacts to errors.
 
 ## How it works
@@ -417,7 +489,7 @@ src/
 test/              the tests
 ```
 
-The tests use `node:test`, which comes with Node.js, so there is nothing to install. They cover every endpoint and its limits, the budgets of `/memory` and `/disk`, a worker that crashes, an unusable `DISK_DIR`, the cleanup of the files on startup and shutdown, `/metrics` and the `watch` command. CI also runs them on Node 22, 24 and 26, checks the Docker image and validates `/metrics` with `promtool`.
+The tests use `node:test`, which comes with Node.js, so there is nothing to install. They cover every endpoint and its limits, the budgets of `/memory`, `/disk` and `/fd`, `/ready`, `/crash`, a worker that crashes, an unusable `DISK_DIR`, the cleanup of the files on startup and shutdown, `/metrics` and the `watch` command. CI also runs them on Node 22, 24 and 26, checks the Docker image and validates `/metrics` with `promtool`.
 
 ## Changelog
 
