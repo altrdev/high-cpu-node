@@ -1,8 +1,8 @@
 # stress-node
 
-A simple Node.js server for stressing the CPU with a recursive Fibonacci calculation. Useful for testing autoscaling, load balancers and container CPU limits.
+A simple Node.js server that stresses a machine or a container on demand: CPU load, memory, disk space, slow responses and arbitrary HTTP status codes. Useful for testing autoscaling, resource limits, OOM kills, probes, timeouts and retries.
 
-> **Warning:** this server is meant to burn CPU on purpose. Don't expose it to the public internet.
+> **Warning:** this server is meant to consume resources on purpose. Don't expose it to the public internet.
 
 ## Install
 
@@ -113,6 +113,7 @@ docker run -p 3000:3000 -e WORKERS=2 altrdev/stress-node:latest
 
 ## Changelog
 
+- **2.3.0**: New endpoints `/delay`, `/status/:code`, `/memory` and `/disk`, with the `MAX_DELAY_MS`, `MAX_MEMORY_MB`, `MAX_HOLD_SECONDS`, `MAX_DISK_MB` and `DISK_DIR` variables.
 - **2.2.1**: Project renamed to `stress-node`. The Docker image is published as `altrdev/stress-node`; `altrdev/high-cpu-node` is deprecated and 2.2.1 is its last release.
 - **2.2.0**: Updated to Express 5, Node 26 base image and `cors` 2.8.6.
 - **2.1.0**: Docker image has a `HEALTHCHECK`; the Docker Hub description is synced from this README on release.

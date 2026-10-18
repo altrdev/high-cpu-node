@@ -45,3 +45,21 @@ jobs:
 
       - name: Build Docker image
         run: docker build -t stress-node .
+
+      - name: Test Docker image
+        run: |
+          docker run -d --name sn -p 3200:3000 -e WORKERS=1 stress-node
+          for i in $(seq 20); do curl -sf localhost:3200/ >/dev/null && break; sleep 1; done
+          test "$(curl -sf localhost:3200/)" = "Status: OK"
+          curl -sf "localhost:3200/stress?number=20" | grep -q "result: 6765"
+          curl -sf "localhost:3200/memory?mb=50&hold=0" | grep -q "Allocated 50 MB"
+          curl -sf "localhost:3200/disk?mb=20&hold=0" | grep -q "Wrote 20 MB"
+          for i in $(seq 60); do
+            test "$(docker inspect -f '{{.State.Health.Status}}' sn)" = healthy && break
+            sleep 1
+          done
+          test "$(docker inspect -f '{{.State.Health.Status}}' sn)" = healthy
+
+      - name: Container logs
+        if: failure()
+        run: docker logs sn

@@ -49,5 +49,5 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
           repository: altrdev/stress-node
-          short-description: Node.js server that stresses the CPU on demand. For testing autoscaling and CPU limits.
+          short-description: Stress CPU, memory, disk and latency on demand. For testing autoscaling, limits and probes.
           readme-filepath: ./README.md
