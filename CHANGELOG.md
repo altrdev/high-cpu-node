@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
+## 2.3.1 - 2026-10-18
+
+### Changed
+- The changelog moved from the README to this file.
+- A GitHub release is created for every tag, using the matching section of this file as notes.
+
 ## 2.3.0 - 2026-10-18
 
 ### Added
@@ -12,9 +18,8 @@ All notable changes to this project are documented here. The GitHub release of e
 - `MAX_DELAY_MS`, `MAX_MEMORY_MB`, `MAX_DISK_MB`, `MAX_HOLD_SECONDS` and `DISK_DIR` environment variables.
 
 ### Changed
-- README restructured with a section per endpoint; the changelog moved to this file.
+- README restructured with a section per endpoint.
 - CI runs the built Docker image and checks the endpoints and the healthcheck.
-- A GitHub release is created for every tag.
 
 ## 2.2.1 - 2026-10-18
 
