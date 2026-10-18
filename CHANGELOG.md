@@ -2,10 +2,11 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
-## Unreleased
+## 2.4.0 - 2026-10-18
 
 ### Added
 - `/info` endpoint: JSON with the requests in progress, the memory and disk held with their limits, the process memory, the container memory limit and the free disk space.
+- `cli.js watch` (`npm run watch`): terminal view of `/info` with bars and a short history. It also works inside a container with `docker exec`.
 
 ## 2.3.2 - 2026-10-18
 

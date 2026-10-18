@@ -158,14 +158,7 @@ npm run watch
 npm run watch -- --url http://my-host:3000 --interval 2
 ```
 
-```
-stress-node 2.4.0  http://127.0.0.1:3000  up 5m21s
-
-CPU workers   ████████████████████  2 busy / 2   ▁▃▅▇▇▇▇▅▃▂
-Memory held   █████████████░░░░░░░  200 / 300 MB ▁▁▁▅▅▅▅▅▁▁
-Process RSS   ████████████████████  233 MB       ▂▂▂▆▆▆▆▆▂▂
-Disk held     ███████░░░░░░░░░░░░░  100 / 300 MB ▁▁▁▁▅▅▅▅▅▁
-```
+![stress-node watch: bars and history of busy workers, held memory, process RSS and held disk](https://raw.githubusercontent.com/altrdev/stress-node/main/docs/watch.svg)
 
 Inside a container, where the server is on `localhost`:
 
