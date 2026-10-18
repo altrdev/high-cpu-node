@@ -171,11 +171,7 @@ Lower or raise `number` to tune how long each request keeps a core busy.
 
 ## Changelog
 
-- **2.3.0**: New endpoints `/delay`, `/status/:code`, `/memory` and `/disk`, with the `MAX_DELAY_MS`, `MAX_MEMORY_MB`, `MAX_HOLD_SECONDS`, `MAX_DISK_MB` and `DISK_DIR` variables.
-- **2.2.1**: Project renamed to `stress-node`. The Docker image is published as `altrdev/stress-node`; `altrdev/high-cpu-node` is deprecated and 2.2.1 is its last release.
-- **2.2.0**: Updated to Express 5, Node 26 base image and `cors` 2.8.6.
-- **2.1.0**: Docker image has a `HEALTHCHECK`; the Docker Hub description is synced from this README on release.
-- **2.0.0**: `/stress` rejects `number` outside `0..MAX_NUMBER` with `400` (previously unbounded). Added the worker pool and the `PORT`, `WORKERS`, `MAX_NUMBER` variables.
+See [CHANGELOG.md](https://github.com/altrdev/stress-node/blob/main/CHANGELOG.md) and the [GitHub releases](https://github.com/altrdev/stress-node/releases).
 
 ## License
 
