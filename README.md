@@ -1,12 +1,14 @@
-# stress-node
+# torchio
 
-[![CI](https://github.com/altrdev/stress-node/actions/workflows/ci.yml/badge.svg)](https://github.com/altrdev/stress-node/actions/workflows/ci.yml) [![Docker image](https://img.shields.io/docker/v/altrdev/stress-node?sort=semver&label=docker%20image)](https://hub.docker.com/r/altrdev/stress-node) [![Docker pulls](https://img.shields.io/docker/pulls/altrdev/stress-node)](https://hub.docker.com/r/altrdev/stress-node) [![License](https://img.shields.io/github/license/altrdev/stress-node)](https://github.com/altrdev/stress-node/blob/main/LICENSE)
+[![CI](https://github.com/altrdev/torchio/actions/workflows/ci.yml/badge.svg)](https://github.com/altrdev/torchio/actions/workflows/ci.yml) [![Docker image](https://img.shields.io/docker/v/altrdev/torchio?sort=semver&label=docker%20image)](https://hub.docker.com/r/altrdev/torchio) [![Docker pulls](https://img.shields.io/docker/pulls/altrdev/torchio)](https://hub.docker.com/r/altrdev/torchio) [![License](https://img.shields.io/github/license/altrdev/torchio)](https://github.com/altrdev/torchio/blob/main/LICENSE)
 
-**Break your containers on purpose.** stress-node is a small Node.js server that burns CPU, holds memory, fills disk, answers slowly or returns any HTTP status, all on demand over HTTP. Use it to see how your setup behaves under pressure: autoscaling, resource limits, OOM kills, probes, timeouts and retries.
+**Break your containers on purpose.** torchio is a small Node.js server that burns CPU, holds memory, fills disk, answers slowly or returns any HTTP status, all on demand over HTTP. Use it to see how your setup behaves under pressure: autoscaling, resource limits, OOM kills, probes, timeouts and retries.
 
-![stress-node watch: bars and history of busy workers, held memory, process RSS and held disk, while a load runs](https://raw.githubusercontent.com/altrdev/stress-node/refs/heads/main/docs/watch.svg)
+*Torchio* is the Italian word for the press that squeezes wine and oil, as in *mettere sotto torchio*: to put under pressure. Put your containers under the press. It was called `stress-node` before, and `high-cpu-node` when it could only burn CPU.
 
-Source code and issues: https://github.com/altrdev/stress-node
+![torchio watch: bars and history of busy workers, held memory, process RSS and held disk, while a load runs](https://raw.githubusercontent.com/altrdev/torchio/refs/heads/main/docs/watch.svg)
+
+Source code and issues: https://github.com/altrdev/torchio
 
 > **Warning:** this server is meant to consume resources on purpose. Don't expose it to the public internet.
 
@@ -15,14 +17,14 @@ Source code and issues: https://github.com/altrdev/stress-node
 Start the server with Docker:
 
 ```
-docker run --name stress -p 3000:3000 altrdev/stress-node
+docker run --name torchio -p 3000:3000 altrdev/torchio
 ```
 
 Or on your local machine (Node.js 22 or later):
 
 ```
-git clone https://github.com/altrdev/stress-node.git
-cd stress-node
+git clone https://github.com/altrdev/torchio.git
+cd torchio
 npm install
 npm start
 ```
@@ -30,7 +32,7 @@ npm start
 In a second terminal, watch what it does:
 
 ```
-docker exec -it stress node cli.js watch    # with Docker
+docker exec -it torchio node cli.js watch    # with Docker
 npm run watch                               # on your local machine
 ```
 
@@ -49,7 +51,7 @@ for i in 1 2; do curl -s "http://127.0.0.1:3000/stress?number=44" & done; wait
 Give the container a memory limit and ask for more than that:
 
 ```
-docker run -d --name oom -m 256m -e MAX_MEMORY_MB=1024 -p 3000:3000 altrdev/stress-node
+docker run -d --name oom -m 256m -e MAX_MEMORY_MB=1024 -p 3000:3000 altrdev/torchio
 curl "http://127.0.0.1:3000/memory?mb=400"
 docker inspect -f '{{.State.OOMKilled}}' oom
 ```
@@ -180,8 +182,8 @@ Returns a JSON document with what the server is doing right now. It takes no par
 
 ```json
 {
-  "name": "stress-node",
-  "version": "2.5.3",
+  "name": "torchio",
+  "version": "3.0.0",
   "uptimeSeconds": 321,
   "stress": { "workers": 4, "inFlight": 2, "perWorker": [1, 1, 0, 0] },
   "delay": { "inFlight": 3 },
@@ -207,35 +209,35 @@ The figures of [`/info`](#info) in the Prometheus text format, plus a counter of
 
 | Metric                                      | Type    | Meaning                                                     |
 |---------------------------------------------|---------|-------------------------------------------------------------|
-| `stress_node_info{version}`                 | gauge   | Always `1`, the version is in the label                     |
-| `stress_node_start_time_seconds`            | gauge   | Start time, in Unix time                                    |
-| `stress_node_workers`                       | gauge   | Worker processes for `/stress`                              |
-| `stress_node_stress_requests_in_flight`     | gauge   | `/stress` requests being calculated                         |
-| `stress_node_worker_requests_in_flight{worker}` | gauge | The same, for each worker                                 |
-| `stress_node_delay_requests_in_flight`      | gauge   | `/delay` requests still waiting                             |
-| `stress_node_memory_held_bytes`             | gauge   | Memory held by `/memory`                                    |
-| `stress_node_memory_limit_bytes`            | gauge   | Total memory `/memory` may hold (`MAX_MEMORY_MB`)           |
+| `torchio_info{version}`                 | gauge   | Always `1`, the version is in the label                     |
+| `torchio_start_time_seconds`            | gauge   | Start time, in Unix time                                    |
+| `torchio_workers`                       | gauge   | Worker processes for `/stress`                              |
+| `torchio_stress_requests_in_flight`     | gauge   | `/stress` requests being calculated                         |
+| `torchio_worker_requests_in_flight{worker}` | gauge | The same, for each worker                                 |
+| `torchio_delay_requests_in_flight`      | gauge   | `/delay` requests still waiting                             |
+| `torchio_memory_held_bytes`             | gauge   | Memory held by `/memory`                                    |
+| `torchio_memory_limit_bytes`            | gauge   | Total memory `/memory` may hold (`MAX_MEMORY_MB`)           |
 | `process_resident_memory_bytes`             | gauge   | Resident memory of the whole process                        |
-| `stress_node_container_memory_limit_bytes`  | gauge   | Memory limit of the container, only present when there is one |
-| `stress_node_disk_held_bytes`               | gauge   | Disk space held by `/disk`                                  |
-| `stress_node_disk_limit_bytes`              | gauge   | Total disk space `/disk` may hold (`MAX_DISK_MB`)           |
-| `stress_node_disk_free_bytes`               | gauge   | Free space in `DISK_DIR`, only present when it is usable    |
-| `stress_node_http_requests_total{route,code}` | counter | Requests answered, by route pattern (such as `/status/:code`) and status code. A request the client abandons before the answer is not counted |
+| `torchio_container_memory_limit_bytes`  | gauge   | Memory limit of the container, only present when there is one |
+| `torchio_disk_held_bytes`               | gauge   | Disk space held by `/disk`                                  |
+| `torchio_disk_limit_bytes`              | gauge   | Total disk space `/disk` may hold (`MAX_DISK_MB`)           |
+| `torchio_disk_free_bytes`               | gauge   | Free space in `DISK_DIR`, only present when it is usable    |
+| `torchio_http_requests_total{route,code}` | counter | Requests answered, by route pattern (such as `/status/:code`) and status code. A request the client abandons before the answer is not counted |
 
 To collect them with Prometheus:
 
 ```yaml
 scrape_configs:
-  - job_name: stress-node
+  - job_name: torchio
     static_configs:
-      - targets: ["stress-node:3000"]
+      - targets: ["torchio:3000"]
 ```
 
 Some queries to start from:
 
-- `stress_node_memory_held_bytes / stress_node_memory_limit_bytes` is how much of the `/memory` budget is used.
-- `process_resident_memory_bytes / stress_node_container_memory_limit_bytes` is how close the process is to an OOM kill.
-- `rate(stress_node_http_requests_total{code=~"4..|5.."}[1m])` is the rate of rejected and failed requests (`429`, `507`, `/status/...`).
+- `torchio_memory_held_bytes / torchio_memory_limit_bytes` is how much of the `/memory` budget is used.
+- `process_resident_memory_bytes / torchio_container_memory_limit_bytes` is how close the process is to an OOM kill.
+- `rate(torchio_http_requests_total{code=~"4..|5.."}[1m])` is the rate of rejected and failed requests (`429`, `507`, `/status/...`).
 
 ## Watching a server
 
@@ -278,7 +280,7 @@ Environment variables:
 A number must be a positive integer. A value that is not one is reported at startup and replaced by the default.
 
 ```
-docker run -p 3000:3000 -e WORKERS=2 -e MAX_MEMORY_MB=2048 altrdev/stress-node:latest
+docker run -p 3000:3000 -e WORKERS=2 -e MAX_MEMORY_MB=2048 altrdev/torchio:latest
 ```
 
 ## Docker
@@ -292,7 +294,7 @@ The image is built for `linux/amd64` and `linux/arm64`, runs as the non-root `no
 ```yaml
 services:
   stress:
-    image: altrdev/stress-node:latest
+    image: altrdev/torchio:latest
     ports:
       - "3000:3000"
     environment:
@@ -313,20 +315,20 @@ A pod with a memory limit and probes on `/`:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: stress-node
+  name: torchio
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: stress-node
+      app: torchio
   template:
     metadata:
       labels:
-        app: stress-node
+        app: torchio
     spec:
       containers:
-        - name: stress-node
-          image: altrdev/stress-node:latest
+        - name: torchio
+          image: altrdev/torchio:latest
           ports:
             - containerPort: 3000
           env:
@@ -351,7 +353,7 @@ spec:
               port: 3000
 ```
 
-Some things to try, after `kubectl port-forward deploy/stress-node 3000:3000`:
+Some things to try, after `kubectl port-forward deploy/torchio 3000:3000`:
 
 - `/stress?number=45` on several terminals keeps the container at its CPU limit, which you can watch with `kubectl top pod` or use to trigger a CPU-based autoscaler.
 - `/memory?mb=400` goes above the `256Mi` limit, so the container should be OOM killed and restarted.
@@ -419,11 +421,11 @@ The tests use `node:test`, which comes with Node.js, so there is nothing to inst
 
 ## Changelog
 
-See [CHANGELOG.md](https://github.com/altrdev/stress-node/blob/main/CHANGELOG.md) and the [GitHub releases](https://github.com/altrdev/stress-node/releases).
+See [CHANGELOG.md](https://github.com/altrdev/torchio/blob/main/CHANGELOG.md) and the [GitHub releases](https://github.com/altrdev/torchio/releases).
 
 ## Security
 
-This tool is meant to consume resources, so run it only in environments you control and don't expose it to the internet. If you find a security problem, please open an issue at https://github.com/altrdev/stress-node/issues.
+This tool is meant to consume resources, so run it only in environments you control and don't expose it to the internet. If you find a security problem, please open an issue at https://github.com/altrdev/torchio/issues.
 
 ## License
 

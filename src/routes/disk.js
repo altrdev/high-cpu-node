@@ -3,7 +3,7 @@ const path = require('path');
 const {Budget} = require('../budget');
 const {readParams} = require('../params');
 
-const PREFIX = 'stress-node-disk-';
+const PREFIX = 'torchio-disk-';
 const chunk = Buffer.alloc(1024 * 1024, 1);
 
 async function writeFile(file, mb) {

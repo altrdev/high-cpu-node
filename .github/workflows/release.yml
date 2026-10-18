@@ -28,7 +28,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v6
         with:
-          images: altrdev/stress-node
+          images: altrdev/torchio
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
@@ -66,6 +66,6 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
-          repository: altrdev/stress-node
+          repository: altrdev/torchio
           short-description: Stress CPU, memory, disk and latency on demand. For testing autoscaling, limits and probes.
           readme-filepath: ./dockerhub-readme.md

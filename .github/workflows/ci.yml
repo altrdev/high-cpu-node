@@ -52,18 +52,18 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Build Docker image
-        run: docker build -t stress-node .
+        run: docker build -t torchio .
 
       - name: Test Docker image
         run: |
-          docker run -d --name sn -m 256m -p 3200:3000 -e WORKERS=1 stress-node
+          docker run -d --name sn -m 256m -p 3200:3000 -e WORKERS=1 torchio
           for i in $(seq 20); do curl -sf localhost:3200/ >/dev/null && break; sleep 1; done
           test "$(curl -sf localhost:3200/)" = "Status: OK"
           curl -sf "localhost:3200/stress?number=20" | grep -q "result: 6765"
           curl -sf "localhost:3200/memory?mb=50&hold=0" | grep -q "Allocated 50 MB"
           curl -sf "localhost:3200/disk?mb=20&hold=0" | grep -q "Wrote 20 MB"
           curl -sf localhost:3200/info | jq -e '.memory.containerLimitMb == 256'
-          curl -sf localhost:3200/metrics | grep -q '^stress_node_container_memory_limit_bytes 268435456$'
+          curl -sf localhost:3200/metrics | grep -q '^torchio_container_memory_limit_bytes 268435456$'
           docker exec sn node cli.js watch --once | grep -q "(container)"
           for i in $(seq 60); do
             test "$(docker inspect -f '{{.State.Health.Status}}' sn)" = healthy && break

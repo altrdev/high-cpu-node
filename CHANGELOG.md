@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
+## 3.0.0 - 2026-10-18
+
+### Changed
+- **Breaking:** the project is renamed from `stress-node` to **Torchio**. The Docker image is `altrdev/torchio`, the package is `torchio` and the repository is `github.com/altrdev/torchio`. The `altrdev/stress-node` image no longer exists, and `altrdev/high-cpu-node` stays deprecated.
+- **Breaking:** the Prometheus metrics start with `torchio_` instead of `stress_node_`. `process_resident_memory_bytes` keeps its name.
+- The `name` in `/info` is `torchio`, and the files of `/disk` are called `torchio-disk-*`.
+
 ## 2.5.3 - 2026-10-18
 
 ### Changed

@@ -14,7 +14,7 @@ function positiveInt(name, fallback) {
 }
 
 module.exports = {
-    name: 'stress-node',
+    name: 'torchio',
     port: positiveInt('PORT', 3000),
     host: '0.0.0.0',
     workers: positiveInt('WORKERS', os.cpus().length),

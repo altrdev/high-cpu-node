@@ -25,7 +25,7 @@ function freePort() {
 // Runs a real server on a free port, with small limits and its own DISK_DIR
 async function startServer(env = {}, prepare = () => {}) {
     const port = await freePort();
-    const diskDir = fs.mkdtempSync(path.join(os.tmpdir(), 'stress-node-test-'));
+    const diskDir = fs.mkdtempSync(path.join(os.tmpdir(), 'torchio-test-'));
     prepare(diskDir);
 
     const child = spawn(process.execPath, ['server.js'], {
@@ -55,7 +55,7 @@ async function startServer(env = {}, prepare = () => {}) {
     server.get = (route, options) => fetch(server.url + route, {signal: AbortSignal.timeout(10000), ...options});
     server.text = async (route) => (await server.get(route)).text();
     server.info = async () => (await server.get('/info')).json();
-    server.diskFiles = () => fs.readdirSync(diskDir).filter((name) => name.startsWith('stress-node-disk-'));
+    server.diskFiles = () => fs.readdirSync(diskDir).filter((name) => name.startsWith('torchio-disk-'));
     server.stop = async () => {
         if (child.exitCode === null) {
             child.kill('SIGTERM');
@@ -167,7 +167,7 @@ describe('endpoints', () => {
 
     test('/info describes the server', async () => {
         const info = await server.info();
-        assert.equal(info.name, 'stress-node');
+        assert.equal(info.name, 'torchio');
         assert.equal(info.version, version);
         assert.equal(info.stress.workers, 2);
         assert.deepEqual(info.stress.perWorker, [0, 0]);
@@ -195,13 +195,13 @@ describe('endpoints', () => {
                 assert.ok(declared.has(match[1]), `no TYPE before ${match[1]}`);
             }
         }
-        assert.match(body, new RegExp(`^stress_node_info\\{version="${version}"\\} 1$`, 'm'));
-        assert.match(body, /^stress_node_workers 2$/m);
-        assert.match(body, /^stress_node_memory_limit_bytes 314572800$/m);
+        assert.match(body, new RegExp(`^torchio_info\\{version="${version}"\\} 1$`, 'm'));
+        assert.match(body, /^torchio_workers 2$/m);
+        assert.match(body, /^torchio_memory_limit_bytes 314572800$/m);
 
         const counter = async (code) => {
             const text = await server.text('/metrics');
-            const match = new RegExp(`^stress_node_http_requests_total\\{route="/status/:code",code="${code}"\\} (\\d+)$`, 'm').exec(text);
+            const match = new RegExp(`^torchio_http_requests_total\\{route="/status/:code",code="${code}"\\} (\\d+)$`, 'm').exec(text);
             return match ? Number(match[1]) : 0;
         };
         const before = await counter(418);
@@ -210,7 +210,7 @@ describe('endpoints', () => {
         assert.equal(await counter(418), before + 2);
 
         await server.get('/memory?mb=100&hold=2');
-        assert.match(await server.text('/metrics'), new RegExp(`^stress_node_memory_held_bytes ${100 * MB}$`, 'm'));
+        assert.match(await server.text('/metrics'), new RegExp(`^torchio_memory_held_bytes ${100 * MB}$`, 'm'));
         await waitFor(async () => (await server.info()).memory.heldMb === 0, 4000, 'the memory to be released');
     });
 });
@@ -278,7 +278,7 @@ describe('configuration', () => {
 describe('files of /disk', () => {
     test('leftovers of a previous run are removed at startup, other files are kept', async () => {
         const server = await startServer({}, (dir) => {
-            fs.writeFileSync(path.join(dir, 'stress-node-disk-old'), 'leftover');
+            fs.writeFileSync(path.join(dir, 'torchio-disk-old'), 'leftover');
             fs.writeFileSync(path.join(dir, 'keep.txt'), 'mine');
         });
         try {
@@ -308,7 +308,7 @@ describe('cli watch', () => {
         try {
             await server.get('/memory?mb=100&hold=5');
             const output = execFileSync(process.execPath, ['cli.js', 'watch', '--once', '--url', server.url], {cwd: ROOT}).toString();
-            assert.match(output, new RegExp(`stress-node ${version.replace(/\./g, '\\.')}`));
+            assert.match(output, new RegExp(`torchio ${version.replace(/\./g, '\\.')}`));
             assert.match(output, /CPU workers .* 0 busy \/ 2/);
             assert.match(output, /Memory held .* 100 \/ 300 MB/);
             assert.match(output, /Disk held .* 0 \/ 300 MB/);

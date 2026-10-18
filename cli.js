@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Terminal view of what a stress-node server is doing, built on its /info endpoint.
+// Terminal view of what a torchio server is doing, built on its /info endpoint.
 //   node cli.js watch [--url http://host:3000] [--interval 1] [--once]
 const {parseArgs} = require('node:util');
 

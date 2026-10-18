@@ -8,7 +8,7 @@
 <rect x="164" y="44" width="40" height="164" rx="10" fill="#ef4444"/>
 <rect x="40" y="214" width="176" height="8" rx="4" fill="#94a3b8"/>
 </g>
-<text x="540" y="260" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="104" font-weight="700" fill="#f8fafc">stress-node</text>
+<text x="540" y="260" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="104" font-weight="700" fill="#f8fafc">torchio</text>
 <text x="544" y="330" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="30" fill="#cbd5e1">Stress CPU, memory, disk and latency on demand.</text>
 <text x="544" y="378" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="26" fill="#94a3b8">For testing autoscaling, limits and probes.</text>
 <text x="544" y="462" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="22" fill="#94a3b8">CPU</text>
@@ -20,5 +20,5 @@
 <text x="544" y="546" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="22" fill="#94a3b8">DISK</text>
 <rect x="640" y="524" width="480" height="28" rx="6" fill="#1e293b"/>
 <rect x="640" y="524" width="442" height="28" rx="6" fill="#ef4444"/>
-<text x="96" y="590" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="26" fill="#64748b">docker run -p 3000:3000 altrdev/stress-node</text>
+<text x="96" y="590" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="26" fill="#64748b">docker run -p 3000:3000 altrdev/torchio</text>
 </svg>
