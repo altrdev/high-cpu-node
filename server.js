@@ -30,6 +30,17 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
+// Requests answered, by route and status code, for /metrics. The route is the
+// pattern (/status/:code), not the URL, so the number of series stays small.
+const httpRequests = new Map();
+app.use((req, res, next) => {
+    res.on('finish', () => {
+        const key = `${req.route ? req.route.path : 'other'}\u0000${res.statusCode}`;
+        httpRequests.set(key, (httpRequests.get(key) || 0) + 1);
+    });
+    next();
+});
+
 // Worker pool: one child process per core, requests are dispatched round-robin
 const pending = new Map(); // request id -> {res, worker}
 const workers = [];
@@ -214,9 +225,11 @@ app.get('/disk', async (req, res) => {
 // What the server is doing right now, so you can see the remaining budgets
 // without having to hit a 429 or a 507
 const startedAt = Date.now();
-const toMb = (bytes) => Math.round(bytes / 1024 / 1024);
+const MB = 1024 * 1024;
+const toMb = (bytes) => Math.round(bytes / MB);
 
-app.get('/info', async (req, res) => {
+// Raw figures shared by /info (in MB) and /metrics (in bytes)
+async function collect() {
     const perWorker = workers.map(() => 0);
     for (const request of pending.values()) {
         perWorker[workers.indexOf(request.worker)]++;
@@ -224,15 +237,21 @@ app.get('/info', async (req, res) => {
 
     // 0 or a huge value when the process has no memory limit
     const constrained = process.constrainedMemory();
-    const containerLimitMb = constrained > 0 && constrained < os.totalmem() ? toMb(constrained) : null;
+    const containerLimitBytes = constrained > 0 && constrained < os.totalmem() ? constrained : null;
 
-    let freeMb = null;
+    let diskFreeBytes = null;
     try {
         const stats = await fs.promises.statfs(config.diskDir);
-        freeMb = toMb(stats.bavail * stats.bsize);
+        diskFreeBytes = stats.bavail * stats.bsize;
     } catch (e) {
         // directory not usable, same case as the 507 of /disk
     }
+
+    return {perWorker, containerLimitBytes, diskFreeBytes, rssBytes: process.memoryUsage().rss};
+}
+
+app.get('/info', async (req, res) => {
+    const {perWorker, containerLimitBytes, diskFreeBytes, rssBytes} = await collect();
 
     res.json({
         name: config.name,
@@ -243,16 +262,61 @@ app.get('/info', async (req, res) => {
         memory: {
             heldMb,
             limitMb: config.maxMemoryMb,
-            processRssMb: toMb(process.memoryUsage().rss),
-            containerLimitMb,
+            processRssMb: toMb(rssBytes),
+            containerLimitMb: containerLimitBytes === null ? null : toMb(containerLimitBytes),
         },
-        disk: {heldMb: heldDiskMb, limitMb: config.maxDiskMb, dir: config.diskDir, freeMb},
+        disk: {
+            heldMb: heldDiskMb,
+            limitMb: config.maxDiskMb,
+            dir: config.diskDir,
+            freeMb: diskFreeBytes === null ? null : toMb(diskFreeBytes),
+        },
         limits: {
             maxNumber: config.maxNumber,
             maxDelayMs: config.maxDelayMs,
             maxHoldSeconds: config.maxHoldSeconds,
         },
     });
+});
+
+// The same figures in the Prometheus text format
+const escapeLabel = (value) => String(value).replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/"/g, '\\"');
+
+function metric(lines, name, type, help, samples) {
+    if (samples.length === 0) return;
+    lines.push(`# HELP ${name} ${help}`, `# TYPE ${name} ${type}`);
+    for (const [labels, value] of samples) {
+        const text = labels ? `{${Object.entries(labels).map(([k, v]) => `${k}="${escapeLabel(v)}"`).join(',')}}` : '';
+        lines.push(`${name}${text} ${value}`);
+    }
+}
+
+app.get('/metrics', async (req, res) => {
+    const {perWorker, containerLimitBytes, diskFreeBytes, rssBytes} = await collect();
+    const lines = [];
+
+    metric(lines, 'stress_node_info', 'gauge', 'Version of the server.', [[{version}, 1]]);
+    metric(lines, 'stress_node_start_time_seconds', 'gauge', 'Start time of the server, in Unix time.', [[null, startedAt / 1000]]);
+    metric(lines, 'stress_node_workers', 'gauge', 'Worker processes for /stress.', [[null, workers.length]]);
+    metric(lines, 'stress_node_stress_requests_in_flight', 'gauge', '/stress requests being calculated.', [[null, pending.size]]);
+    metric(lines, 'stress_node_worker_requests_in_flight', 'gauge', '/stress requests being calculated, by worker.',
+        perWorker.map((count, index) => [{worker: index}, count]));
+    metric(lines, 'stress_node_delay_requests_in_flight', 'gauge', '/delay requests still waiting.', [[null, delayInFlight]]);
+    metric(lines, 'stress_node_memory_held_bytes', 'gauge', 'Memory held by /memory.', [[null, heldMb * MB]]);
+    metric(lines, 'stress_node_memory_limit_bytes', 'gauge', 'Total memory /memory may hold (MAX_MEMORY_MB).', [[null, config.maxMemoryMb * MB]]);
+    metric(lines, 'process_resident_memory_bytes', 'gauge', 'Resident memory of the server process.', [[null, rssBytes]]);
+    metric(lines, 'stress_node_container_memory_limit_bytes', 'gauge', 'Memory limit of the container, when there is one.',
+        containerLimitBytes === null ? [] : [[null, containerLimitBytes]]);
+    metric(lines, 'stress_node_disk_held_bytes', 'gauge', 'Disk space held by /disk.', [[null, heldDiskMb * MB]]);
+    metric(lines, 'stress_node_disk_limit_bytes', 'gauge', 'Total disk space /disk may hold (MAX_DISK_MB).', [[null, config.maxDiskMb * MB]]);
+    metric(lines, 'stress_node_disk_free_bytes', 'gauge', 'Free space in DISK_DIR.', diskFreeBytes === null ? [] : [[null, diskFreeBytes]]);
+    metric(lines, 'stress_node_http_requests_total', 'counter', 'Requests answered, by route and status code.',
+        [...httpRequests].map(([key, count]) => {
+            const [route, code] = key.split('\u0000');
+            return [{route, code}, count];
+        }));
+
+    res.type('text/plain; version=0.0.4; charset=utf-8').send(lines.join('\n') + '\n');
 });
 
 function stress(number, res) {

@@ -49,6 +49,7 @@ The server listens on port 3000.
 | `/memory`       | `mb`, `hold`       | Allocates memory and holds it, to test memory limits and OOM kills |
 | `/disk`         | `mb`, `hold`       | Writes a file and keeps it, to test disk limits and volumes |
 | `/info`         |                    | JSON with what the server is doing and the remaining budgets |
+| `/metrics`      |                    | The same figures in the Prometheus text format               |
 
 Every query parameter is optional. A value that is not a number falls back to its default; a number outside the allowed range gets a `400`. All the limits are configurable, see [Configuration](#configuration).
 
@@ -148,6 +149,42 @@ Returns a JSON document with what the server is doing right now. It takes no par
 | `memory.containerLimitMb`     | Memory limit of the container, `null` when there is none                |
 | `disk.heldMb`, `limitMb`      | Same as for memory, for `/disk` (`MAX_DISK_MB`)                         |
 | `disk.freeMb`                 | Free space in `DISK_DIR`, `null` if the directory is not usable         |
+
+### `/metrics`
+
+The figures of [`/info`](#info) in the Prometheus text format, plus a counter of the requests answered. It takes no parameters and doesn't use up any budget.
+
+| Metric                                      | Type    | Meaning                                                     |
+|---------------------------------------------|---------|-------------------------------------------------------------|
+| `stress_node_info{version}`                 | gauge   | Always `1`, the version is in the label                     |
+| `stress_node_start_time_seconds`            | gauge   | Start time, in Unix time                                    |
+| `stress_node_workers`                       | gauge   | Worker processes for `/stress`                              |
+| `stress_node_stress_requests_in_flight`     | gauge   | `/stress` requests being calculated                         |
+| `stress_node_worker_requests_in_flight{worker}` | gauge | The same, for each worker                                 |
+| `stress_node_delay_requests_in_flight`      | gauge   | `/delay` requests still waiting                             |
+| `stress_node_memory_held_bytes`             | gauge   | Memory held by `/memory`                                    |
+| `stress_node_memory_limit_bytes`            | gauge   | Total memory `/memory` may hold (`MAX_MEMORY_MB`)           |
+| `process_resident_memory_bytes`             | gauge   | Resident memory of the whole process                        |
+| `stress_node_container_memory_limit_bytes`  | gauge   | Memory limit of the container, only present when there is one |
+| `stress_node_disk_held_bytes`               | gauge   | Disk space held by `/disk`                                  |
+| `stress_node_disk_limit_bytes`              | gauge   | Total disk space `/disk` may hold (`MAX_DISK_MB`)           |
+| `stress_node_disk_free_bytes`               | gauge   | Free space in `DISK_DIR`, only present when it is usable    |
+| `stress_node_http_requests_total{route,code}` | counter | Requests answered, by route pattern (such as `/status/:code`) and status code. A request the client abandons before the answer is not counted |
+
+To collect them with Prometheus:
+
+```yaml
+scrape_configs:
+  - job_name: stress-node
+    static_configs:
+      - targets: ["stress-node:3000"]
+```
+
+Some queries to start from:
+
+- `stress_node_memory_held_bytes / stress_node_memory_limit_bytes` is how much of the `/memory` budget is used.
+- `process_resident_memory_bytes / stress_node_container_memory_limit_bytes` is how close the process is to an OOM kill.
+- `rate(stress_node_http_requests_total{code=~"4..|5.."}[1m])` is the rate of rejected and failed requests (`429`, `507`, `/status/...`).
 
 ## Watching a server
 

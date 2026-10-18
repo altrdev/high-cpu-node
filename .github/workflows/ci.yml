@@ -34,6 +34,7 @@ jobs:
           BASE_RSS=$(ps -o rss= -p $SERVER_PID)
           curl -sf "localhost:3100/memory?mb=200&hold=1" | grep -q "Allocated 200 MB"
           curl -sf localhost:3100/info | jq -e '.memory.heldMb == 200'
+          curl -sf localhost:3100/metrics | grep -q '^stress_node_memory_held_bytes 209715200$'
           HELD_RSS=$(ps -o rss= -p $SERVER_PID)
           test $((HELD_RSS - BASE_RSS)) -gt 150000
           sleep 3
@@ -44,6 +45,7 @@ jobs:
           test -z "$(ls /tmp | grep stress-node-disk- || true)"
           curl -sf localhost:3100/info | jq -e '.name == "stress-node" and .memory.heldMb == 0 and .disk.heldMb == 0 and .delay.inFlight == 0'
           node cli.js watch --once --url http://localhost:3100 | grep -q "Memory held"
+          curl -sf localhost:3100/metrics | grep -q '^stress_node_http_requests_total{route="/memory",code="200"} 1$'
           kill $SERVER_PID
 
       - name: Build Docker image
@@ -58,6 +60,7 @@ jobs:
           curl -sf "localhost:3200/memory?mb=50&hold=0" | grep -q "Allocated 50 MB"
           curl -sf "localhost:3200/disk?mb=20&hold=0" | grep -q "Wrote 20 MB"
           curl -sf localhost:3200/info | jq -e '.memory.containerLimitMb == 256'
+          curl -sf localhost:3200/metrics | grep -q '^stress_node_container_memory_limit_bytes 268435456$'
           docker exec sn node cli.js watch --once | grep -q "(container)"
           for i in $(seq 60); do
             test "$(docker inspect -f '{{.State.Health.Status}}' sn)" = healthy && break
