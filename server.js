@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const os = require('os');
+const fs = require('fs');
+const path = require('path');
 const v8 = require('v8');
 const vm = require('vm');
 const {fork} = require('child_process');
@@ -18,6 +20,9 @@ const config = {
     maxMemoryMb: parseInt(process.env.MAX_MEMORY_MB) || 512,
     defaultHoldSeconds: 10,
     maxHoldSeconds: parseInt(process.env.MAX_HOLD_SECONDS) || 300,
+    defaultDiskMb: 100,
+    maxDiskMb: parseInt(process.env.MAX_DISK_MB) || 1024,
+    diskDir: process.env.DISK_DIR || os.tmpdir(),
 };
 
 const app = express();
@@ -128,6 +133,71 @@ app.get('/memory', (req, res) => {
     res.status(200).end(`Allocated ${mb} MB, held for ${hold} s`);
 });
 
+// Writes `mb` megabytes to a file in DISK_DIR and keeps it for `hold` seconds. As for
+// /memory, MAX_DISK_MB is the total that can be held at the same time.
+const diskPrefix = 'stress-node-disk-';
+const diskChunk = Buffer.alloc(1024 * 1024, 1);
+const diskFiles = new Set();
+let heldDiskMb = 0;
+let nextDiskId = 0;
+
+try {
+    fs.mkdirSync(config.diskDir, {recursive: true});
+    // remove files left behind by a previous run that didn't shut down cleanly
+    for (const name of fs.readdirSync(config.diskDir)) {
+        if (name.startsWith(diskPrefix)) fs.rmSync(path.join(config.diskDir, name), {force: true});
+    }
+} catch (e) {
+    console.error(`DISK_DIR ${config.diskDir} is not usable, /disk will answer 507: ${e.code || e.message}`);
+}
+
+async function writeDiskFile(file, mb) {
+    const handle = await fs.promises.open(file, 'w');
+    try {
+        for (let i = 0; i < mb; i++) {
+            await handle.write(diskChunk, 0, diskChunk.length);
+        }
+        await handle.sync();
+    } finally {
+        await handle.close();
+    }
+}
+
+app.get('/disk', async (req, res) => {
+    let mb = parseInt(req.query.mb);
+    if (isNaN(mb)) mb = config.defaultDiskMb;
+    let hold = parseInt(req.query.hold);
+    if (isNaN(hold)) hold = config.defaultHoldSeconds;
+
+    if (mb < 1 || mb > config.maxDiskMb) {
+        return res.status(400).end(`mb must be between 1 and ${config.maxDiskMb}`);
+    }
+    if (hold < 0 || hold > config.maxHoldSeconds) {
+        return res.status(400).end(`hold must be between 0 and ${config.maxHoldSeconds}`);
+    }
+    if (heldDiskMb + mb > config.maxDiskMb) {
+        return res.status(429).end(`${heldDiskMb} MB already held, limit is ${config.maxDiskMb} MB`);
+    }
+
+    const file = path.join(config.diskDir, `${diskPrefix}${nextDiskId++}`);
+    heldDiskMb += mb;
+    diskFiles.add(file);
+    const release = async () => {
+        diskFiles.delete(file);
+        heldDiskMb -= mb;
+        await fs.promises.rm(file, {force: true}).catch(() => {});
+    };
+
+    try {
+        await writeDiskFile(file, mb);
+    } catch (e) {
+        await release();
+        return res.status(507).end(`Could not write ${mb} MB to ${config.diskDir}: ${e.code || e.message}`);
+    }
+    setTimeout(release, hold * 1000);
+    res.status(200).end(`Wrote ${mb} MB to ${config.diskDir}, held for ${hold} s`);
+});
+
 function stress(number, res) {
     const id = nextId++;
     const worker = workers[nextWorker];
@@ -149,6 +219,7 @@ server.on('error', (e) => {
 
 function shutdown() {
     server.close();
+    diskFiles.forEach((file) => fs.rmSync(file, {force: true}));
     workers.forEach((worker) => worker.removeAllListeners('exit') && worker.kill());
     process.exit(0);
 }

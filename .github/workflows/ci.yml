@@ -37,6 +37,10 @@ jobs:
           test $((HELD_RSS - BASE_RSS)) -gt 150000
           sleep 3
           test $(($(ps -o rss= -p $SERVER_PID) - BASE_RSS)) -lt 100000
+          test "$(curl -s -o /dev/null -w '%{http_code}' 'localhost:3100/disk?mb=999999')" = "400"
+          curl -sf "localhost:3100/disk?mb=20&hold=0" | grep -q "Wrote 20 MB"
+          sleep 1
+          test -z "$(ls /tmp | grep stress-node-disk- || true)"
           kill $SERVER_PID
 
       - name: Build Docker image

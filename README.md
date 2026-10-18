@@ -36,6 +36,7 @@ The server listens on port 3000.
 | `/delay`        | Answers after a delay, to test timeouts and slow backends    |
 | `/status/:code` | Answers with the given HTTP status, to test probes and retries |
 | `/memory`       | Allocates memory and holds it for a while, to test memory limits and OOM kills |
+| `/disk`         | Writes a file and keeps it for a while, to test disk limits and volumes |
 
 `/stress` accepts an optional query string parameter `number`, the sequence length to calculate:
 
@@ -47,6 +48,8 @@ The calculation time grows exponentially with `number`.
 `/delay` accepts an optional `ms` parameter (default `1000`). The wait does not block the server, so other requests are served normally. A value outside `0..MAX_DELAY_MS` gets a `400`.
 
 `/memory` allocates `mb` megabytes (default `100`) and holds them for `hold` seconds (default `10`, `0` releases immediately). It answers as soon as the memory is allocated, so you can chain requests. `MAX_MEMORY_MB` is the total that can be held at the same time: a single request above it gets a `400`, one that would exceed it together with memory already held gets a `429`. `hold` must be between `0` and `MAX_HOLD_SECONDS`.
+
+`/disk` writes `mb` megabytes (default `100`) to a file in `DISK_DIR` and deletes it after `hold` seconds (default `10`, `0` deletes it right away). It answers once the data is on disk. `MAX_DISK_MB` is the total that can be held at the same time, with the same `400`/`429` rules as `/memory`. If the write fails (disk full, read-only filesystem, directory not writable) the answer is a `507`. Files are removed on shutdown, and leftovers from a previous run are removed at startup. Point `DISK_DIR` to a mounted volume to test it.
 
 `/status/:code` answers with the status you ask for, for example `/status/503`. Codes must be integers from `200` to `599`, otherwise you get a `400`.
 
@@ -100,7 +103,9 @@ Environment variables:
 | `MAX_NUMBER` | `50`            | Highest `number` accepted by `/stress` |
 | `MAX_DELAY_MS` | `60000`       | Highest `ms` accepted by `/delay`      |
 | `MAX_MEMORY_MB` | `512`        | Total memory `/memory` can hold at once |
-| `MAX_HOLD_SECONDS` | `300`     | Highest `hold` accepted by `/memory`   |
+| `MAX_HOLD_SECONDS` | `300`     | Highest `hold` accepted by `/memory` and `/disk` |
+| `MAX_DISK_MB`  | `1024`        | Total disk space `/disk` can hold at once |
+| `DISK_DIR`     | system temp dir | Directory where `/disk` writes its files |
 
 ```
 docker run -p 3000:3000 -e WORKERS=2 altrdev/stress-node:latest
