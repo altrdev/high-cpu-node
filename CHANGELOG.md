@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The GitHub release of e
 
 ### Added
 - Project logo (`docs/logo.svg` and `docs/logo.png`), shown in the README.
+- README: status badges, Docker Compose and Kubernetes examples, security note.
 
 ### Changed
 - `npm run dev` uses `node --watch` instead of `nodemon`, which is no longer a dependency.

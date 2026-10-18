@@ -2,6 +2,11 @@
 
 ![stress-node logo](https://raw.githubusercontent.com/altrdev/stress-node/main/docs/logo.png)
 
+[![CI](https://github.com/altrdev/stress-node/actions/workflows/ci.yml/badge.svg)](https://github.com/altrdev/stress-node/actions/workflows/ci.yml)
+[![Docker image](https://img.shields.io/docker/v/altrdev/stress-node?sort=semver&label=docker%20image)](https://hub.docker.com/r/altrdev/stress-node)
+[![Docker pulls](https://img.shields.io/docker/pulls/altrdev/stress-node)](https://hub.docker.com/r/altrdev/stress-node)
+[![License](https://img.shields.io/github/license/altrdev/stress-node)](https://github.com/altrdev/stress-node/blob/main/LICENSE)
+
 A simple Node.js server that stresses a machine or a container on demand: CPU load, memory, disk space, slow responses and arbitrary HTTP status codes. Useful for testing autoscaling, resource limits, OOM kills, probes, timeouts and retries.
 
 Source code and issues: https://github.com/altrdev/stress-node
@@ -139,6 +144,78 @@ docker run -p 3000:3000 -e WORKERS=2 -e MAX_MEMORY_MB=2048 altrdev/stress-node:l
 
 The image is built for `linux/amd64` and `linux/arm64`, runs as the non-root `node` user and has a `HEALTHCHECK` on `/`. Because of the non-root user, a directory you use as `DISK_DIR` (for example a mounted volume) must be writable by it.
 
+## Examples
+
+### Docker Compose
+
+```yaml
+services:
+  stress:
+    image: altrdev/stress-node:latest
+    ports:
+      - "3000:3000"
+    environment:
+      WORKERS: 2
+      MAX_MEMORY_MB: 1024
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+```
+
+### Kubernetes
+
+A pod with a memory limit and probes on `/`:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stress-node
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: stress-node
+  template:
+    metadata:
+      labels:
+        app: stress-node
+    spec:
+      containers:
+        - name: stress-node
+          image: altrdev/stress-node:latest
+          ports:
+            - containerPort: 3000
+          env:
+            - name: WORKERS
+              value: "1"
+            - name: MAX_MEMORY_MB
+              value: "1024"   # above the limit below, so /memory can trigger an OOM kill
+          resources:
+            requests:
+              cpu: 250m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+```
+
+Some things to try, after `kubectl port-forward deploy/stress-node 3000:3000`:
+
+- `/stress?number=45` on several terminals keeps the container at its CPU limit, which you can watch with `kubectl top pod` or use to trigger a CPU-based autoscaler.
+- `/memory?mb=400` goes above the `256Mi` limit, so the container should be OOM killed and restarted.
+- `/status/503` is a quick way to check how a probe or a retry policy reacts to errors.
+
 ## How it works
 
 `/stress` requests are spread round-robin over a pool of worker processes (one per core by default), so concurrent requests can saturate multiple cores. A worker that crashes is restarted automatically, and the request it was serving gets a `500`. The other endpoints run in the main process.
@@ -176,6 +253,10 @@ Lower or raise `number` to tune how long each request keeps a core busy.
 ## Changelog
 
 See [CHANGELOG.md](https://github.com/altrdev/stress-node/blob/main/CHANGELOG.md) and the [GitHub releases](https://github.com/altrdev/stress-node/releases).
+
+## Security
+
+This tool is meant to consume resources, so run it only in environments you control and don't expose it to the internet. If you find a security problem, please open an issue at https://github.com/altrdev/stress-node/issues.
 
 ## License
 
