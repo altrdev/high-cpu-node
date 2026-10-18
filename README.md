@@ -48,6 +48,7 @@ The server listens on port 3000.
 | `/status/:code` | `code` (in the path) | Answers with the given HTTP status, to test probes and retries |
 | `/memory`       | `mb`, `hold`       | Allocates memory and holds it, to test memory limits and OOM kills |
 | `/disk`         | `mb`, `hold`       | Writes a file and keeps it, to test disk limits and volumes |
+| `/info`         |                    | JSON with what the server is doing and the remaining budgets |
 
 Every query parameter is optional. A value that is not a number falls back to its default; a number outside the allowed range gets a `400`. All the limits are configurable, see [Configuration](#configuration).
 
@@ -120,6 +121,33 @@ Files are removed on shutdown, and leftovers from a previous run are removed at 
 ```
 curl "http://127.0.0.1:3000/disk?mb=200&hold=30"
 ```
+
+### `/info`
+
+Returns a JSON document with what the server is doing right now. It takes no parameters and doesn't use up any budget, so you can poll it while you test, for example with `watch -n1 curl -s http://127.0.0.1:3000/info`.
+
+```json
+{
+  "name": "stress-node",
+  "version": "2.4.0",
+  "uptimeSeconds": 321,
+  "stress": { "workers": 4, "inFlight": 2, "perWorker": [1, 1, 0, 0] },
+  "delay": { "inFlight": 3 },
+  "memory": { "heldMb": 200, "limitMb": 512, "processRssMb": 310, "containerLimitMb": 256 },
+  "disk": { "heldMb": 100, "limitMb": 1024, "dir": "/tmp", "freeMb": 8120 },
+  "limits": { "maxNumber": 50, "maxDelayMs": 60000, "maxHoldSeconds": 300 }
+}
+```
+
+| Field                         | Meaning                                                                 |
+|-------------------------------|-------------------------------------------------------------------------|
+| `stress.inFlight`, `perWorker`| `/stress` requests being calculated, in total and for each worker       |
+| `delay.inFlight`              | `/delay` requests still waiting                                         |
+| `memory.heldMb`, `limitMb`    | Memory held by `/memory` and the total it may hold (`MAX_MEMORY_MB`); the difference is what a new request can still allocate |
+| `memory.processRssMb`         | Memory the whole process uses, the figure that counts for an OOM kill   |
+| `memory.containerLimitMb`     | Memory limit of the container, `null` when there is none                |
+| `disk.heldMb`, `limitMb`      | Same as for memory, for `/disk` (`MAX_DISK_MB`)                         |
+| `disk.freeMb`                 | Free space in `DISK_DIR`, `null` if the directory is not usable         |
 
 ## Configuration
 

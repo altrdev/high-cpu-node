@@ -6,6 +6,7 @@ const path = require('path');
 const v8 = require('v8');
 const vm = require('vm');
 const {fork} = require('child_process');
+const {version} = require('./package.json');
 
 const config = {
     name: 'stress-node',
@@ -77,14 +78,26 @@ app.get('/stress', (req, res) => {
 });
 
 // Answers after `ms` milliseconds without blocking the event loop
+let delayInFlight = 0;
 app.get('/delay', (req, res) => {
     let ms = parseInt(req.query.ms);
     if (isNaN(ms)) ms = config.defaultDelayMs;
     if (ms < 0 || ms > config.maxDelayMs) {
         return res.status(400).end(`ms must be between 0 and ${config.maxDelayMs}`);
     }
-    const timer = setTimeout(() => res.status(200).end(`Answered after ${ms} ms`), ms);
-    res.on('close', () => clearTimeout(timer));
+    delayInFlight++;
+    let done = false;
+    const finish = () => {
+        if (done) return;
+        done = true;
+        delayInFlight--;
+        clearTimeout(timer);
+    };
+    const timer = setTimeout(() => {
+        finish();
+        res.status(200).end(`Answered after ${ms} ms`);
+    }, ms);
+    res.on('close', finish);
 });
 
 // Answers with the requested HTTP status code, to test probes and retries
@@ -196,6 +209,50 @@ app.get('/disk', async (req, res) => {
     }
     setTimeout(release, hold * 1000);
     res.status(200).end(`Wrote ${mb} MB to ${config.diskDir}, held for ${hold} s`);
+});
+
+// What the server is doing right now, so you can see the remaining budgets
+// without having to hit a 429 or a 507
+const startedAt = Date.now();
+const toMb = (bytes) => Math.round(bytes / 1024 / 1024);
+
+app.get('/info', async (req, res) => {
+    const perWorker = workers.map(() => 0);
+    for (const request of pending.values()) {
+        perWorker[workers.indexOf(request.worker)]++;
+    }
+
+    // 0 or a huge value when the process has no memory limit
+    const constrained = process.constrainedMemory();
+    const containerLimitMb = constrained > 0 && constrained < os.totalmem() ? toMb(constrained) : null;
+
+    let freeMb = null;
+    try {
+        const stats = await fs.promises.statfs(config.diskDir);
+        freeMb = toMb(stats.bavail * stats.bsize);
+    } catch (e) {
+        // directory not usable, same case as the 507 of /disk
+    }
+
+    res.json({
+        name: config.name,
+        version,
+        uptimeSeconds: Math.round((Date.now() - startedAt) / 1000),
+        stress: {workers: workers.length, inFlight: pending.size, perWorker},
+        delay: {inFlight: delayInFlight},
+        memory: {
+            heldMb,
+            limitMb: config.maxMemoryMb,
+            processRssMb: toMb(process.memoryUsage().rss),
+            containerLimitMb,
+        },
+        disk: {heldMb: heldDiskMb, limitMb: config.maxDiskMb, dir: config.diskDir, freeMb},
+        limits: {
+            maxNumber: config.maxNumber,
+            maxDelayMs: config.maxDelayMs,
+            maxHoldSeconds: config.maxHoldSeconds,
+        },
+    });
 });
 
 function stress(number, res) {
