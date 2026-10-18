@@ -223,6 +223,8 @@ Environment variables:
 | `MAX_HOLD_SECONDS` | `300`           | Highest `hold` accepted by `/memory` and `/disk`  |
 | `DISK_DIR`         | system temp dir | Directory where `/disk` writes its files          |
 
+A number must be a positive integer. A value that is not one is reported at startup and replaced by the default.
+
 ```
 docker run -p 3000:3000 -e WORKERS=2 -e MAX_MEMORY_MB=2048 altrdev/stress-node:latest
 ```
@@ -343,6 +345,22 @@ Lower or raise `number` to tune how long each request keeps a core busy.
 npm run dev     # restarts the server when a file changes
 npm run watch   # terminal view of a running server
 npm test        # starts real servers on free ports and checks them
+```
+
+```
+server.js          starts the server (what npm start and the Docker image run)
+cli.js             the watch command
+src/
+  app.js           builds the Express app and wires the routes
+  config.js        environment variables, validated
+  params.js        reads and validates the query parameters
+  budget.js        the total that /memory and /disk share between requests
+  workers.js       the pool of worker processes for /stress
+  fibonacci.js     what a worker runs
+  snapshot.js      the figures behind /info and /metrics
+  counters.js      requests answered, for /metrics
+  routes/          one file for each endpoint
+test/              the tests
 ```
 
 The tests use `node:test`, which comes with Node.js, so there is nothing to install. They cover every endpoint and its limits, the budgets of `/memory` and `/disk`, a worker that crashes, an unusable `DISK_DIR`, the cleanup of the files on startup and shutdown, `/metrics` and the `watch` command. CI also runs them on Node 22, 24 and 26, checks the Docker image and validates `/metrics` with `promtool`.

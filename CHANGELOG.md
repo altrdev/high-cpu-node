@@ -5,10 +5,16 @@ All notable changes to this project are documented here. The GitHub release of e
 ## Unreleased
 
 ### Added
-- Tests with `node:test` (`npm test`): endpoints and limits, budgets, a crashing worker, an unusable `DISK_DIR`, cleanup of the files, `/metrics` and `watch`.
+- Tests with `node:test` (`npm test`): endpoints and limits, budgets, a crashing worker, an unusable `DISK_DIR`, the cleanup of the files, the configuration, `/metrics` and `watch`.
 
 ### Changed
+- The code is split into modules under `src/` (one file for each endpoint, plus config, parameters, budget, worker pool and metrics). `server.js` only starts it, so `npm start` and the Docker image are unchanged. The answers of every endpoint, `/info` and `/metrics` are the same.
+- A variable such as `WORKERS` or `MAX_NUMBER` that is not a positive integer is reported at startup and replaced by the default, instead of being ignored silently.
+- Shutdown no longer detaches the exit handler of the workers: the pool knows it is stopping.
 - CI runs the tests on Node 22, 24 and 26, fails when `CHANGELOG.md` has no section for the version in `package.json`, and validates `/metrics` with `promtool`.
+
+### Fixed
+- If `/memory` can't allocate the buffer, the memory it reserved is given back to the budget.
 
 ## 2.5.1 - 2026-10-18
 

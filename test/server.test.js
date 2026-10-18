@@ -41,12 +41,18 @@ async function startServer(env = {}, prepare = () => {}) {
             DISK_DIR: diskDir,
             ...env,
         },
-        stdio: 'ignore',
+        stdio: ['ignore', 'pipe', 'pipe'],
     });
     const exited = new Promise((resolve) => child.once('exit', resolve));
 
-    const server = {child, port, diskDir, exited, url: `http://127.0.0.1:${port}`};
-    server.get = (route, options) => fetch(server.url + route, options);
+    const server = {child, port, diskDir, exited, output: '', url: `http://127.0.0.1:${port}`};
+    for (const stream of [child.stdout, child.stderr]) {
+        stream.on('data', (data) => {
+            server.output += data;
+        });
+    }
+    // a request that never answers must fail the test instead of hanging the run
+    server.get = (route, options) => fetch(server.url + route, {signal: AbortSignal.timeout(10000), ...options});
     server.text = async (route) => (await server.get(route)).text();
     server.info = async () => (await server.get('/info')).json();
     server.diskFiles = () => fs.readdirSync(diskDir).filter((name) => name.startsWith('stress-node-disk-'));
@@ -244,6 +250,25 @@ describe('failures', () => {
             assert.equal((await server.info()).disk.freeMb, null);
             assert.equal((await server.info()).disk.heldMb, 0);
             assert.equal(await server.text('/'), 'Status: OK');
+        } finally {
+            await server.stop();
+        }
+    });
+});
+
+describe('configuration', () => {
+    test('a value that is not a positive integer is reported and replaced by the default', async () => {
+        const server = await startServer({MAX_NUMBER: 'abc', MAX_DELAY_MS: '0', WORKERS: '-2', MAX_HOLD_SECONDS: '12'});
+        try {
+            const info = await server.info();
+            assert.equal(info.limits.maxNumber, 50);
+            assert.equal(info.limits.maxDelayMs, 60000);
+            assert.equal(info.limits.maxHoldSeconds, 12, 'a valid value is used');
+            assert.equal(info.stress.workers, os.cpus().length);
+            assert.match(server.output, /MAX_NUMBER=abc is not a positive integer, using 50/);
+            assert.match(server.output, /MAX_DELAY_MS=0 is not a positive integer, using 60000/);
+            assert.match(server.output, /WORKERS=-2 is not a positive integer/);
+            assert.doesNotMatch(server.output, /MAX_HOLD_SECONDS/);
         } finally {
             await server.stop();
         }
