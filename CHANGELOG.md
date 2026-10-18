@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
-## Unreleased
+## 2.5.2 - 2026-10-18
 
 ### Added
 - Tests with `node:test` (`npm test`): endpoints and limits, budgets, a crashing worker, an unusable `DISK_DIR`, the cleanup of the files, the configuration, `/metrics` and `watch`.
