@@ -245,7 +245,7 @@ Returns a JSON document with what the server is doing right now. It takes no par
 ```json
 {
   "name": "torchio",
-  "version": "3.1.0",
+  "version": "3.1.1",
   "uptimeSeconds": 321,
   "stress": { "workers": 4, "inFlight": 2, "perWorker": [1, 1, 0, 0] },
   "delay": { "inFlight": 3 },
@@ -310,7 +310,7 @@ Some queries to start from:
 
 ## Watching a server
 
-`cli.js` shows what a server is doing in the terminal, refreshing every second with bars and a short history of the last samples. It reads [`/info`](#info), needs no extra dependency and works against any running instance:
+`cli.js` shows what a server is doing in the terminal, refreshing every second with bars and a short history of the last samples (workers, memory, process memory, disk and file descriptors), plus whether `/ready` is answering `200` or `503`. It reads [`/info`](#info), needs no extra dependency and works against any running instance:
 
 ```
 npm run watch
@@ -329,7 +329,7 @@ docker exec -it <container> node cli.js watch
 | `--interval` | `1`                        | Seconds between samples                                  |
 | `--once`     |                            | Print one sample and exit; the status is `1` if the server can't be reached |
 
-The history only covers the time the command has been running. The colour of a bar goes from green to red as it gets close to its limit; set `NO_COLOR=1` to turn colours off.
+A server older than 3.1 doesn't report descriptors and readiness, so those two lines are left out. The history only covers the time the command has been running. The colour of a bar goes from green to red as it gets close to its limit; set `NO_COLOR=1` to turn colours off.
 
 ## Configuration
 

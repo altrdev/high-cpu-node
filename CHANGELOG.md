@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
+## 3.1.1 - 2026-10-18
+
+### Added
+- `watch` shows the file descriptors held by `/fd` (a bar and its history) and the state of `/ready`, with the seconds left when it is not ready. Against a server older than 3.1 those two lines are left out.
+
+### Changed
+- The animation of the terminal view in the README shows the two new lines.
+
 ## 3.1.0 - 2026-10-18
 
 ### Added

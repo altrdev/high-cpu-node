@@ -37,6 +37,14 @@ function shorten(text, max) {
     return text.length > max ? `…${text.slice(text.length - max + 1)}` : text;
 }
 
+// What /ready answers, in words. A server older than 3.1 has no `ready` in /info.
+function readiness(ready) {
+    if (!ready) return '';
+    if (ready.ready) return `readiness: ${paint(32, 'ready')}`;
+    const back = ready.secondsLeft === null ? 'until /ready/on' : `ready again in ${ready.secondsLeft} s`;
+    return `readiness: ${paint(31, 'NOT READY')} (${back})`;
+}
+
 function row(label, value, max, text, history, sparkMax, neutral = false) {
     return `${label.padEnd(14)}${bar(value, max, neutral)}  ${text.padEnd(26)} ${paint(36, spark(history, sparkMax))}`;
 }
@@ -57,8 +65,10 @@ function render(url, info, history) {
         row('Memory held', info.memory.heldMb, info.memory.limitMb, `${info.memory.heldMb} / ${info.memory.limitMb} MB`, history.held, info.memory.limitMb),
         row('Process RSS', info.memory.processRssMb, rssMax, rssText, history.rss, rssMax, !rssLimit),
         row('Disk held', info.disk.heldMb, info.disk.limitMb, diskText, history.disk, info.disk.limitMb),
+        ...(info.fd ? [row('FDs held', info.fd.held, info.fd.limit, `${info.fd.held} / ${info.fd.limit}`, history.fd, info.fd.limit)] : []),
         '',
         `/stress in progress: ${info.stress.inFlight}   /delay waiting: ${info.delay.inFlight}`,
+        ...(info.ready ? [readiness(info.ready)] : []),
         `disk dir: ${shorten(info.disk.dir, 40)}   ${free}`,
     ].join('\n');
 }
@@ -69,6 +79,7 @@ function record(history, info) {
         held: info.memory.heldMb,
         rss: info.memory.processRssMb,
         disk: info.disk.heldMb,
+        fd: info.fd ? info.fd.held : 0,
     };
     for (const key of Object.keys(values)) {
         history[key].push(values[key]);
@@ -104,7 +115,7 @@ async function main() {
     }
 
     const interval = Math.max(0.2, Number(values.interval) || 1) * 1000;
-    const history = {busy: [], held: [], rss: [], disk: []};
+    const history = {busy: [], held: [], rss: [], disk: [], fd: []};
 
     if (values.once) {
         try {

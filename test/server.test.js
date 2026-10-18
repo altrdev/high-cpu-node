@@ -381,6 +381,21 @@ describe('cli watch', () => {
             assert.match(output, /CPU workers .* 0 busy \/ 2/);
             assert.match(output, /Memory held .* 100 \/ 300 MB/);
             assert.match(output, /Disk held .* 0 \/ 300 MB/);
+            assert.match(output, /FDs held .* 0 \/ 10000/);
+            assert.match(output, /readiness: ready/);
+        } finally {
+            await server.stop();
+        }
+    });
+
+    test('--once shows when the server is not ready and the descriptors held', async () => {
+        const server = await startServer();
+        try {
+            await server.get('/ready/off?seconds=20');
+            await server.get('/fd?count=40&hold=5');
+            const output = execFileSync(process.execPath, ['cli.js', 'watch', '--once', '--url', server.url], {cwd: ROOT}).toString();
+            assert.match(output, /FDs held .* 40 \/ 10000/);
+            assert.match(output, /readiness: NOT READY \(ready again in \d+ s\)/);
         } finally {
             await server.stop();
         }
