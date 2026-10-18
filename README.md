@@ -149,6 +149,38 @@ Returns a JSON document with what the server is doing right now. It takes no par
 | `disk.heldMb`, `limitMb`      | Same as for memory, for `/disk` (`MAX_DISK_MB`)                         |
 | `disk.freeMb`                 | Free space in `DISK_DIR`, `null` if the directory is not usable         |
 
+## Watching a server
+
+`cli.js` shows what a server is doing in the terminal, refreshing every second with bars and a short history of the last samples. It reads [`/info`](#info), needs no extra dependency and works against any running instance:
+
+```
+npm run watch
+npm run watch -- --url http://my-host:3000 --interval 2
+```
+
+```
+stress-node 2.4.0  http://127.0.0.1:3000  up 5m21s
+
+CPU workers   ████████████████████  2 busy / 2   ▁▃▅▇▇▇▇▅▃▂
+Memory held   █████████████░░░░░░░  200 / 300 MB ▁▁▁▅▅▅▅▅▁▁
+Process RSS   ████████████████████  233 MB       ▂▂▂▆▆▆▆▆▂▂
+Disk held     ███████░░░░░░░░░░░░░  100 / 300 MB ▁▁▁▁▅▅▅▅▅▁
+```
+
+Inside a container, where the server is on `localhost`:
+
+```
+docker exec -it <container> node cli.js watch
+```
+
+| Option       | Default                    | Description                                              |
+|--------------|----------------------------|----------------------------------------------------------|
+| `--url`      | `http://127.0.0.1:$PORT` or port `3000` | Server to watch                              |
+| `--interval` | `1`                        | Seconds between samples                                  |
+| `--once`     |                            | Print one sample and exit; the status is `1` if the server can't be reached |
+
+The history only covers the time the command has been running. The colour of a bar goes from green to red as it gets close to its limit; set `NO_COLOR=1` to turn colours off.
+
 ## Configuration
 
 Environment variables:
