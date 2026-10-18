@@ -4,34 +4,90 @@
 
 [![CI](https://github.com/altrdev/stress-node/actions/workflows/ci.yml/badge.svg)](https://github.com/altrdev/stress-node/actions/workflows/ci.yml) [![Docker image](https://img.shields.io/docker/v/altrdev/stress-node?sort=semver&label=docker%20image)](https://hub.docker.com/r/altrdev/stress-node) [![Docker pulls](https://img.shields.io/docker/pulls/altrdev/stress-node)](https://hub.docker.com/r/altrdev/stress-node) [![License](https://img.shields.io/github/license/altrdev/stress-node)](https://github.com/altrdev/stress-node/blob/main/LICENSE)
 
-A simple Node.js server that stresses a machine or a container on demand: CPU load, memory, disk space, slow responses and arbitrary HTTP status codes. Useful for testing autoscaling, resource limits, OOM kills, probes, timeouts and retries.
+**Break your containers on purpose.** stress-node is a small Node.js server that burns CPU, holds memory, fills disk, answers slowly or returns any HTTP status, all on demand over HTTP. Use it to see how your setup behaves under pressure: autoscaling, resource limits, OOM kills, probes, timeouts and retries.
+
+![stress-node watch: bars and history of busy workers, held memory, process RSS and held disk, while a load runs](https://raw.githubusercontent.com/altrdev/stress-node/main/docs/watch.svg)
 
 Source code and issues: https://github.com/altrdev/stress-node
 
 > **Warning:** this server is meant to consume resources on purpose. Don't expose it to the public internet.
 
-## Quick start
+## Try it in 30 seconds
 
-With Docker:
+Start the server with Docker:
 
 ```
-docker run -p 3000:3000 altrdev/stress-node:latest
+docker run --name stress -p 3000:3000 altrdev/stress-node
 ```
 
 Or on your local machine (Node.js 22 or later):
 
 ```
+git clone https://github.com/altrdev/stress-node.git
+cd stress-node
 npm install
 npm start
 ```
 
-Then try it:
+In a second terminal, watch what it does:
 
 ```
-curl "http://127.0.0.1:3000/stress?number=40"
+docker exec -it stress node cli.js watch    # with Docker
+npm run watch                               # on your local machine
 ```
 
-To restart the server automatically when you edit the code, use `npm run dev` instead of `npm start`.
+In a third one, put it under load, and see the bars move:
+
+```
+curl "http://127.0.0.1:3000/memory?mb=200&hold=20"
+curl "http://127.0.0.1:3000/disk?mb=100&hold=20"
+for i in 1 2; do curl -s "http://127.0.0.1:3000/stress?number=44" & done; wait
+```
+
+## What you can test
+
+### Memory limits and OOM kills
+
+Give the container a memory limit and ask for more than that:
+
+```
+docker run -d --name oom -m 256m -e MAX_MEMORY_MB=1024 -p 3000:3000 altrdev/stress-node
+curl "http://127.0.0.1:3000/memory?mb=400"
+docker inspect -f '{{.State.OOMKilled}}' oom
+```
+
+The container should be killed, and the last command prints `true`. `MAX_MEMORY_MB` is raised above the limit on purpose: its default (`512`) is a safety cap, so with it you can't exhaust a larger container.
+
+### Autoscaling
+
+A core stays busy only while a request is running, so send at least as many concurrent requests as workers (one per core by default):
+
+```
+hey -z 60s -c 8 "http://127.0.0.1:3000/stress?number=40"
+```
+
+More about it in [Load testing](#load-testing).
+
+### Probes, timeouts and retries
+
+```
+curl -i http://127.0.0.1:3000/status/503
+curl --max-time 2 "http://127.0.0.1:3000/delay?ms=5000"
+```
+
+`/status/:code` answers with any status from `200` to `599`, and `/delay` waits without blocking the server, so the rest keeps being served while a slow request is pending.
+
+### Disk and volumes
+
+```
+curl "http://127.0.0.1:3000/disk?mb=500&hold=60"
+```
+
+If the write fails (disk full, read-only filesystem, directory not writable) the answer is a `507`. Point `DISK_DIR` to a mounted volume to test it.
+
+### Metrics and dashboards
+
+[`/info`](#info) is a quick look at what the server holds and what is left of each budget, and [`/metrics`](#metrics) has the same figures for Prometheus.
 
 ## Endpoints
 
@@ -127,7 +183,7 @@ Returns a JSON document with what the server is doing right now. It takes no par
 ```json
 {
   "name": "stress-node",
-  "version": "2.4.0",
+  "version": "2.5.2",
   "uptimeSeconds": 321,
   "stress": { "workers": 4, "inFlight": 2, "perWorker": [1, 1, 0, 0] },
   "delay": { "inFlight": 3 },
@@ -191,8 +247,6 @@ Some queries to start from:
 npm run watch
 npm run watch -- --url http://my-host:3000 --interval 2
 ```
-
-![stress-node watch: bars and history of busy workers, held memory, process RSS and held disk](https://raw.githubusercontent.com/altrdev/stress-node/main/docs/watch.svg)
 
 Inside a container, where the server is on `localhost`:
 
