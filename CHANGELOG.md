@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The GitHub release of e
 
 ### Changed
 - README reorganised to start with what the tool does: a short pitch, the animated terminal view, a 30 seconds try-out and scenarios (OOM kills, autoscaling, probes and timeouts, disk, metrics), followed by the reference.
+- The README no longer shows the logo at the top, since the animation under the pitch does the same job (`docs/logo.svg` and `docs/logo.png` stay in the repo).
 - `docs/watch.svg` is animated: the bars grow and shrink and the history scrolls while a load runs.
 
 ## 2.5.2 - 2026-10-18

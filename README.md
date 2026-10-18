@@ -1,7 +1,5 @@
 # stress-node
 
-![stress-node logo](https://raw.githubusercontent.com/altrdev/stress-node/main/docs/logo.png)
-
 [![CI](https://github.com/altrdev/stress-node/actions/workflows/ci.yml/badge.svg)](https://github.com/altrdev/stress-node/actions/workflows/ci.yml) [![Docker image](https://img.shields.io/docker/v/altrdev/stress-node?sort=semver&label=docker%20image)](https://hub.docker.com/r/altrdev/stress-node) [![Docker pulls](https://img.shields.io/docker/pulls/altrdev/stress-node)](https://hub.docker.com/r/altrdev/stress-node) [![License](https://img.shields.io/github/license/altrdev/stress-node)](https://github.com/altrdev/stress-node/blob/main/LICENSE)
 
 **Break your containers on purpose.** stress-node is a small Node.js server that burns CPU, holds memory, fills disk, answers slowly or returns any HTTP status, all on demand over HTTP. Use it to see how your setup behaves under pressure: autoscaling, resource limits, OOM kills, probes, timeouts and retries.
