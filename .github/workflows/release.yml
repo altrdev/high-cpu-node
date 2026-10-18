@@ -57,6 +57,10 @@ jobs:
             gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes
           fi
 
+      - name: Prepare the Docker Hub README
+        # Docker Hub shows every badge on its own row, and it already has its own pull and size figures
+        run: grep -v '^\[!\[' README.md > dockerhub-readme.md
+
       - name: Update Docker Hub description
         uses: peter-evans/dockerhub-description@v5
         with:
@@ -64,4 +68,4 @@ jobs:
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
           repository: altrdev/stress-node
           short-description: Stress CPU, memory, disk and latency on demand. For testing autoscaling, limits and probes.
-          readme-filepath: ./README.md
+          readme-filepath: ./dockerhub-readme.md

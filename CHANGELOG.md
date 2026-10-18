@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
+## Unreleased
+
+### Changed
+- The README copied to Docker Hub no longer has the badge line, which Docker Hub showed one badge per row.
+
 ## 2.5.0 - 2026-10-18
 
 ### Added
