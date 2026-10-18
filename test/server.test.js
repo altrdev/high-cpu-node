@@ -462,6 +462,48 @@ describe('/cpu, /leak and START_DELAY_SECONDS', () => {
     });
 });
 
+describe('TOKEN', () => {
+    const protectedRoutes = ['/stress?number=1', '/cpu?percent=0', '/memory?mb=1&hold=1', '/leak?rate=1&mb=1&hold=1', '/disk?mb=1&hold=1', '/fd?count=1&hold=1', '/ready/off?seconds=1', '/ready/on', '/crash?after=60'];
+    const open = ['/', '/ready', '/info', '/metrics', '/delay?ms=1', '/status/204'];
+
+    test('without TOKEN nothing is checked, and /info says so', async () => {
+        const server = await startServer();
+        try {
+            assert.equal((await server.get('/ready/on')).status, 200);
+            assert.equal((await server.info()).auth, false);
+        } finally {
+            await server.stop();
+        }
+    });
+
+    test('with TOKEN the endpoints that change the state need it, the others stay open', async () => {
+        const server = await startServer({TOKEN: 's3cret'});
+        try {
+            for (const route of protectedRoutes) {
+                const response = await server.get(route);
+                assert.equal(response.status, 401, route);
+                assert.equal(response.headers.get('www-authenticate'), 'Bearer');
+            }
+            for (const route of ['/ready/on', '/crash']) {
+                for (const authorization of ['Bearer wrong', 's3cret', 'Basic s3cret', 'Bearer']) {
+                    assert.equal((await server.get(route, {headers: {authorization}})).status, 401, `${route} with "${authorization}"`);
+                }
+            }
+            for (const route of open) {
+                assert.notEqual((await server.get(route)).status, 401, route);
+            }
+            assert.equal((await server.info()).auth, true);
+            assert.equal(server.child.exitCode, null, 'a rejected /crash must not end the process');
+
+            const ok = await server.get('/ready/on', {headers: {authorization: 'Bearer s3cret'}});
+            assert.equal(ok.status, 200);
+            assert.equal((await server.get('/ready/on', {headers: {authorization: 'bearer s3cret'}})).status, 200);
+        } finally {
+            await server.stop();
+        }
+    });
+});
+
 describe('/ui', () => {
     test('is not there unless UI=1', async () => {
         const server = await startServer();
@@ -484,6 +526,7 @@ describe('/ui', () => {
             const script = html.match(/<script>([\s\S]*)<\/script>/)[1];
             assert.doesNotThrow(() => new (require('node:vm').Script)(script), 'the script of the page has a syntax error');
             // what the page calls must exist
+            assert.ok(script.includes('Authorization'), 'the page does not send the token');
             for (const path of ['/info', '/metrics', '/cpu', '/leak', '/memory', '/disk', '/fd', '/ready/off', '/ready/on', '/delay', '/crash', '/stress']) {
                 assert.ok(script.includes(`'${path}`) || script.includes(`path: '${path}`), `the page does not use ${path}`);
             }

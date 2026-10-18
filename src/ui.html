@@ -171,13 +171,41 @@ function requests(metrics) {
 
 // ---- controls: one card for each endpoint, with the request it will make
 const log = [];
+function getToken() {
+    try {
+        return sessionStorage.getItem('torchio-token') || '';
+    } catch (e) {
+        return '';
+    }
+}
+function setToken(value) {
+    try {
+        sessionStorage.setItem('torchio-token', value);
+    } catch (e) {}
+}
+// the token is asked for only when the server answers 401, and kept for this tab
+async function request(url) {
+    const call = () => {
+        const token = getToken();
+        return fetch(url, {signal: AbortSignal.timeout(120000), headers: token ? {Authorization: `Bearer ${token}`} : {}});
+    };
+    let res = await call();
+    if (res.status === 401) {
+        const token = window.prompt('This server needs a token (TOKEN)');
+        if (token) {
+            setToken(token);
+            res = await call();
+        }
+    }
+    return res;
+}
 function send(url, button) {
     const entry = {url, text: '…'};
     log.unshift(entry);
     if (log.length > 6) log.pop();
     const show = () => ($('log').textContent = log.map((e) => `GET ${e.url}  ->  ${e.text}`).join('\n'));
     show();
-    fetch(url, {signal: AbortSignal.timeout(120000)})
+    request(url)
         .then(async (res) => {
             entry.text = `${res.status} ${(await res.text()).slice(0, 120)}`;
         })

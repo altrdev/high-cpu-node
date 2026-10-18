@@ -296,8 +296,9 @@ Returns a JSON document with what the server is doing right now. It takes no par
 ```json
 {
   "name": "torchio",
-  "version": "3.3.1",
+  "version": "3.4.0",
   "uptimeSeconds": 321,
+  "auth": false,
   "stress": { "workers": 4, "inFlight": 2, "perWorker": [1, 1, 0, 0], "burn": null },
   "delay": { "inFlight": 3 },
   "memory": { "heldMb": 200, "limitMb": 512, "processRssMb": 310, "containerLimitMb": 256 },
@@ -398,6 +399,19 @@ The gauges and their history (the last 60 seconds) come from [`/info`](#info) an
 
 The page makes [`/crash`](#crash) a button, which is why it is off by default (and the button asks to be clicked twice). It needs no extra dependency and no build, it is one static file.
 
+## Token
+
+Anyone who can reach the port can call `/crash` or `/disk`. Set `TOKEN` to ask for a password on the endpoints that change the state of the instance (`/stress`, `/cpu`, `/memory`, `/leak`, `/disk`, `/fd`, `/ready/off`, `/ready/on` and `/crash`):
+
+```
+docker run -p 3000:3000 -e TOKEN=secret altrdev/torchio:latest
+curl -H "Authorization: Bearer secret" localhost:3000/crash
+```
+
+Without the header, or with a wrong token, they answer `401`. `/`, `/ready`, `/info`, `/metrics`, `/delay` and `/status/:code` stay open, so probes, Prometheus and `watch` work as before. [`/info`](#info) tells whether a token is needed (`auth`). The control panel asks for it the first time a server answers `401` and keeps it for that tab. Without `TOKEN` nothing is checked.
+
+It is a shared password, not a login: without HTTPS it travels in clear, so on the internet put a proxy with TLS in front.
+
 ## Configuration
 
 Environment variables:
@@ -413,6 +427,7 @@ Environment variables:
 | `UI`               | off             | `1` turns on the control panel at `/ui`           |
 | `START_DELAY_SECONDS` | `0`         | Seconds the port stays closed after the start     |
 | `MAX_FD`           | `10000`         | Total descriptors `/fd` can hold at once          |
+| `TOKEN`            | none            | Makes the endpoints that change the state need `Authorization: Bearer <token>` |
 | `MAX_HOLD_SECONDS` | `300`           | Highest `hold`, `seconds` and `after` accepted by the endpoints that take them |
 | `DISK_DIR`         | system temp dir | Directory where `/disk` writes its files          |
 

@@ -10,6 +10,7 @@ module.exports = function createInfo({config, version, startedAt, snapshot}) {
             name: config.name,
             version,
             uptimeSeconds: Math.round((Date.now() - startedAt) / 1000),
+            auth: Boolean(config.token),
             stress,
             delay: {inFlight: delayInFlight},
             memory: {

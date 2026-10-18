@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
+## 3.4.0 - 2026-10-18
+
+### Added
+- `TOKEN`: when set, `/stress`, `/cpu`, `/memory`, `/leak`, `/disk`, `/fd`, `/ready/off`, `/ready/on` and `/crash` need `Authorization: Bearer <token>` and answer `401` without it. `/`, `/ready`, `/info`, `/metrics`, `/delay` and `/status/:code` stay open, so probes and scrapers keep working. `/info` reports `auth`, and the control panel asks for the token when it gets a `401`. Without `TOKEN` nothing changes.
+
 ## 3.3.1 - 2026-10-18
 
 ### Added

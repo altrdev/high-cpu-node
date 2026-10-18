@@ -28,6 +28,7 @@ module.exports = {
     maxHoldSeconds: positiveInt('MAX_HOLD_SECONDS', 300),
     defaultDiskMb: 100,
     maxDiskMb: positiveInt('MAX_DISK_MB', 1024),
+    token: process.env.TOKEN || '',
     ui: ['1', 'true'].includes(process.env.UI),
     defaultCpuPercent: 50,
     defaultLeakRateMb: 10,
