@@ -1,7 +1,7 @@
 {
   "author": "altrdev",
   "name": "high-cpu-node",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "A simple nodejs server for stressing cpu",
   "main": "server.js",
   "scripts": {

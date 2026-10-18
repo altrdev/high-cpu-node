@@ -96,6 +96,7 @@ docker run -p 3000:3000 -e WORKERS=2 altrdev/high-cpu-node:latest
 
 ## Changelog
 
+- **2.2.0**: Updated to Express 5, Node 26 base image and `cors` 2.8.6.
 - **2.1.0**: Docker image has a `HEALTHCHECK`; the Docker Hub description is synced from this README on release.
 - **2.0.0**: `/stress` rejects `number` outside `0..MAX_NUMBER` with `400` (previously unbounded). Added the worker pool and the `PORT`, `WORKERS`, `MAX_NUMBER` variables.
 
