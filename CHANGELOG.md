@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
+## Unreleased
+
+### Changed
+- The completions list `serve` and `watch` first, then the commands that start a test, then `healthcheck`, `completions` and `help`.
+
+### Fixed
+- The Homebrew formula written by the release made the binary executable too late for the completions to be generated, and `brew install` failed with `EACCES`. The formula published for 4.1.0 was corrected in the tap.
+
+### Documentation
+- The README says what to check when Tab does not complete in zsh after `brew install`.
+
 ## 4.1.0 - 2026-10-19
 
 ### Added

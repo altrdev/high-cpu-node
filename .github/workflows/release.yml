@@ -166,7 +166,11 @@ jobs:
             end
 
             def install
-              bin.install Dir["torchio-*"].first => "torchio"
+              binary = Dir["torchio-*"].first
+              # the download is not executable yet: Homebrew only makes it so after install, and the
+              # completions need to run it now
+              chmod 0755, binary
+              bin.install binary => "torchio"
               generate_completions_from_executable(bin/"torchio", "completions", shells: [:bash, :zsh, :fish])
             end
 

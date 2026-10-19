@@ -24,9 +24,11 @@ fn opt(name: &'static str, value: bool) -> Opt {
     Opt { name, value }
 }
 
-/// Every command of the binary and what it takes
+/// Every command of the binary and what it takes, in the order the shells list them: the server and
+/// the view, the commands that start a test, then the rest
 fn entries() -> Vec<Entry> {
     let mut entries = vec![
+        Entry { name: "serve", about: "Start the server", options: vec![], words: vec![] },
         Entry {
             name: "watch",
             about: "Watch a server, with keys that start tests",
@@ -40,10 +42,6 @@ fn entries() -> Vec<Entry> {
             ],
             words: vec![],
         },
-        Entry { name: "serve", about: "Start the server", options: vec![], words: vec![] },
-        Entry { name: "healthcheck", about: "Exit with 0 when the server answers", options: vec![], words: vec![] },
-        Entry { name: "completions", about: "Print the completion script of a shell", options: vec![], words: vec!["bash", "zsh", "fish"] },
-        Entry { name: "help", about: "Show the usage", options: vec![], words: vec![] },
     ];
     for command in action::commands() {
         let mut options: Vec<Opt> = command.params.iter().map(|param| opt(param, true)).collect();
@@ -51,6 +49,14 @@ fn entries() -> Vec<Entry> {
         let words = if command.name == "ready" { vec!["on", "off"] } else { vec![] };
         entries.push(Entry { name: command.name, about: command.about, options, words });
     }
+    entries.push(Entry { name: "healthcheck", about: "Exit with 0 when the server answers", options: vec![], words: vec![] });
+    entries.push(Entry {
+        name: "completions",
+        about: "Print the completion script of a shell",
+        options: vec![],
+        words: vec!["bash", "zsh", "fish"],
+    });
+    entries.push(Entry { name: "help", about: "Show the usage", options: vec![], words: vec![] });
     entries
 }
 

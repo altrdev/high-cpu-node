@@ -57,6 +57,16 @@ fn the_scripts_are_valid_in_their_shells() {
 }
 
 #[test]
+fn the_commands_are_listed_with_the_server_the_view_and_the_tests_before_the_rest() {
+    let script = script("zsh");
+    let position = |name: &str| script.find(&format!("'{name}:")).unwrap_or_else(|| panic!("{name} in\n{script}"));
+    let order = ["serve", "watch", "stress", "ready", "healthcheck", "completions", "help"];
+    for pair in order.windows(2) {
+        assert!(position(pair[0]) < position(pair[1]), "{} before {}", pair[0], pair[1]);
+    }
+}
+
+#[test]
 fn a_reader_that_goes_away_is_not_a_failure() {
     let mut child = Command::new(BIN).args(["completions", "bash"]).stdout(std::process::Stdio::piped()).spawn().unwrap();
     drop(child.stdout.take());
