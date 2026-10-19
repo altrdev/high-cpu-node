@@ -1,31 +1,13 @@
 # Try it in 30 seconds
 
-Start the server with **Docker**:
+Start the server with the image or with the binary (see [Install](install.md) if you have neither yet):
 
 ```
-docker run --name torchio -p 3000:3000 altrdev/torchio
-```
-
-Or on your local machine, with **Homebrew** (macOS and Linux):
-
-```
-brew install altrdev/tap/torchio
-torchio serve
+docker run --name torchio -p 3000:3000 altrdev/torchio    # with Docker
+torchio serve                                             # with the binary
 ```
 
 `torchio` with no command does the same as `torchio serve`: it is what the Docker image runs. The server stays in the foreground, so Ctrl+C stops it; use a second terminal tab for `torchio watch`.
-
-Other ways to get the `torchio` command. The **install script** downloads the binary of the latest release for your system (macOS or Linux, `amd64` or `arm64`), checks its checksum and installs it:
-
-```
-curl -fsSL https://raw.githubusercontent.com/altrdev/torchio/main/install.sh | sh
-```
-
-It installs in `/usr/local/bin` (with `sudo` if needed, or in `~/.local/bin` when there is none). `TORCHIO_VERSION=v4.0.0` picks a release and `TORCHIO_INSTALL_DIR` the folder, for example `curl -fsSL ... | TORCHIO_INSTALL_DIR=$HOME/bin sh`. Or take the binary by hand from the [**releases**](https://github.com/altrdev/torchio/releases), or **build it from the source** with **cargo** (Rust 1.88 or later):
-
-```
-cargo install --git https://github.com/altrdev/torchio
-```
 
 In a second terminal, watch what it does:
 
