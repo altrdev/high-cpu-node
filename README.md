@@ -726,6 +726,10 @@ The tests come in three kinds, and `cargo test` runs them all:
 
 CI runs them on Linux and macOS with the format check, `clippy` and the documentation, builds the image for both platforms, runs it with a memory limit and a CPU limit, and validates `/metrics` with `promtool`.
 
+### Releasing
+
+`scripts/release.sh X.Y.Z` writes the version in `Cargo.toml`, `Cargo.lock`, the image tag of `deploy/kubernetes/deployment.yaml` and the `version` and `appVersion` of the Helm chart, and dates the `Unreleased` section of the changelog. It changes nothing else: review the diff, commit it as `chore: release X.Y.Z`, merge it and push the tag `vX.Y.Z`, which publishes the image and the binaries. CI fails when one of these places is left behind.
+
 ## Changelog
 
 See [CHANGELOG.md](https://github.com/altrdev/torchio/blob/main/CHANGELOG.md) and the [GitHub releases](https://github.com/altrdev/torchio/releases).
