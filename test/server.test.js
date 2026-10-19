@@ -28,7 +28,11 @@ async function startServer(env = {}, prepare = () => {}) {
     const diskDir = fs.mkdtempSync(path.join(os.tmpdir(), 'torchio-test-'));
     prepare(diskDir);
 
-    const child = spawn(process.execPath, ['server.js'], {
+    // TORCHIO_BIN runs the same tests against the Rust binary instead of server.js
+    const [command, args] = process.env.TORCHIO_BIN
+        ? [path.resolve(ROOT, process.env.TORCHIO_BIN), []]
+        : [process.execPath, ['server.js']];
+    const child = spawn(command, args, {
         cwd: ROOT,
         env: {
             ...process.env,

@@ -1,0 +1,26 @@
+[package]
+name = "torchio"
+version = "3.5.0"
+edition = "2024"
+description = "Break your containers on purpose: burn CPU, hold memory, fill disk and more, on demand over HTTP"
+license = "MIT"
+authors = ["altrdev"]
+
+[dependencies]
+axum = "0.8"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = { version = "1.0.154", features = ["preserve_order"] }
+serde_urlencoded = "0.7.1"
+sha2 = "0.11.1"
+subtle = "2.6.1"
+tokio = { version = "1.53.3", features = ["rt-multi-thread", "macros", "net", "time", "signal", "sync", "fs"] }
+tower-http = { version = "0.7.1", features = ["cors"] }
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true
+
+[dev-dependencies]
+tokio = { version = "1.53.3", features = ["test-util", "macros", "rt"] }
