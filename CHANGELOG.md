@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
-## Unreleased
+## 4.4.0 - 2026-10-19
 
 ### Added
 - `/block?ms=` freezes the server: after answering, every thread of the runtime sleeps for `ms` (up to `MAX_BLOCK_MS`, `30000` by default), so the process is alive but accepts and answers nothing, to test liveness probes and timeouts. `/info` (`block`), the control panel and `torchio block [ms]` have it, and `TOKEN` protects it.
