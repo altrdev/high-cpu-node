@@ -1,4 +1,5 @@
 //! The files that `/disk` writes and keeps, against the budget `MAX_DISK_MB`.
+use crate::logging::LogFormat;
 use crate::resources::budget::{Budget, OverBudget};
 use crate::system::errno_name;
 use crate::units::MB;
@@ -30,9 +31,9 @@ pub enum WriteError {
 impl Disk {
     /// Prepares `dir`: creates it and removes the leftovers of a previous run. A directory that
     /// can't be used is reported, and every write will fail.
-    pub fn new(dir: &str, limit_mb: i64) -> Disk {
+    pub fn new(dir: &str, limit_mb: i64, format: LogFormat) -> Disk {
         if let Err(e) = Disk::prepare(Path::new(dir)) {
-            eprintln!("DISK_DIR {dir} is not usable, /disk will answer 507: {}", errno_name(&e));
+            format.warn(&format!("DISK_DIR {dir} is not usable, /disk will answer 507: {}", errno_name(&e)));
         }
         Disk { budget: Budget::new(limit_mb), dir: PathBuf::from(dir), files: Mutex::default(), next_id: AtomicU64::new(0) }
     }
@@ -133,18 +134,18 @@ mod tests {
         std::fs::write(dir.0.join("torchio-disk-7"), "old").unwrap();
         std::fs::write(dir.0.join("mine.txt"), "keep").unwrap();
 
-        let _disk = Disk::new(dir.0.to_str().unwrap(), 10);
+        let _disk = Disk::new(dir.0.to_str().unwrap(), 10, LogFormat::Text);
         assert_eq!(dir.names(), ["mine.txt"]);
 
         let nested = dir.0.join("a/b");
-        let _disk = Disk::new(nested.to_str().unwrap(), 10);
+        let _disk = Disk::new(nested.to_str().unwrap(), 10, LogFormat::Text);
         assert!(nested.is_dir());
     }
 
     #[tokio::test]
     async fn it_writes_a_file_of_the_size_asked_and_removes_it() {
         let dir = Dir::new("write");
-        let disk = Arc::new(Disk::new(dir.0.to_str().unwrap(), 10));
+        let disk = Arc::new(Disk::new(dir.0.to_str().unwrap(), 10, LogFormat::Text));
         disk.write(2, 0).await.unwrap();
         // the file may already be on its way out; while it exists it has the size asked
         for name in dir.names() {
@@ -164,7 +165,7 @@ mod tests {
     #[tokio::test]
     async fn it_refuses_what_does_not_fit() {
         let dir = Dir::new("budget");
-        let disk = Arc::new(Disk::new(dir.0.to_str().unwrap(), 10));
+        let disk = Arc::new(Disk::new(dir.0.to_str().unwrap(), 10, LogFormat::Text));
         disk.write(8, 30).await.unwrap();
         match disk.write(5, 0).await {
             Err(WriteError::OverBudget(over)) => assert_eq!(over, OverBudget { held: 8, limit: 10 }),
@@ -176,7 +177,7 @@ mod tests {
 
     #[tokio::test]
     async fn a_directory_that_cannot_be_used_makes_every_write_fail_and_gives_the_budget_back() {
-        let disk = Arc::new(Disk::new("/dev/null/stress", 10));
+        let disk = Arc::new(Disk::new("/dev/null/stress", 10, LogFormat::Text));
         assert!(matches!(disk.write(1, 0).await, Err(WriteError::Write(_))));
         for _ in 0..100 {
             if disk.budget().held() == 0 {

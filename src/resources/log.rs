@@ -1,4 +1,5 @@
 //! The lines that `/log` writes to stdout at a given rate.
+use crate::logging::{Level, LogFormat};
 use serde::Serialize;
 use std::io::Write;
 use std::sync::atomic::{AtomicI64, Ordering};
@@ -35,9 +36,14 @@ pub struct LogState {
 #[derive(Default)]
 pub struct Log {
     inner: Mutex<Inner>,
+    format: LogFormat,
 }
 
 impl Log {
+    pub fn new(format: LogFormat) -> Log {
+        Log { inner: Mutex::default(), format }
+    }
+
     /// What is being written, `None` when nothing is
     pub fn state(&self) -> Option<LogState> {
         let inner = self.inner.lock().unwrap();
@@ -54,9 +60,9 @@ impl Log {
         inner.next_id += 1;
         let sent = Arc::new(AtomicI64::new(0));
         let task = tokio::spawn({
-            let (log, sent) = (Arc::clone(self), Arc::clone(&sent));
+            let (log, sent, format) = (Arc::clone(self), Arc::clone(&sent), self.format);
             async move {
-                write_lines(lines, rate, &sent, &mut std::io::stdout()).await;
+                write_lines(lines, rate, format, &sent, &mut std::io::stdout()).await;
                 // a job that replaced this one has its own entry
                 let mut inner = log.inner.lock().unwrap();
                 if inner.job.as_ref().is_some_and(|job| job.id == id) {
@@ -92,8 +98,17 @@ pub fn iso(time: SystemTime) -> String {
     )
 }
 
+/// Line `n` of `lines`: the time, then `torchio-log line 7 of 1000`; or a JSON object with the same message
+fn line(format: LogFormat, at: SystemTime, n: i64, lines: i64) -> String {
+    let message = format!("torchio-log line {n} of {lines}");
+    match format {
+        LogFormat::Text => format!("{} {message}", iso(at)),
+        LogFormat::Json => format.render(Level::Info, &message, &[], at),
+    }
+}
+
 /// Writes the lines that are due every tick until all of them are written, counting them in `sent`
-async fn write_lines(lines: i64, rate: i64, sent: &AtomicI64, out: &mut impl Write) {
+async fn write_lines(lines: i64, rate: i64, format: LogFormat, sent: &AtomicI64, out: &mut impl Write) {
     let started = Instant::now();
     let mut ticker = tokio::time::interval(TICK);
     ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
@@ -102,8 +117,8 @@ async fn write_lines(lines: i64, rate: i64, sent: &AtomicI64, out: &mut impl Wri
         let due = lines.min((started.elapsed().as_secs_f64() * rate as f64).floor() as i64);
         let done = sent.load(Ordering::Relaxed);
         if due > done {
-            let now = iso(SystemTime::now());
-            let chunk: String = (done + 1..=due).map(|n| format!("{now} torchio-log line {n} of {lines}\n")).collect();
+            let now = SystemTime::now();
+            let chunk: String = (done + 1..=due).map(|n| line(format, now, n, lines) + "\n").collect();
             let _ = out.write_all(chunk.as_bytes());
             sent.store(due, Ordering::Relaxed);
         }
@@ -131,7 +146,7 @@ mod tests {
     async fn it_writes_the_lines_at_the_rate_and_stops() {
         let sent = AtomicI64::new(0);
         let mut out = Vec::new();
-        write_lines(30, 10, &sent, &mut out).await;
+        write_lines(30, 10, LogFormat::Text, &sent, &mut out).await;
 
         let text = String::from_utf8(out).unwrap();
         let lines: Vec<&str> = text.lines().collect();
@@ -142,11 +157,24 @@ mod tests {
     }
 
     #[tokio::test(start_paused = true)]
+    async fn json_lines_have_the_same_message() {
+        let sent = AtomicI64::new(0);
+        let mut out = Vec::new();
+        write_lines(3, 100, LogFormat::Json, &sent, &mut out).await;
+
+        let text = String::from_utf8(out).unwrap();
+        let lines: Vec<serde_json::Value> = text.lines().map(|l| serde_json::from_str(l).unwrap()).collect();
+        assert_eq!(lines.len(), 3);
+        assert_eq!(lines[2]["message"], "torchio-log line 3 of 3");
+        assert_eq!(lines[2]["level"], "info");
+    }
+
+    #[tokio::test(start_paused = true)]
     async fn it_does_not_write_faster_than_the_rate() {
         let sent = Arc::new(AtomicI64::new(0));
         let task = tokio::spawn({
             let sent = Arc::clone(&sent);
-            async move { write_lines(1000, 10, &sent, &mut std::io::sink()).await }
+            async move { write_lines(1000, 10, LogFormat::Text, &sent, &mut std::io::sink()).await }
         });
         tokio::time::sleep(Duration::from_millis(2500)).await;
         let so_far = sent.load(Ordering::Relaxed);

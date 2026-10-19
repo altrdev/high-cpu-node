@@ -1,4 +1,5 @@
 //! The configuration: every setting comes from an environment variable and has a default.
+use crate::logging::LogFormat;
 use serde::Serialize;
 use std::env;
 
@@ -43,6 +44,7 @@ pub struct Config {
     pub max_log_rate: i64,
     pub trust_proxy: TrustProxy,
     pub disk_dir: String,
+    pub log_format: LogFormat,
 }
 
 /// A number as it may be written in an environment variable: with spaces around it, in
@@ -75,6 +77,16 @@ fn positive_int(get: &impl Fn(&str) -> Option<String>, warn: &mut impl FnMut(Str
     }
 }
 
+fn log_format(get: &impl Fn(&str) -> Option<String>, warn: &mut impl FnMut(String)) -> LogFormat {
+    match get("LOG_FORMAT") {
+        None => LogFormat::default(),
+        Some(value) => LogFormat::parse(&value).unwrap_or_else(|| {
+            warn(format!("LOG_FORMAT={value} is not text or json, using text"));
+            LogFormat::default()
+        }),
+    }
+}
+
 fn trust_proxy(get: &impl Fn(&str) -> Option<String>) -> TrustProxy {
     match get("TRUST_PROXY").as_deref() {
         None | Some("") | Some("false") => TrustProxy::Bool(false),
@@ -96,7 +108,9 @@ fn temp_dir() -> String {
 
 impl Config {
     pub fn from_env() -> Config {
-        Config::read(|name| env::var(name).ok(), |message| eprintln!("{message}"))
+        // the format of the warnings is the one the variable asks for, even if it is not read yet
+        let format = env::var("LOG_FORMAT").ok().and_then(|value| LogFormat::parse(&value)).unwrap_or_default();
+        Config::read(|name| env::var(name).ok(), |message| format.warn(&message))
     }
 
     /// `get` reads a variable and `warn` reports a setting that was replaced, so tests can supply both
@@ -143,6 +157,7 @@ impl Config {
             default_log_rate: 100,
             max_log_rate,
             trust_proxy: trust_proxy(&get),
+            log_format: log_format(&get, &mut warn),
             disk_dir: get("DISK_DIR").filter(|dir| !dir.is_empty()).unwrap_or_else(temp_dir),
         }
     }
@@ -193,6 +208,15 @@ mod tests {
         let (config, warnings) = read(&[("PORT", " 8080 "), ("MAX_FD", "1e3"), ("MAX_LOG_RATE", "2.5")]);
         assert_eq!((config.port, config.max_fd, config.max_log_rate), (8080, 1000, 10000));
         assert_eq!(warnings.len(), 1);
+    }
+
+    #[test]
+    fn log_format_is_text_unless_json_is_asked() {
+        assert_eq!(read(&[]).0.log_format, LogFormat::Text);
+        assert_eq!(read(&[("LOG_FORMAT", "json")]).0.log_format, LogFormat::Json);
+        let (config, warnings) = read(&[("LOG_FORMAT", "xml")]);
+        assert_eq!(config.log_format, LogFormat::Text);
+        assert_eq!(warnings, ["LOG_FORMAT=xml is not text or json, using text"]);
     }
 
     #[test]
