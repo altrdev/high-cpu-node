@@ -9,12 +9,37 @@ pub fn get(url: &str, timeout: Duration) -> Result<(u16, String), String> {
 
 /// GET `url`, with `Authorization: Bearer <token>` when there is a token
 pub fn get_with_token(url: &str, token: Option<&str>, timeout: Duration) -> Result<(u16, String), String> {
-    let agent: ureq::Agent = ureq::Agent::config_builder().timeout_global(Some(timeout)).http_status_as_error(false).build().into();
-    let mut request = agent.get(url);
+    let mut request = agent(timeout).get(url);
     if let Some(token) = token {
         request = request.header("Authorization", format!("Bearer {token}"));
     }
     let mut response = request.call().map_err(|e| e.to_string())?;
+    let status = response.status().as_u16();
+    let body = response.body_mut().read_to_string().map_err(|e| e.to_string())?;
+    Ok((status, body))
+}
+
+fn agent(timeout: Duration) -> ureq::Agent {
+    ureq::Agent::config_builder().timeout_global(Some(timeout)).http_status_as_error(false).build().into()
+}
+
+/// A request with a method other than GET: `POST` with `body`, or `DELETE`
+pub fn send(method: &str, url: &str, token: Option<&str>, body: &str, timeout: Duration) -> Result<(u16, String), String> {
+    let agent = agent(timeout);
+    let authorization = token.map(|token| format!("Bearer {token}"));
+    let mut response = if method == "POST" {
+        let mut request = agent.post(url);
+        if let Some(authorization) = &authorization {
+            request = request.header("Authorization", authorization);
+        }
+        request.send(body.as_bytes()).map_err(|e| e.to_string())?
+    } else {
+        let mut request = agent.delete(url);
+        if let Some(authorization) = &authorization {
+            request = request.header("Authorization", authorization);
+        }
+        request.call().map_err(|e| e.to_string())?
+    };
     let status = response.status().as_u16();
     let body = response.body_mut().read_to_string().map_err(|e| e.to_string())?;
     Ok((status, body))
