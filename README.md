@@ -322,7 +322,7 @@ Returns a JSON document with what the server is doing right now. It takes no par
 ```json
 {
   "name": "torchio",
-  "version": "3.5.0",
+  "version": "4.0.0",
   "uptimeSeconds": 321,
   "auth": false,
   "stress": { "workers": 4, "inFlight": 2, "perWorker": [1, 1, 0, 0], "burn": null },

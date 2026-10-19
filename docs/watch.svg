@@ -5,10 +5,10 @@
 <text x="445.5" y="19" text-anchor="middle" font-size="12" fill="#8b949e" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">torchio watch</text>
 <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="14">
 <text x="32" y="67" textLength="59" lengthAdjust="spacingAndGlyphs" fill="#ffaf5f" font-weight="bold" xml:space="preserve">torchio</text>
-<text x="100" y="67" textLength="42" lengthAdjust="spacingAndGlyphs" fill="#808080" xml:space="preserve">3.5.0</text>
-<text x="159" y="67" textLength="177" lengthAdjust="spacingAndGlyphs" fill="#5fafff" xml:space="preserve">http://127.0.0.1:3981</text>
-<text x="353" y="67" textLength="8" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">●</text>
-<text x="370" y="67" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">up</text>
+<text x="100" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#808080" xml:space="preserve">4.x</text>
+<text x="142" y="67" textLength="177" lengthAdjust="spacingAndGlyphs" fill="#5fafff" xml:space="preserve">http://127.0.0.1:3981</text>
+<text x="336" y="67" textLength="8" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">●</text>
+<text x="353" y="67" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">up</text>
 <text x="32" y="107" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#c9d1d9" font-weight="bold" xml:space="preserve">CPU</text>
 <text x="66" y="107" textLength="59" lengthAdjust="spacingAndGlyphs" fill="#c9d1d9" font-weight="bold" xml:space="preserve">workers</text>
 <text x="32" y="127" textLength="51" lengthAdjust="spacingAndGlyphs" fill="#c9d1d9" font-weight="bold" xml:space="preserve">Memory</text>
@@ -72,7 +72,7 @@
 <text x="867" y="307" textLength="34" lengthAdjust="spacingAndGlyphs" fill="#808080" xml:space="preserve">quit</text>
 <path fill="#444444" d="M24 82h8v1h-8zM32 82h8v1h-8zM41 82h8v1h-8zM49 82h8v1h-8zM58 82h8v1h-8zM66 82h8v1h-8zM75 82h8v1h-8zM83 82h8v1h-8zM91 82h8v1h-8zM100 82h8v1h-8zM108 82h8v1h-8zM117 82h8v1h-8zM125 82h8v1h-8zM134 82h8v1h-8zM142 82h8v1h-8zM150 82h8v1h-8zM159 82h8v1h-8zM167 82h8v1h-8zM176 82h8v1h-8zM184 82h8v1h-8zM193 82h8v1h-8zM201 82h8v1h-8zM209 82h8v1h-8zM218 82h8v1h-8zM226 82h8v1h-8zM235 82h8v1h-8zM243 82h8v1h-8zM252 82h8v1h-8zM260 82h8v1h-8zM268 82h8v1h-8zM277 82h8v1h-8zM285 82h8v1h-8zM294 82h8v1h-8zM302 82h8v1h-8zM311 82h8v1h-8zM319 82h8v1h-8zM327 82h8v1h-8zM336 82h8v1h-8zM344 82h8v1h-8zM353 82h8v1h-8zM361 82h8v1h-8zM370 82h8v1h-8zM378 82h8v1h-8zM386 82h8v1h-8zM395 82h8v1h-8zM403 82h8v1h-8zM412 82h8v1h-8zM420 82h8v1h-8zM429 82h8v1h-8zM437 82h8v1h-8zM446 82h8v1h-8zM454 82h8v1h-8zM462 82h8v1h-8zM471 82h8v1h-8zM479 82h8v1h-8zM488 82h8v1h-8zM496 82h8v1h-8zM505 82h8v1h-8zM513 82h8v1h-8zM521 82h8v1h-8zM530 82h8v1h-8zM538 82h8v1h-8zM547 82h8v1h-8zM555 82h8v1h-8zM564 82h8v1h-8zM572 82h8v1h-8zM580 82h8v1h-8zM589 82h8v1h-8zM597 82h8v1h-8zM606 82h8v1h-8zM614 82h8v1h-8zM623 82h8v1h-8zM631 82h8v1h-8zM639 82h8v1h-8zM648 82h8v1h-8zM656 82h8v1h-8zM665 82h8v1h-8zM673 82h8v1h-8zM682 82h8v1h-8zM690 82h8v1h-8zM698 82h8v1h-8zM707 82h8v1h-8zM715 82h8v1h-8zM724 82h8v1h-8zM732 82h8v1h-8zM741 82h8v1h-8zM749 82h8v1h-8zM757 82h8v1h-8zM766 82h8v1h-8zM774 82h8v1h-8zM783 82h8v1h-8zM791 82h8v1h-8zM24 202h8v1h-8zM32 202h8v1h-8zM41 202h8v1h-8zM49 202h8v1h-8zM58 202h8v1h-8zM66 202h8v1h-8zM75 202h8v1h-8zM83 202h8v1h-8zM91 202h8v1h-8zM100 202h8v1h-8zM108 202h8v1h-8zM117 202h8v1h-8zM125 202h8v1h-8zM134 202h8v1h-8zM142 202h8v1h-8zM150 202h8v1h-8zM159 202h8v1h-8zM167 202h8v1h-8zM176 202h8v1h-8zM184 202h8v1h-8zM193 202h8v1h-8zM201 202h8v1h-8zM209 202h8v1h-8zM218 202h8v1h-8zM226 202h8v1h-8zM235 202h8v1h-8zM243 202h8v1h-8zM252 202h8v1h-8zM260 202h8v1h-8zM268 202h8v1h-8zM277 202h8v1h-8zM285 202h8v1h-8zM294 202h8v1h-8zM302 202h8v1h-8zM311 202h8v1h-8zM319 202h8v1h-8zM327 202h8v1h-8zM336 202h8v1h-8zM344 202h8v1h-8zM353 202h8v1h-8zM361 202h8v1h-8zM370 202h8v1h-8zM378 202h8v1h-8zM386 202h8v1h-8zM395 202h8v1h-8zM403 202h8v1h-8zM412 202h8v1h-8zM420 202h8v1h-8zM429 202h8v1h-8zM437 202h8v1h-8zM446 202h8v1h-8zM454 202h8v1h-8zM462 202h8v1h-8zM471 202h8v1h-8zM479 202h8v1h-8zM488 202h8v1h-8zM496 202h8v1h-8zM505 202h8v1h-8zM513 202h8v1h-8zM521 202h8v1h-8zM530 202h8v1h-8zM538 202h8v1h-8zM547 202h8v1h-8zM555 202h8v1h-8zM564 202h8v1h-8zM572 202h8v1h-8zM580 202h8v1h-8zM589 202h8v1h-8zM597 202h8v1h-8zM606 202h8v1h-8zM614 202h8v1h-8zM623 202h8v1h-8zM631 202h8v1h-8zM639 202h8v1h-8zM648 202h8v1h-8zM656 202h8v1h-8zM665 202h8v1h-8zM673 202h8v1h-8zM682 202h8v1h-8zM690 202h8v1h-8zM698 202h8v1h-8zM707 202h8v1h-8zM715 202h8v1h-8zM724 202h8v1h-8zM732 202h8v1h-8zM741 202h8v1h-8zM749 202h8v1h-8zM757 202h8v1h-8zM766 202h8v1h-8zM774 202h8v1h-8zM783 202h8v1h-8zM791 202h8v1h-8z"/>
 <g opacity="1"><animate attributeName="opacity" calcMode="discrete" dur="30.4s" repeatCount="indefinite" keyTimes="0.00000;0.04309;1.00000" values="1;0;0"/>
-<text x="395" y="67" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">0s</text>
+<text x="378" y="67" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">0s</text>
 <text x="159" y="107" textLength="169" lengthAdjust="spacingAndGlyphs" fill="#444444" xml:space="preserve">····················</text>
 <text x="353" y="107" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00af5f" xml:space="preserve">0%</text>
 <text x="386" y="107" textLength="8" lengthAdjust="spacingAndGlyphs" fill="#c9d1d9" xml:space="preserve">0</text>
@@ -106,7 +106,7 @@
 <path fill="#005fff" d="M159 134h1v16h-1z"/>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" dur="30.4s" repeatCount="indefinite" keyTimes="0.00000;0.04309;0.07697;1.00000" values="0;1;0;0"/>
-<text x="395" y="67" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">1s</text>
+<text x="378" y="67" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">1s</text>
 <text x="159" y="107" textLength="169" lengthAdjust="spacingAndGlyphs" fill="#444444" xml:space="preserve">····················</text>
 <text x="353" y="107" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00af5f" xml:space="preserve">0%</text>
 <text x="386" y="107" textLength="8" lengthAdjust="spacingAndGlyphs" fill="#c9d1d9" xml:space="preserve">0</text>
@@ -140,7 +140,7 @@
 <path fill="#005fff" d="M159 134h1v16h-1z"/>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" dur="30.4s" repeatCount="indefinite" keyTimes="0.00000;0.07697;0.10000;1.00000" values="0;1;0;0"/>
-<text x="395" y="67" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">2s</text>
+<text x="378" y="67" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">2s</text>
 <text x="159" y="107" textLength="169" lengthAdjust="spacingAndGlyphs" fill="#444444" xml:space="preserve">····················</text>
 <text x="353" y="107" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00af5f" xml:space="preserve">0%</text>
 <text x="386" y="107" textLength="8" lengthAdjust="spacingAndGlyphs" fill="#c9d1d9" xml:space="preserve">0</text>
@@ -174,7 +174,7 @@
 <path fill="#005fff" d="M159 134h1v16h-1z"/>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" dur="30.4s" repeatCount="indefinite" keyTimes="0.00000;0.10000;0.12171;1.00000" values="0;1;0;0"/>
-<text x="395" y="67" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">2s</text>
+<text x="378" y="67" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">2s</text>
 <text x="159" y="107" textLength="169" lengthAdjust="spacingAndGlyphs" fill="#444444" xml:space="preserve">····················</text>
 <text x="353" y="107" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00af5f" xml:space="preserve">0%</text>
 <text x="386" y="107" textLength="8" lengthAdjust="spacingAndGlyphs" fill="#c9d1d9" xml:space="preserve">0</text>
@@ -214,7 +214,7 @@
 <path fill="#005fff" d="M159 134h1v16h-1z"/>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" dur="30.4s" repeatCount="indefinite" keyTimes="0.00000;0.12171;0.14375;1.00000" values="0;1;0;0"/>
-<text x="395" y="67" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">3s</text>
+<text x="378" y="67" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">3s</text>
 <text x="159" y="107" textLength="169" lengthAdjust="spacingAndGlyphs" fill="#444444" xml:space="preserve">····················</text>
 <text x="353" y="107" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00af5f" xml:space="preserve">0%</text>
 <text x="386" y="107" textLength="8" lengthAdjust="spacingAndGlyphs" fill="#c9d1d9" xml:space="preserve">0</text>
@@ -255,7 +255,7 @@
 <path fill="#005fff" d="M159 134h1v16h-1z"/>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" dur="30.4s" repeatCount="indefinite" keyTimes="0.00000;0.14375;0.16612;1.00000" values="0;1;0;0"/>
-<text x="395" y="67" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">4s</text>
+<text x="378" y="67" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">4s</text>
 <text x="159" y="107" textLength="169" lengthAdjust="spacingAndGlyphs" fill="#444444" xml:space="preserve">····················</text>
 <text x="353" y="107" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00af5f" xml:space="preserve">0%</text>
 <text x="386" y="107" textLength="8" lengthAdjust="spacingAndGlyphs" fill="#c9d1d9" xml:space="preserve">0</text>
@@ -297,7 +297,7 @@
 <path fill="#005fff" d="M159 134h1v16h-1z"/>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" dur="30.4s" repeatCount="indefinite" keyTimes="0.00000;0.16612;0.19375;1.00000" values="0;1;0;0"/>
-<text x="395" y="67" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">4s</text>
+<text x="378" y="67" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">4s</text>
 <text x="159" y="107" textLength="169" lengthAdjust="spacingAndGlyphs" fill="#444444" xml:space="preserve">····················</text>
 <text x="353" y="107" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00af5f" xml:space="preserve">0%</text>
 <text x="386" y="107" textLength="8" lengthAdjust="spacingAndGlyphs" fill="#c9d1d9" xml:space="preserve">0</text>
@@ -339,7 +339,7 @@
 <path fill="#005fff" d="M159 134h1v16h-1z"/>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" dur="30.4s" repeatCount="indefinite" keyTimes="0.00000;0.19375;0.21875;1.00000" values="0;1;0;0"/>
-<text x="395" y="67" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">5s</text>
+<text x="378" y="67" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">5s</text>
 <text x="159" y="107" textLength="169" lengthAdjust="spacingAndGlyphs" fill="#444444" xml:space="preserve">····················</text>
 <text x="353" y="107" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00af5f" xml:space="preserve">0%</text>
 <text x="386" y="107" textLength="8" lengthAdjust="spacingAndGlyphs" fill="#c9d1d9" xml:space="preserve">0</text>
@@ -384,7 +384,7 @@
 <path fill="#005fff" d="M159 134h1v16h-1z"/>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" dur="30.4s" repeatCount="indefinite" keyTimes="0.00000;0.21875;0.24507;1.00000" values="0;1;0;0"/>
-<text x="395" y="67" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">6s</text>
+<text x="378" y="67" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">6s</text>
 <text x="159" y="107" textLength="169" lengthAdjust="spacingAndGlyphs" fill="#444444" xml:space="preserve">····················</text>
 <text x="353" y="107" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00af5f" xml:space="preserve">0%</text>
 <text x="386" y="107" textLength="8" lengthAdjust="spacingAndGlyphs" fill="#c9d1d9" xml:space="preserve">0</text>
@@ -441,7 +441,7 @@
 <path fill="#ffd75f" d="M268 114h8v16h-8zM277 114h8v16h-8z"/>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" dur="30.4s" repeatCount="indefinite" keyTimes="0.00000;0.24507;0.27072;1.00000" values="0;1;0;0"/>
-<text x="395" y="67" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">7s</text>
+<text x="378" y="67" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">7s</text>
 <text x="159" y="107" textLength="169" lengthAdjust="spacingAndGlyphs" fill="#444444" xml:space="preserve">····················</text>
 <text x="353" y="107" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00af5f" xml:space="preserve">0%</text>
 <text x="386" y="107" textLength="8" lengthAdjust="spacingAndGlyphs" fill="#c9d1d9" xml:space="preserve">0</text>
@@ -498,7 +498,7 @@
 <path fill="#ffd75f" d="M268 114h8v16h-8zM277 114h8v16h-8z"/>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" dur="30.4s" repeatCount="indefinite" keyTimes="0.00000;0.27072;0.29309;1.00000" values="0;1;0;0"/>
-<text x="395" y="67" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">8s</text>
+<text x="378" y="67" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">8s</text>
 <text x="159" y="107" textLength="169" lengthAdjust="spacingAndGlyphs" fill="#444444" xml:space="preserve">····················</text>
 <text x="353" y="107" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00af5f" xml:space="preserve">0%</text>
 <text x="386" y="107" textLength="8" lengthAdjust="spacingAndGlyphs" fill="#c9d1d9" xml:space="preserve">0</text>
@@ -555,7 +555,7 @@
 <path fill="#ffd75f" d="M268 114h8v16h-8zM277 114h8v16h-8z"/>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" dur="30.4s" repeatCount="indefinite" keyTimes="0.00000;0.29309;0.31382;1.00000" values="0;1;0;0"/>
-<text x="395" y="67" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">8s</text>
+<text x="378" y="67" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">8s</text>
 <text x="159" y="107" textLength="169" lengthAdjust="spacingAndGlyphs" fill="#444444" xml:space="preserve">····················</text>
 <text x="353" y="107" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00af5f" xml:space="preserve">0%</text>
 <text x="386" y="107" textLength="8" lengthAdjust="spacingAndGlyphs" fill="#c9d1d9" xml:space="preserve">0</text>
@@ -607,7 +607,7 @@
 <path fill="#ffd75f" d="M268 114h8v16h-8zM277 114h8v16h-8z"/>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" dur="30.4s" repeatCount="indefinite" keyTimes="0.00000;0.31382;0.33487;1.00000" values="0;1;0;0"/>
-<text x="395" y="67" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">9s</text>
+<text x="378" y="67" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">9s</text>
 <text x="159" y="107" textLength="169" lengthAdjust="spacingAndGlyphs" fill="#444444" xml:space="preserve">····················</text>
 <text x="353" y="107" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00af5f" xml:space="preserve">0%</text>
 <text x="386" y="107" textLength="8" lengthAdjust="spacingAndGlyphs" fill="#c9d1d9" xml:space="preserve">0</text>
@@ -660,7 +660,7 @@
 <path fill="#ffd75f" d="M268 114h8v16h-8zM277 114h8v16h-8z"/>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" dur="30.4s" repeatCount="indefinite" keyTimes="0.00000;0.33487;0.35691;1.00000" values="0;1;0;0"/>
-<text x="395" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">10s</text>
+<text x="378" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">10s</text>
 <text x="159" y="107" textLength="169" lengthAdjust="spacingAndGlyphs" fill="#444444" xml:space="preserve">····················</text>
 <text x="353" y="107" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00af5f" xml:space="preserve">0%</text>
 <text x="386" y="107" textLength="8" lengthAdjust="spacingAndGlyphs" fill="#c9d1d9" xml:space="preserve">0</text>
@@ -714,7 +714,7 @@
 <path fill="#ffd75f" d="M268 114h8v16h-8zM277 114h8v16h-8z"/>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" dur="30.4s" repeatCount="indefinite" keyTimes="0.00000;0.35691;0.38257;1.00000" values="0;1;0;0"/>
-<text x="395" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">11s</text>
+<text x="378" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">11s</text>
 <text x="159" y="107" textLength="169" lengthAdjust="spacingAndGlyphs" fill="#444444" xml:space="preserve">····················</text>
 <text x="353" y="107" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00af5f" xml:space="preserve">0%</text>
 <text x="386" y="107" textLength="8" lengthAdjust="spacingAndGlyphs" fill="#c9d1d9" xml:space="preserve">0</text>
@@ -772,7 +772,7 @@
 <path fill="#ffd75f" d="M268 114h8v16h-8zM277 114h8v16h-8z"/>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" dur="30.4s" repeatCount="indefinite" keyTimes="0.00000;0.38257;0.41743;1.00000" values="0;1;0;0"/>
-<text x="395" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">12s</text>
+<text x="378" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">12s</text>
 <text x="294" y="107" textLength="34" lengthAdjust="spacingAndGlyphs" fill="#444444" xml:space="preserve">····</text>
 <text x="344" y="107" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#ffaf5f" xml:space="preserve">80%</text>
 <text x="386" y="107" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#c9d1d9" xml:space="preserve">80%</text>
@@ -838,7 +838,7 @@
 <path fill="#ffd75f" d="M268 94h8v16h-8zM277 94h8v16h-8zM268 114h8v16h-8zM277 114h8v16h-8z"/>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" dur="30.4s" repeatCount="indefinite" keyTimes="0.00000;0.41743;0.45164;1.00000" values="0;1;0;0"/>
-<text x="395" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">13s</text>
+<text x="378" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">13s</text>
 <text x="294" y="107" textLength="34" lengthAdjust="spacingAndGlyphs" fill="#444444" xml:space="preserve">····</text>
 <text x="344" y="107" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#ffaf5f" xml:space="preserve">80%</text>
 <text x="386" y="107" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#c9d1d9" xml:space="preserve">80%</text>
@@ -904,7 +904,7 @@
 <path fill="#ffd75f" d="M268 94h8v16h-8zM277 94h8v16h-8zM268 114h8v16h-8zM277 114h8v16h-8z"/>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" dur="30.4s" repeatCount="indefinite" keyTimes="0.00000;0.45164;0.47368;1.00000" values="0;1;0;0"/>
-<text x="395" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">14s</text>
+<text x="378" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">14s</text>
 <text x="294" y="107" textLength="34" lengthAdjust="spacingAndGlyphs" fill="#444444" xml:space="preserve">····</text>
 <text x="344" y="107" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#ffaf5f" xml:space="preserve">80%</text>
 <text x="386" y="107" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#c9d1d9" xml:space="preserve">80%</text>
@@ -970,7 +970,7 @@
 <path fill="#ffd75f" d="M268 94h8v16h-8zM277 94h8v16h-8zM268 114h8v16h-8zM277 114h8v16h-8z"/>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" dur="30.4s" repeatCount="indefinite" keyTimes="0.00000;0.47368;0.49441;1.00000" values="0;1;0;0"/>
-<text x="395" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">14s</text>
+<text x="378" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">14s</text>
 <text x="294" y="107" textLength="34" lengthAdjust="spacingAndGlyphs" fill="#444444" xml:space="preserve">····</text>
 <text x="344" y="107" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#ffaf5f" xml:space="preserve">80%</text>
 <text x="386" y="107" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#c9d1d9" xml:space="preserve">80%</text>
@@ -1031,7 +1031,7 @@
 <path fill="#ffd75f" d="M268 94h8v16h-8zM277 94h8v16h-8zM268 114h8v16h-8zM277 114h8v16h-8z"/>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" dur="30.4s" repeatCount="indefinite" keyTimes="0.00000;0.49441;0.51513;1.00000" values="0;1;0;0"/>
-<text x="395" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">15s</text>
+<text x="378" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">15s</text>
 <text x="294" y="107" textLength="34" lengthAdjust="spacingAndGlyphs" fill="#444444" xml:space="preserve">····</text>
 <text x="344" y="107" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#ffaf5f" xml:space="preserve">80%</text>
 <text x="386" y="107" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#c9d1d9" xml:space="preserve">80%</text>
@@ -1093,7 +1093,7 @@
 <path fill="#ffd75f" d="M268 94h8v16h-8zM277 94h8v16h-8zM268 114h8v16h-8zM277 114h8v16h-8z"/>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" dur="30.4s" repeatCount="indefinite" keyTimes="0.00000;0.51513;0.53684;1.00000" values="0;1;0;0"/>
-<text x="395" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">16s</text>
+<text x="378" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">16s</text>
 <text x="294" y="107" textLength="34" lengthAdjust="spacingAndGlyphs" fill="#444444" xml:space="preserve">····</text>
 <text x="344" y="107" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#ffaf5f" xml:space="preserve">80%</text>
 <text x="386" y="107" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#c9d1d9" xml:space="preserve">80%</text>
@@ -1156,7 +1156,7 @@
 <path fill="#ffd75f" d="M268 94h8v16h-8zM277 94h8v16h-8zM268 114h8v16h-8zM277 114h8v16h-8z"/>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" dur="30.4s" repeatCount="indefinite" keyTimes="0.00000;0.53684;0.55921;1.00000" values="0;1;0;0"/>
-<text x="395" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">16s</text>
+<text x="378" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">16s</text>
 <text x="294" y="107" textLength="34" lengthAdjust="spacingAndGlyphs" fill="#444444" xml:space="preserve">····</text>
 <text x="344" y="107" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#ffaf5f" xml:space="preserve">80%</text>
 <text x="386" y="107" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#c9d1d9" xml:space="preserve">80%</text>
@@ -1220,7 +1220,7 @@
 <path fill="#ffd75f" d="M268 94h8v16h-8zM277 94h8v16h-8zM268 114h8v16h-8zM277 114h8v16h-8z"/>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" dur="30.4s" repeatCount="indefinite" keyTimes="0.00000;0.55921;0.58454;1.00000" values="0;1;0;0"/>
-<text x="395" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">17s</text>
+<text x="378" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">17s</text>
 <text x="294" y="107" textLength="34" lengthAdjust="spacingAndGlyphs" fill="#444444" xml:space="preserve">····</text>
 <text x="344" y="107" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#ffaf5f" xml:space="preserve">80%</text>
 <text x="386" y="107" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#c9d1d9" xml:space="preserve">80%</text>
@@ -1293,7 +1293,7 @@
 <path fill="#ffd75f" d="M268 94h8v16h-8zM277 94h8v16h-8zM268 114h8v16h-8zM277 114h8v16h-8z"/>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" dur="30.4s" repeatCount="indefinite" keyTimes="0.00000;0.58454;0.61908;1.00000" values="0;1;0;0"/>
-<text x="395" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">18s</text>
+<text x="378" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">18s</text>
 <text x="294" y="107" textLength="34" lengthAdjust="spacingAndGlyphs" fill="#444444" xml:space="preserve">····</text>
 <text x="344" y="107" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#ffaf5f" xml:space="preserve">80%</text>
 <text x="386" y="107" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#c9d1d9" xml:space="preserve">80%</text>
@@ -1369,7 +1369,7 @@
 <path fill="#ffd75f" d="M268 94h8v16h-8zM277 94h8v16h-8zM268 114h8v16h-8zM277 114h8v16h-8z"/>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" dur="30.4s" repeatCount="indefinite" keyTimes="0.00000;0.61908;0.64079;1.00000" values="0;1;0;0"/>
-<text x="395" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">19s</text>
+<text x="378" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">19s</text>
 <text x="294" y="107" textLength="34" lengthAdjust="spacingAndGlyphs" fill="#444444" xml:space="preserve">····</text>
 <text x="344" y="107" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#ffaf5f" xml:space="preserve">80%</text>
 <text x="386" y="107" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#c9d1d9" xml:space="preserve">80%</text>
@@ -1445,7 +1445,7 @@
 <path fill="#ffd75f" d="M268 94h8v16h-8zM277 94h8v16h-8zM268 114h8v16h-8zM277 114h8v16h-8z"/>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" dur="30.4s" repeatCount="indefinite" keyTimes="0.00000;0.64079;0.66184;1.00000" values="0;1;0;0"/>
-<text x="395" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">19s</text>
+<text x="378" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">19s</text>
 <text x="294" y="107" textLength="34" lengthAdjust="spacingAndGlyphs" fill="#444444" xml:space="preserve">····</text>
 <text x="344" y="107" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#ffaf5f" xml:space="preserve">80%</text>
 <text x="386" y="107" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#c9d1d9" xml:space="preserve">80%</text>
@@ -1510,7 +1510,7 @@
 <path fill="#ffd75f" d="M268 94h8v16h-8zM277 94h8v16h-8zM268 114h8v16h-8zM277 114h8v16h-8z"/>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" dur="30.4s" repeatCount="indefinite" keyTimes="0.00000;0.66184;0.68322;1.00000" values="0;1;0;0"/>
-<text x="395" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">20s</text>
+<text x="378" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">20s</text>
 <text x="294" y="107" textLength="34" lengthAdjust="spacingAndGlyphs" fill="#444444" xml:space="preserve">····</text>
 <text x="344" y="107" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#ffaf5f" xml:space="preserve">80%</text>
 <text x="386" y="107" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#c9d1d9" xml:space="preserve">80%</text>
@@ -1576,7 +1576,7 @@
 <path fill="#ffd75f" d="M268 94h8v16h-8zM277 94h8v16h-8zM268 114h8v16h-8zM277 114h8v16h-8z"/>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" dur="30.4s" repeatCount="indefinite" keyTimes="0.00000;0.68322;0.70526;1.00000" values="0;1;0;0"/>
-<text x="395" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">21s</text>
+<text x="378" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">21s</text>
 <text x="294" y="107" textLength="34" lengthAdjust="spacingAndGlyphs" fill="#444444" xml:space="preserve">····</text>
 <text x="344" y="107" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#ffaf5f" xml:space="preserve">80%</text>
 <text x="386" y="107" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#c9d1d9" xml:space="preserve">80%</text>
@@ -1643,7 +1643,7 @@
 <path fill="#ffd75f" d="M268 94h8v16h-8zM277 94h8v16h-8zM268 114h8v16h-8zM277 114h8v16h-8z"/>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" dur="30.4s" repeatCount="indefinite" keyTimes="0.00000;0.70526;0.73092;1.00000" values="0;1;0;0"/>
-<text x="395" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">21s</text>
+<text x="378" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">21s</text>
 <text x="294" y="107" textLength="34" lengthAdjust="spacingAndGlyphs" fill="#444444" xml:space="preserve">····</text>
 <text x="344" y="107" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#ffaf5f" xml:space="preserve">80%</text>
 <text x="386" y="107" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#c9d1d9" xml:space="preserve">80%</text>
@@ -1709,7 +1709,7 @@
 <path fill="#ffd75f" d="M268 94h8v16h-8zM277 94h8v16h-8zM268 114h8v16h-8zM277 114h8v16h-8z"/>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" dur="30.4s" repeatCount="indefinite" keyTimes="0.00000;0.73092;0.76546;1.00000" values="0;1;0;0"/>
-<text x="395" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">22s</text>
+<text x="378" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">22s</text>
 <text x="294" y="107" textLength="34" lengthAdjust="spacingAndGlyphs" fill="#444444" xml:space="preserve">····</text>
 <text x="344" y="107" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#ffaf5f" xml:space="preserve">80%</text>
 <text x="386" y="107" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#c9d1d9" xml:space="preserve">80%</text>
@@ -1781,7 +1781,7 @@
 <path fill="#ffd75f" d="M268 94h8v16h-8zM277 94h8v16h-8zM268 114h8v16h-8zM277 114h8v16h-8z"/>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" dur="30.4s" repeatCount="indefinite" keyTimes="0.00000;0.76546;0.80164;1.00000" values="0;1;0;0"/>
-<text x="395" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">23s</text>
+<text x="378" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">23s</text>
 <text x="294" y="107" textLength="34" lengthAdjust="spacingAndGlyphs" fill="#444444" xml:space="preserve">····</text>
 <text x="344" y="107" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#ffaf5f" xml:space="preserve">80%</text>
 <text x="386" y="107" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#c9d1d9" xml:space="preserve">80%</text>
@@ -1853,7 +1853,7 @@
 <path fill="#ffd75f" d="M268 94h8v16h-8zM277 94h8v16h-8zM268 114h8v16h-8zM277 114h8v16h-8z"/>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" dur="30.4s" repeatCount="indefinite" keyTimes="0.00000;0.80164;0.83717;1.00000" values="0;1;0;0"/>
-<text x="395" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">24s</text>
+<text x="378" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">24s</text>
 <text x="294" y="107" textLength="34" lengthAdjust="spacingAndGlyphs" fill="#444444" xml:space="preserve">····</text>
 <text x="344" y="107" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#ffaf5f" xml:space="preserve">80%</text>
 <text x="386" y="107" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#c9d1d9" xml:space="preserve">80%</text>
@@ -1925,7 +1925,7 @@
 <path fill="#ffd75f" d="M268 94h8v16h-8zM277 94h8v16h-8zM268 114h8v16h-8zM277 114h8v16h-8z"/>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" dur="30.4s" repeatCount="indefinite" keyTimes="0.00000;0.83717;0.86447;1.00000" values="0;1;0;0"/>
-<text x="395" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">25s</text>
+<text x="378" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">25s</text>
 <text x="159" y="107" textLength="169" lengthAdjust="spacingAndGlyphs" fill="#444444" xml:space="preserve">····················</text>
 <text x="353" y="107" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00af5f" xml:space="preserve">0%</text>
 <text x="386" y="107" textLength="8" lengthAdjust="spacingAndGlyphs" fill="#c9d1d9" xml:space="preserve">0</text>
@@ -1979,7 +1979,7 @@
 <path fill="#87d7d7" d="M774 116h8v14h-8zM783 116h8v14h-8zM791 116h8v14h-8zM800 116h8v14h-8zM808 116h8v14h-8zM816 116h8v14h-8zM825 116h8v14h-8zM833 116h8v14h-8zM774 136h8v14h-8zM783 136h8v14h-8zM791 136h8v14h-8zM800 136h8v14h-8zM808 136h8v14h-8zM816 136h8v14h-8zM825 136h8v14h-8zM833 136h8v14h-8z"/>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" dur="30.4s" repeatCount="indefinite" keyTimes="0.00000;0.86447;0.89901;1.00000" values="0;1;0;0"/>
-<text x="395" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">26s</text>
+<text x="378" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">26s</text>
 <text x="159" y="107" textLength="169" lengthAdjust="spacingAndGlyphs" fill="#444444" xml:space="preserve">····················</text>
 <text x="353" y="107" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00af5f" xml:space="preserve">0%</text>
 <text x="386" y="107" textLength="8" lengthAdjust="spacingAndGlyphs" fill="#c9d1d9" xml:space="preserve">0</text>
@@ -2027,7 +2027,7 @@
 <path fill="#87d7d7" d="M774 116h8v14h-8zM783 116h8v14h-8zM791 116h8v14h-8zM800 116h8v14h-8zM808 116h8v14h-8zM816 116h8v14h-8zM825 116h8v14h-8zM833 116h8v14h-8zM774 136h8v14h-8zM783 136h8v14h-8zM791 136h8v14h-8zM800 136h8v14h-8zM808 136h8v14h-8zM816 136h8v14h-8zM825 136h8v14h-8zM833 136h8v14h-8z"/>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" dur="30.4s" repeatCount="indefinite" keyTimes="0.00000;0.89901;0.93421;1.00000" values="0;1;0;0"/>
-<text x="395" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">27s</text>
+<text x="378" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">27s</text>
 <text x="159" y="107" textLength="169" lengthAdjust="spacingAndGlyphs" fill="#444444" xml:space="preserve">····················</text>
 <text x="353" y="107" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00af5f" xml:space="preserve">0%</text>
 <text x="386" y="107" textLength="8" lengthAdjust="spacingAndGlyphs" fill="#c9d1d9" xml:space="preserve">0</text>
@@ -2075,7 +2075,7 @@
 <path fill="#87d7d7" d="M774 116h8v14h-8zM783 116h8v14h-8zM791 116h8v14h-8zM800 116h8v14h-8zM808 116h8v14h-8zM816 116h8v14h-8zM825 116h8v14h-8zM833 116h8v14h-8zM774 136h8v14h-8zM783 136h8v14h-8zM791 136h8v14h-8zM800 136h8v14h-8zM808 136h8v14h-8zM816 136h8v14h-8zM825 136h8v14h-8zM833 136h8v14h-8z"/>
 </g>
 <g opacity="0"><animate attributeName="opacity" calcMode="discrete" dur="30.4s" repeatCount="indefinite" keyTimes="0.00000;0.93421;1.00000" values="0;1;1"/>
-<text x="395" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">28s</text>
+<text x="378" y="67" textLength="25" lengthAdjust="spacingAndGlyphs" fill="#00d787" xml:space="preserve">28s</text>
 <text x="159" y="107" textLength="169" lengthAdjust="spacingAndGlyphs" fill="#444444" xml:space="preserve">····················</text>
 <text x="353" y="107" textLength="17" lengthAdjust="spacingAndGlyphs" fill="#00af5f" xml:space="preserve">0%</text>
 <text x="386" y="107" textLength="8" lengthAdjust="spacingAndGlyphs" fill="#c9d1d9" xml:space="preserve">0</text>
