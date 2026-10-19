@@ -39,7 +39,7 @@ It installs the shell completions too. If Tab does nothing in zsh, see [Shell co
 A script that downloads the binary of the latest release for your system (macOS or Linux, `amd64` or `arm64`), checks its checksum and installs it:
 
 ```
-curl -fsSL https://raw.githubusercontent.com/altrdev/torchio/main/install.sh | sh
+curl -fsSL https://torchio.altr.dev/install | sh
 ```
 
 It installs in `/usr/local/bin` (with `sudo` if needed, or in `~/.local/bin` when there is none). `TORCHIO_VERSION=v4.0.0` picks a release and `TORCHIO_INSTALL_DIR` the folder, for example `curl -fsSL ... | TORCHIO_INSTALL_DIR=$HOME/bin sh`.
