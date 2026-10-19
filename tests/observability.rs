@@ -20,7 +20,9 @@ fn info_describes_the_server() {
     assert_eq!(info["disk"]["limitMb"], 300);
     assert_eq!(info["disk"]["dir"], server.disk_dir.path().to_str().unwrap());
     assert!(info["disk"]["freeMb"].as_i64().unwrap() > 0);
-    assert_eq!(info["fd"], json!({"held": 0, "limit": 10000}));
+    assert_eq!((&info["fd"]["held"], &info["fd"]["limit"]), (&json!(0), &json!(10000)));
+    // the limit of the process (`ulimit -n`), a number or null when there is none
+    assert!(info["fd"]["processLimit"].is_u64() || info["fd"]["processLimit"].is_null(), "{}", info["fd"]);
     assert!(info["log"].is_null());
     assert_eq!(
         info["limits"],

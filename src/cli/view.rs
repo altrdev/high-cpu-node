@@ -257,7 +257,9 @@ fn rows(style: &Style, info: &Info, history: &History) -> Vec<String> {
         ),
     ];
     if let Some(fd) = &info.fd {
-        rows.push(style.row("FDs held", fd.held, fd.limit, &format!("{} / {}", fd.held, fd.limit), &history.fd, false));
+        let (ceiling, by_process) = fd.ceiling();
+        let text = format!("{} / {}{}", fd.held, ceiling, if by_process { " (ulimit)" } else { "" });
+        rows.push(style.row("FDs held", fd.held, ceiling, &text, &history.fd, false));
     }
     if let Some(c) = &info.connections {
         rows.push(style.row("Connections", c.held, c.limit, &format!("{} / {}", c.held, c.limit), &history.connections, false));
@@ -367,6 +369,22 @@ mod tests {
         let mut history = History::default();
         history.record(&info);
         render(&Style::new(false), "http://x:3000", &info, &history)
+    }
+
+    #[test]
+    fn the_fd_bar_compares_with_the_lower_of_the_budget_and_the_process_limit() {
+        let low =
+            INFO.replace("\"fd\": {\"held\": 40, \"limit\": 10000}", "\"fd\": {\"held\": 2549, \"limit\": 10000, \"processLimit\": 2560}");
+        assert!(plain(&low).contains("FDs held      ████████████████████  2549 / 2560 (ulimit)"), "{}", plain(&low));
+        let high =
+            INFO.replace("\"fd\": {\"held\": 40, \"limit\": 10000}", "\"fd\": {\"held\": 40, \"limit\": 10000, \"processLimit\": 1048576}");
+        assert!(
+            plain(&high).contains("FDs held      ░░░░░░░░░░░░░░░░░░░░  40 / 10000") && !plain(&high).contains("ulimit"),
+            "a higher limit of the process changes nothing"
+        );
+        let none =
+            INFO.replace("\"fd\": {\"held\": 40, \"limit\": 10000}", "\"fd\": {\"held\": 40, \"limit\": 10000, \"processLimit\": null}");
+        assert!(plain(&none).contains("40 / 10000") && !plain(&none).contains("ulimit"), "no limit of the process changes nothing");
     }
 
     #[test]

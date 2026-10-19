@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
+## Unreleased
+
+### Changed
+- `/info` reports the limit of descriptors of the process (`fd.processLimit`, the soft `ulimit -n`), and the descriptors bar of `watch` and of the control panel compares with the lower of that and `MAX_FD`, so it is full when `EMFILE` comes and not at a quarter of a limit the process can't reach. `watch` marks it with `(ulimit)`.
+
 ## 4.6.0 - 2026-10-19
 
 ### Added
