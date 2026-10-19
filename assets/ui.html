@@ -225,6 +225,27 @@ function send(url, button, init = {}) {
         .finally(show);
 }
 
+// a slider with its name and its value, for the cards: `onInput` runs when it moves
+function addSlider(card, p, onInput) {
+    const row = el('div', 'row');
+    const input = document.createElement('input');
+    input.type = 'range';
+    input.min = p.min;
+    input.max = p.max;
+    input.step = p.step || 1;
+    input.value = Math.min(p.value, p.max);
+    const out = el('b');
+    const show = () => (out.textContent = `${input.value}${p.unit || ''}`);
+    input.addEventListener('input', () => {
+        show();
+        onInput();
+    });
+    show();
+    row.append(el('span', '', p.label), input, out);
+    card.append(row);
+    return input;
+}
+
 function buildControl(def) {
     const card = el('div', 'card ctl' + (def.danger ? ' dangerous' : ''));
     card.append(el('h3', '', def.title));
@@ -232,25 +253,8 @@ function buildControl(def) {
     const cmd = el('p', 'cmd');
     const query = () => def.params.map((p) => `${p.name}=${inputs[p.name].value}`).join('&');
     const urlFor = (path) => (def.params.length && path === def.path ? `${path}?${query()}` : path);
-    const refresh = () => {
-        cmd.textContent = `curl "${urlFor(def.path)}"`;
-        def.params.forEach((p) => (inputs[p.name].out.textContent = `${inputs[p.name].value}${p.unit || ''}`));
-    };
-    for (const p of def.params) {
-        const row = el('div', 'row');
-        const input = document.createElement('input');
-        input.type = 'range';
-        input.min = p.min;
-        input.max = p.max;
-        input.step = p.step || 1;
-        input.value = Math.min(p.value, p.max);
-        const out = el('b');
-        input.out = out;
-        input.addEventListener('input', refresh);
-        inputs[p.name] = input;
-        row.append(el('span', '', p.label), input, out);
-        card.append(row);
-    }
+    const refresh = () => (cmd.textContent = `curl "${urlFor(def.path)}"`);
+    for (const p of def.params) inputs[p.name] = addSlider(card, p, refresh);
     card.append(cmd);
     for (const action of def.actions) {
         const button = el('button', def.danger ? 'danger' : '', action.label);
@@ -288,11 +292,149 @@ function buildControls(info) {
         {title: 'File descriptors', path: '/fd', params: [{name: 'count', label: 'count', min: 1, max: info.fd ? info.fd.limit : 10000, value: 500}, secs('hold', 20)], actions: [{label: 'Open'}]},
         {title: 'Readiness', path: '/ready/off', params: [{name: 'seconds', label: 'seconds', min: 0, max: hold, value: 60, unit: ' s'}], actions: [{label: 'Make not ready'}, {label: 'Ready again', path: '/ready/on'}]},
         {title: 'Delay', path: '/delay', params: [{name: 'ms', label: 'ms', min: 0, max: info.limits.maxDelayMs, value: 3000, step: 100}], actions: [{label: 'Wait'}]},
+        buildStatus,
+        buildFlaky,
+        buildPayload,
         {title: 'Log', path: '/log', params: [{name: 'lines', label: 'lines', min: 1, max: info.limits.maxLogLines, value: 1000, step: 100}, {name: 'rate', label: 'rate', min: 1, max: info.limits.maxLogRate, value: 100, step: 10, unit: ' lines/s'}], actions: [{label: 'Write'}]},
         {title: 'Block', path: '/block', danger: true, params: [{name: 'ms', label: 'ms', min: 1, max: info.limits.maxBlockMs, value: Math.min(5000, info.limits.maxBlockMs), step: 500}], actions: [{label: 'Freeze the server'}]},
         {title: 'Crash', path: '/crash', danger: true, params: [{name: 'code', label: 'exit code', min: 0, max: 255, value: 137}, secs('after', 0)], actions: [{label: 'End the process'}]},
-    ].forEach(buildControl);
+    ].forEach((item) => (typeof item === 'function' ? item(info) : buildControl(item)));
     buildScenario();
+}
+
+// ---- cards that do more than one request: a status, a share of failures, a body
+const MB = 1024 * 1024;
+const megabytes = (bytes) => `${(bytes / MB).toFixed(1)} MB`;
+const speed = (bytes, seconds) => (seconds > 0 ? `${(bytes / MB / seconds).toFixed(1)} MB/s` : '- MB/s');
+function button(card, label, onClick) {
+    const b = el('button', '', label);
+    b.addEventListener('click', onClick);
+    card.append(b);
+    return b;
+}
+// the line of a card where what its buttons did is written
+function noteOf(card) {
+    const line = el('p', 'cap');
+    card.append(line);
+    return line;
+}
+
+function buildStatus() {
+    const card = el('div', 'card ctl');
+    card.append(el('h3', '', 'Status'));
+    const cmd = el('p', 'cmd');
+    const code = addSlider(card, {label: 'code', min: 200, max: 599, value: 503}, () => refresh());
+    const refresh = () => (cmd.textContent = `curl -i "/status/${code.value}"`);
+    card.append(cmd);
+    button(card, 'Ask', (event) => send(`/status/${code.value}`, event.target));
+    refresh();
+    $('controls').append(card);
+}
+
+// the failures come from the requests that arrive, so a button sends a batch and counts
+function buildFlaky(info) {
+    const card = el('div', 'card ctl');
+    card.append(el('h3', '', 'Flaky'));
+    const cmd = el('p', 'cmd');
+    const inputs = {
+        rate: addSlider(card, {label: 'rate', min: 0, max: 100, value: 30, step: 5, unit: '%'}, () => refresh()),
+        code: addSlider(card, {label: 'code', min: 400, max: 599, value: 503}, () => refresh()),
+        ms: addSlider(card, {label: 'ms', min: 0, max: info.limits.maxDelayMs, value: 0, step: 100}, () => refresh()),
+    };
+    const url = () => `/flaky?rate=${inputs.rate.value}&code=${inputs.code.value}&ms=${inputs.ms.value}`;
+    const refresh = () => (cmd.textContent = `curl "${url()}"`);
+    card.append(cmd);
+    button(card, 'One request', (event) => send(url(), event.target));
+    const note = noteOf(card);
+    const BATCH = 20;
+    button(card, `Send ${BATCH} requests`, async () => {
+        note.textContent = `Sending ${BATCH}…`;
+        const statuses = await Promise.all(
+            Array.from({length: BATCH}, () => fetch(url(), {signal: AbortSignal.timeout(120000)}).then((r) => r.status, () => 0)),
+        );
+        const failed = statuses.filter((status) => status >= 400).length;
+        const lost = statuses.filter((status) => status === 0).length;
+        note.textContent = `${failed} of ${BATCH} failed with ${inputs.code.value}, ${BATCH - failed - lost} answered 200${lost ? `, ${lost} got no answer` : ''}. Asked for ${inputs.rate.value}%.`;
+    });
+    refresh();
+    $('controls').append(card);
+}
+
+// a body in each direction: the browser counts what it gets and what it sends, so the road in between is the one tested
+function buildPayload(info) {
+    const max = info.limits.maxPayloadMb;
+    // the browser keeps what it sends in memory, so an upload is smaller than the limit of the server
+    const maxUpload = Math.min(max, 200);
+    const card = el('div', 'card ctl');
+    card.append(el('h3', '', 'Payload'));
+    const cmd = el('p', 'cmd');
+    const down = addSlider(card, {label: 'download', min: 1, max, value: Math.min(10, max), unit: ' MB'}, () => refresh());
+    const up = addSlider(card, {label: 'upload', min: 1, max: maxUpload, value: Math.min(10, maxUpload), unit: ' MB'}, () => refresh());
+    const refresh = () => (cmd.textContent = `curl -o /dev/null "/payload?mb=${down.value}"`);
+    card.append(cmd);
+    const note = noteOf(card);
+
+    const download = async () => {
+        const started = performance.now();
+        note.textContent = 'Asking…';
+        try {
+            const res = await request(`/payload?mb=${down.value}`);
+            if (!res.ok) return void (note.textContent = `${res.status} ${await res.text()}`);
+            const announced = Number(res.headers.get('content-length')) || null;
+            const reader = res.body.getReader();
+            let got = 0;
+            let shown = 0;
+            for (;;) {
+                const {done, value} = await reader.read();
+                if (done) break;
+                got += value.length;
+                if (performance.now() - shown > 100) {
+                    shown = performance.now();
+                    note.textContent = `Receiving… ${megabytes(got)} of ${down.value} MB`;
+                }
+            }
+            const seconds = (performance.now() - started) / 1000;
+            note.textContent = announced && announced !== got
+                ? `The body was cut short: ${got} of ${announced} bytes`
+                : `Received ${megabytes(got)} in ${seconds.toFixed(2)} s (${speed(got, seconds)})`;
+        } catch (e) {
+            note.textContent = `The body did not arrive: ${e.name === 'TimeoutError' ? 'timed out' : e.message}`;
+        }
+    };
+    const upload = async (body) => {
+        const started = performance.now();
+        note.textContent = `Sending ${megabytes(body.size)}…`;
+        try {
+            const res = await request('/payload', {method: 'POST', body});
+            const text = await res.text();
+            const seconds = (performance.now() - started) / 1000;
+            if (!res.ok) return void (note.textContent = `${res.status} ${text}`);
+            const report = JSON.parse(text);
+            note.textContent = `Sent ${megabytes(body.size)} in ${seconds.toFixed(2)} s (${speed(body.size, seconds)}), the server counted ${report.bytes} bytes`;
+        } catch (e) {
+            note.textContent = 'The connection was closed while the body was being sent. A limit on the size of the body, here or on the way?';
+        }
+    };
+    // random bytes, so nothing on the way can make the body smaller by compressing it
+    const generated = () => {
+        const piece = new Uint8Array(MB);
+        for (let at = 0; at < MB; at += 65536) crypto.getRandomValues(piece.subarray(at, at + 65536));
+        return new Blob(Array.from({length: Number(up.value)}, () => piece));
+    };
+    const picker = document.createElement('input');
+    picker.type = 'file';
+    picker.hidden = true;
+    picker.addEventListener('change', () => {
+        if (picker.files[0]) upload(picker.files[0]);
+        picker.value = '';
+    });
+
+    button(card, 'Download', download);
+    button(card, 'Upload generated data', () => upload(generated()));
+    button(card, 'Upload a file…', () => picker.click());
+    card.append(picker);
+    refresh();
+    $('controls').append(card);
 }
 
 // ---- scenario: a list of steps, started and stopped from here

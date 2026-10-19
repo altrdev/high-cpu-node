@@ -41,9 +41,16 @@ fn the_page_sends_the_token_and_calls_every_endpoint_of_the_tests() {
         "/block",
         "/scenario",
         "/stress",
+        "/connections",
+        "/flaky",
+        "/status/",
+        "/payload",
     ] {
-        assert!(page.contains(&format!("'{path}")) || page.contains(&format!("path: '{path}")), "the page does not use {path}");
+        let used = [format!("'{path}"), format!("path: '{path}"), format!("`{path}")].iter().any(|text| page.contains(text.as_str()));
+        assert!(used, "the page does not use {path}");
     }
+    // the one that ends the instance for memory has no button: it is not safe to be a click away
+    assert!(!page.contains("/oom"), "the page must not offer /oom");
 }
 
 #[test]
