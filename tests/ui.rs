@@ -26,8 +26,21 @@ fn the_page_sends_the_token_and_calls_every_endpoint_of_the_tests() {
     let server = Server::with(&[("UI", "1")]);
     let page = server.text("/ui");
     assert!(page.contains("Authorization"), "the page does not send the token");
-    for path in ["/info", "/metrics", "/cpu", "/leak", "/memory", "/disk", "/fd", "/ready/off", "/ready/on", "/delay", "/crash", "/stress"]
-    {
+    for path in [
+        "/info",
+        "/metrics",
+        "/cpu",
+        "/leak",
+        "/memory",
+        "/disk",
+        "/fd",
+        "/ready/off",
+        "/ready/on",
+        "/delay",
+        "/crash",
+        "/block",
+        "/stress",
+    ] {
         assert!(page.contains(&format!("'{path}")) || page.contains(&format!("path: '{path}")), "the page does not use {path}");
     }
 }

@@ -25,6 +25,7 @@ torchio crash 137 --after 5
 | `torchio connections [count] [hold]` | [`/connections`](endpoints.md#connections) |
 | `torchio log [lines] [rate]`     | [`/log`](endpoints.md#log)           |
 | `torchio crash [code] [after]`   | [`/crash`](endpoints.md#crash)       |
+| `torchio block [ms]`             | [`/block`](endpoints.md#block)       |
 | `torchio ready on \| off [seconds]` | [`/ready`](endpoints.md#ready)   |
 
 The values after the name are the parameters of the endpoint, in the order of the table; any of them can also be given by name, as `--hold 60` or `--hold=60`. The limits are the ones of the server: a value it refuses is printed with its `400` and the command exits with `1`. With [`TOKEN`](token.md#token), pass `--token <token>` or set `TOKEN`. `/stress`, `/delay` and `/flaky` with `ms` answer when they finish, so the command waits for them. Like `watch`, it speaks plain HTTP only.

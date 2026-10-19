@@ -1,5 +1,6 @@
 //! What the server is doing right now, in raw units, shared by `/info` (MB) and `/metrics` (bytes).
 use crate::app::AppState;
+use crate::resources::block::BlockSnapshot;
 use crate::resources::log::LogState;
 use crate::resources::ready::ReadyState;
 use crate::resources::shutdown::ShutdownSnapshot;
@@ -38,6 +39,7 @@ pub struct Snapshot {
     pub fd: Fd,
     pub connections: Connections,
     pub ready: ReadyState,
+    pub block: BlockSnapshot,
     pub log: Option<LogState>,
     pub shutdown: ShutdownSnapshot,
 }
@@ -62,6 +64,7 @@ impl AppState {
             fd: Fd { held: self.fd.budget().held(), limit: self.fd.budget().limit() },
             connections: Connections { held: self.connections.budget().held(), limit: self.connections.budget().limit() },
             ready: self.ready.state(),
+            block: self.block.snapshot(),
             log: self.log.state(),
             shutdown: self.shutdown.snapshot(),
         }

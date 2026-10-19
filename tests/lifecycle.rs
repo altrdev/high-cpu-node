@@ -330,3 +330,53 @@ fn crash_does_not_clean_up_and_the_next_start_does() {
     let next = Server::with(&[("DISK_DIR", &dir)]);
     assert!(next.disk_files().is_empty(), "leftovers are removed at startup");
 }
+
+#[test]
+fn block_freezes_the_server_for_the_time_asked_for() {
+    let server = Server::start();
+    assert_eq!(server.status("/block?ms=0"), 400);
+    assert_eq!(server.status("/block?ms=30001"), 400);
+    assert_eq!(server.info()["block"]["count"], 0);
+
+    assert_eq!(server.text("/block?ms=1500"), "Blocking for 1500 ms");
+    // the answer left before the threads went to sleep, which they do a moment later
+    sleep(200);
+    let asked = Instant::now();
+    assert_eq!(server.status("/"), 200);
+    assert!(asked.elapsed().as_millis() >= 500, "the server answered after {:?}, in the middle of the block", asked.elapsed());
+
+    let info = server.info();
+    assert_eq!((info["block"]["count"].as_u64(), info["block"]["lastMs"].as_u64()), (Some(1), Some(1500)));
+    let output = server.output();
+    assert!(output.contains("Blocking every thread of the server for 1500 ms"), "{output}");
+    wait_for("the end of the block in the log", 3000, || server.output().contains("The server answers again"));
+}
+
+#[test]
+fn block_is_limited_by_the_configuration() {
+    let server = Server::with(&[("MAX_BLOCK_MS", "100")]);
+    assert_eq!(server.status("/block?ms=101"), 400);
+    assert_eq!(server.json("/config")["maxBlockMs"], 100);
+}
+
+#[test]
+fn oom_is_refused_unless_it_is_allowed_and_nothing_is_allocated() {
+    let mut server = Server::start();
+    let response = server.get("/oom");
+    assert_eq!(response.status, 403);
+    assert!(response.body.contains("ALLOW_OOM=1"), "{}", response.body);
+    assert_eq!(server.json("/config")["allowOom"], false);
+    sleep(300);
+    assert!(server.exited().is_none());
+    assert!(server.rss_kb() < 200 * 1024, "nothing may be allocated: {} kB", server.rss_kb());
+}
+
+#[test]
+fn oom_needs_the_token_even_when_it_is_allowed() {
+    let mut server = Server::with(&[("ALLOW_OOM", "1"), ("TOKEN", "s3cret")]);
+    assert_eq!(server.json("/config")["allowOom"], true);
+    assert_eq!(server.status("/oom"), 401);
+    sleep(300);
+    assert!(server.exited().is_none());
+    assert!(server.rss_kb() < 200 * 1024, "{} kB", server.rss_kb());
+}

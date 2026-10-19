@@ -34,6 +34,7 @@ Start a test on a running server (--url, --token or $TOKEN, and --<parameter> <v
   torchio delay [ms]                   torchio disk [mb] [hold]
   torchio status <code>                torchio fd [count] [hold]
   torchio log [lines] [rate]           torchio crash [code] [after]
+  torchio block [ms]
   torchio ready on | off [seconds]
 
 Other commands:

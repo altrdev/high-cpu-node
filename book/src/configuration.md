@@ -15,6 +15,8 @@ Environment variables:
 | `SHUTDOWN_GRACE_SECONDS` | `0`      | Seconds SIGTERM drains for before the process ends, see [Shutdown](shutdown.md#shutdown) |
 | `MAX_FD`           | `10000`         | Total descriptors `/fd` can hold at once          |
 | `MAX_CONNECTIONS`  | `500`           | Total connections `/connections` can hold at once |
+| `MAX_BLOCK_MS`     | `30000`         | Highest `ms` accepted by `/block`                 |
+| `ALLOW_OOM`        | off             | `1` lets `/oom` run: it allocates until the kernel kills the process |
 | `MAX_LOG_LINES`    | `100000`        | Highest `lines` accepted by `/log`                |
 | `MAX_LOG_RATE`     | `10000`         | Highest `rate` accepted by `/log`                 |
 | `TRUST_PROXY`      | off             | Trusts `X-Forwarded-*` (`true`, a number of hops, or addresses and subnets), see `/echo` |
