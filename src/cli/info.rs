@@ -17,6 +17,7 @@ pub struct Info {
     pub connections: Option<Connections>,
     pub ready: Option<Ready>,
     pub log: Option<Log>,
+    pub scenario: Option<Scenario>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -78,6 +79,18 @@ pub struct Fd {
 pub struct Ready {
     pub ready: bool,
     pub seconds_left: Option<i64>,
+}
+
+/// Where `/scenario` is: `idle` has nothing else, a running one has its step and the seconds left
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Scenario {
+    pub state: String,
+    pub step: Option<i64>,
+    pub steps: Option<i64>,
+    pub seconds_left: Option<i64>,
+    pub remaining_seconds: Option<i64>,
+    pub error: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]

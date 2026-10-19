@@ -10,6 +10,7 @@
 - [Endpoints](endpoints.md)
   - [Reference](reference.md)
 - [Starting a test](starting-a-test.md)
+- [Scenarios](scenarios.md)
 - [Shell completion](shell-completion.md)
 
 # Watch it

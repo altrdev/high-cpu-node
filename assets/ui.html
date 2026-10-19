@@ -46,6 +46,7 @@ h2 { font-size: 13px; font-weight: 600; margin: 22px 0 8px; color: var(--dim); }
 .row input { flex: 1; min-width: 0; accent-color: var(--accent); }
 .row b { width: 56px; text-align: right; font-weight: 600; color: var(--text); flex: none; }
 .cmd { font: 11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--faint); margin: 8px 0 0; word-break: break-all; }
+textarea { width: 100%; font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; resize: vertical; }
 button { font: inherit; font-size: 13px; width: 100%; margin-top: 8px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--text); cursor: pointer; }
 button:hover { background: var(--bg); }
 button.danger { color: var(--red); border-color: var(--red); }
@@ -193,10 +194,10 @@ function setToken(value) {
     } catch (e) {}
 }
 // the token is asked for only when the server answers 401, and kept for this tab
-async function request(url) {
+async function request(url, init = {}) {
     const call = () => {
         const token = getToken();
-        return fetch(url, {signal: AbortSignal.timeout(120000), headers: token ? {Authorization: `Bearer ${token}`} : {}});
+        return fetch(url, {...init, signal: AbortSignal.timeout(120000), headers: token ? {Authorization: `Bearer ${token}`} : {}});
     };
     let res = await call();
     if (res.status === 401) {
@@ -208,13 +209,13 @@ async function request(url) {
     }
     return res;
 }
-function send(url, button) {
-    const entry = {url, text: '…'};
+function send(url, button, init = {}) {
+    const entry = {url, method: init.method || 'GET', text: '…'};
     log.unshift(entry);
     if (log.length > 6) log.pop();
-    const show = () => ($('log').textContent = log.map((e) => `GET ${e.url}  ->  ${e.text}`).join('\n'));
+    const show = () => ($('log').textContent = log.map((e) => `${e.method} ${e.url}  ->  ${e.text}`).join('\n'));
     show();
-    request(url)
+    request(url, init)
         .then(async (res) => {
             entry.text = `${res.status} ${(await res.text()).slice(0, 120)}`;
         })
@@ -291,6 +292,35 @@ function buildControls(info) {
         {title: 'Block', path: '/block', danger: true, params: [{name: 'ms', label: 'ms', min: 1, max: info.limits.maxBlockMs, value: Math.min(5000, info.limits.maxBlockMs), step: 500}], actions: [{label: 'Freeze the server'}]},
         {title: 'Crash', path: '/crash', danger: true, params: [{name: 'code', label: 'exit code', min: 0, max: 255, value: 137}, secs('after', 0)], actions: [{label: 'End the process'}]},
     ].forEach(buildControl);
+    buildScenario();
+}
+
+// ---- scenario: a list of steps, started and stopped from here
+const EXAMPLE = [{cpu: 80, seconds: 20}, {memory: 100, seconds: 20}, {ready: 'off', seconds: 10}];
+function buildScenario() {
+    const card = el('div', 'card ctl');
+    card.id = 'scenario';
+    card.append(el('h3', '', 'Scenario'));
+    const text = document.createElement('textarea');
+    text.rows = 5;
+    text.spellcheck = false;
+    // a step on each line
+    text.value = `[\n${EXAMPLE.map((step) => ` ${JSON.stringify(step)}`).join(',\n')}\n]`;
+    const now = el('p', 'cap');
+    now.id = 'scenario-now';
+    const start = el('button', '', 'Start the scenario');
+    start.addEventListener('click', () => send('/scenario', start, {method: 'POST', body: text.value}));
+    const stop = el('button', '', 'Stop it');
+    stop.addEventListener('click', () => send('/scenario', stop, {method: 'DELETE'}));
+    card.append(text, now, start, stop, el('p', 'cmd', 'curl -X POST -d @scenario.json "/scenario"'));
+    $('controls').append(card);
+}
+function scenarioText(s) {
+    if (!s || s.state === 'idle') return 'No scenario has run.';
+    if (s.state === 'running') return `Step ${s.step} of ${s.steps}, ${s.secondsLeft} s left in it, ${s.remainingSeconds} s in all.`;
+    if (s.state === 'failed') return `Failed: ${s.error}`;
+    if (s.state === 'stopped') return `Stopped at step ${s.step} of ${s.steps}.`;
+    return `Finished, ${s.steps} steps.`;
 }
 
 // ---- tab: the logo and the title tell at a glance when the server is not ready or not there
@@ -341,6 +371,8 @@ async function tick() {
             const n = info.stress.burn.workers ?? info.stress.workers;
             status.unshift(`/cpu: ${info.stress.burn.percent}% on ${n < info.stress.workers ? `${n} of ${info.stress.workers} workers` : 'every worker'}, ${info.stress.burn.secondsLeft} s left`);
         }
+        if (info.scenario && info.scenario.state === 'running') status.unshift(`/scenario: step ${info.scenario.step} of ${info.scenario.steps}, ${info.scenario.remainingSeconds} s left`);
+        if ($('scenario-now')) $('scenario-now').textContent = scenarioText(info.scenario);
         if (info.log) status.unshift(`/log: ${info.log.sent} of ${info.log.lines} lines, ${info.log.rate} lines/s`);
         $('status').replaceChildren(...status.map((text) => el('span', '', text)));
 

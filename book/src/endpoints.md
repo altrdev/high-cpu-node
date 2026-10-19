@@ -22,6 +22,7 @@ Most of the endpoints that start a test are also a command, so you can skip `cur
 | `/block`        | `ms`               | Freezes every thread of the server, to test liveness probes and timeouts |
 | `/oom`          |                    | Allocates until the kernel kills the process, only with `ALLOW_OOM=1` |
 | `/payload`      | `mb`               | Sends or takes a large body, to test body size limits and timeouts of proxies |
+| `/scenario`     |                    | Runs a list of steps one after the other, [see Scenarios](scenarios.md) |
 | `/fd`           | `count`, `hold`    | Opens file descriptors and holds them, to test `EMFILE`     |
 | `/connections`  | `count`, `hold`    | Opens TCP connections to the server and holds them, to test connection limits |
 | `/log`          | `lines`, `rate`    | Writes lines to stdout at a rate, to test log collection and rotation |
@@ -234,6 +235,18 @@ curl -o /dev/null -w "%{size_download} bytes in %{time_total} s\n" "http://127.0
 head -c 50000000 /dev/zero | curl -X POST --data-binary @- http://127.0.0.1:3000/payload
 ```
 
+## `/scenario`
+
+Runs a list of steps one after the other, so a test can be repeated without calling the endpoints by hand. `POST` starts the scenario in the body, `GET` shows where it is and `DELETE` stops it. All three need the token when `TOKEN` is set.
+
+```
+curl -X POST http://127.0.0.1:3000/scenario -d '[{"cpu": 80, "seconds": 60}, {"ready": "off", "seconds": 20}]'
+curl http://127.0.0.1:3000/scenario
+curl -X DELETE http://127.0.0.1:3000/scenario
+```
+
+The format of the steps, the checks, the answers and examples are in [Scenarios](scenarios.md).
+
 ## `/fd`
 
 Opens `count` file descriptors and closes them after `hold` seconds.
@@ -310,6 +323,7 @@ Returns a JSON document with what the server is doing right now. It takes no par
 | `log`                         | What `/log` is writing, `{ "sent", "lines", "rate" }`, or `null` when it is not running |
 | `shutdown`                    | `{ "draining", "graceSeconds", "drainSeconds", "openRequests", "openConnections" }`: whether SIGTERM started a [drain](shutdown.md#shutdown), for how long (`null` if not), and what is open now, the request for `/info` and its connection included |
 | `block`                       | `{ "count", "lastMs", "msLeft" }`: the blocks of `/block` so far, the length of the last one and what is left of the one running |
+| `scenario`                    | Where [`/scenario`](scenarios.md) is: `{ "state": "idle" }` when none has run, else its state, step, steps and, while it runs, `secondsLeft` and `remainingSeconds` |
 | `ready.ready`, `secondsLeft`  | What `/ready` answers, and the seconds left before it is ready again (`null` if nothing is counting down) |
 
 ## `/metrics`

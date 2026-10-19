@@ -1,7 +1,6 @@
 use crate::app::AppState;
 use crate::endpoints::specs;
 use crate::http::params::{self, Rejection};
-use crate::resources::block;
 use axum::extract::{RawQuery, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
@@ -13,15 +12,9 @@ pub async fn handler(State(state): State<Arc<AppState>>, RawQuery(query): RawQue
     let params = params::read(query.as_deref(), &specs(&state.config).block)?;
     let ms = params.get("ms");
 
-    let end = match state.block.reserve(ms as u64) {
-        Ok(end) => end,
-        Err(busy) => {
-            let message = format!("Already blocked for {} more ms", busy.ms_left);
-            return Ok((StatusCode::CONFLICT, message).into_response());
-        }
-    };
-    let format = state.config.log_format;
-    format.warn(&format!("Blocking every thread of the server for {ms} ms"));
-    block::freeze(end, move || format.info("The server answers again"));
+    if let Err(busy) = state.block.start(ms as u64, state.config.log_format) {
+        let message = format!("Already blocked for {} more ms", busy.ms_left);
+        return Ok((StatusCode::CONFLICT, message).into_response());
+    }
     Ok(format!("Blocking for {ms} ms").into_response())
 }

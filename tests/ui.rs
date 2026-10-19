@@ -39,6 +39,7 @@ fn the_page_sends_the_token_and_calls_every_endpoint_of_the_tests() {
         "/delay",
         "/crash",
         "/block",
+        "/scenario",
         "/stress",
     ] {
         assert!(page.contains(&format!("'{path}")) || page.contains(&format!("path: '{path}")), "the page does not use {path}");

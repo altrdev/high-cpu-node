@@ -114,6 +114,7 @@ Each of these has a page with the commands and what to expect, in the [documenta
 | `/fd`, `/connections` | Opens file descriptors or TCP connections and holds them |
 | `/delay`, `/status/:code`, `/flaky` | Slow answers, any status, or failures a share of the time |
 | `/ready/off`, `/ready/on`, `/crash` | Takes the instance out of the Service, or ends the process |
+| `/scenario` | Runs a list of steps one after the other, written in JSON |
 | `/payload` | Sends or takes a large body, to test the limits of proxies and ingresses |
 | `/block`, `/oom` | Freezes the server for a while, or gets it killed for memory (`ALLOW_OOM=1`) |
 | `/log`          | Writes lines to stdout at a rate                             |

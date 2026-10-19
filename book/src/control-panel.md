@@ -10,4 +10,4 @@ docker run -p 3000:3000 -e UI=1 altrdev/torchio:latest
 
 The gauges and their history (the last 60 seconds) come from [`/info`](endpoints.md#info) and [`/metrics`](endpoints.md#metrics), refreshed every second, and the page shows whether `/ready` is answering `200` or `503`. Each card makes the request you see written under its sliders, and the answer goes in the log at the bottom, so it is also a way to learn the API. The history lives in the page: reloading it starts again.
 
-The page makes [`/crash`](endpoints.md#crash) a button, which is why it is off by default (and the button asks to be clicked twice). It needs no extra dependency and no build, it is one static file.
+A card runs a [scenario](scenarios.md): you write the steps in JSON, start it and stop it, and the step it is in and the time left show in the card and at the top of the page. The page makes [`/crash`](endpoints.md#crash) a button, which is why it is off by default (and the button asks to be clicked twice). It needs no extra dependency and no build, it is one static file.

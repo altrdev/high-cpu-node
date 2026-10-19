@@ -116,6 +116,7 @@ pub fn catalog(config: &Config) -> Vec<Endpoint> {
             &s.payload,
             "GET answers with mb MB of data, streamed; POST takes an upload, discards it and reports its size and time",
         ),
+        endpoint("/scenario", true, &[], "POST a list of steps to run one after the other, GET shows where it is, DELETE stops it"),
         endpoint("/log", true, &s.log, "Writes lines to stdout at rate lines/s, then stops"),
         endpoint("/echo", false, &[], "The request as the server sees it: headers, client address, protocol (credentials masked)"),
         endpoint("/info", false, &[], "JSON with what the server is doing and the remaining budgets"),
@@ -236,6 +237,7 @@ mod tests {
                 "/block",
                 "/oom",
                 "/payload",
+                "/scenario",
                 "/log"
             ]
         );

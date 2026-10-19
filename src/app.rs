@@ -12,6 +12,7 @@ use crate::resources::flaky::Flaky;
 use crate::resources::log::Log;
 use crate::resources::memory::Memory;
 use crate::resources::ready::Ready;
+use crate::resources::scenario::Scenario;
 use crate::resources::shutdown::Shutdown;
 use crate::resources::workers::WorkerPool;
 use crate::routes;
@@ -39,6 +40,7 @@ pub struct AppState {
     pub connections: Connections,
     pub flaky: Flaky,
     pub block: Block,
+    pub scenario: Scenario,
     pub log: Arc<Log>,
     pub pool: WorkerPool,
     pub shutdown: Arc<Shutdown>,
@@ -60,6 +62,7 @@ impl AppState {
             connections: Connections::new(config.max_connections, u16::try_from(config.port).unwrap_or(0)),
             flaky: Flaky::default(),
             block: Block::default(),
+            scenario: Scenario::default(),
             log: Arc::new(Log::new(config.log_format)),
             pool: WorkerPool::new(config.workers as usize),
             shutdown: Arc::new(Shutdown::new(config.shutdown_grace_seconds)),
@@ -90,6 +93,7 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/block", get(routes::block::handler))
         .route("/oom", get(routes::oom::handler))
         .route("/payload", get(routes::payload::download).post(routes::payload::upload))
+        .route("/scenario", get(routes::scenario::status).post(routes::scenario::start).delete(routes::scenario::stop))
         .route_layer(from_fn_with_state(state.clone(), auth::guard));
 
     let mut open = Router::new()

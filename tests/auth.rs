@@ -3,7 +3,7 @@ mod common;
 
 use common::*;
 
-const PROTECTED: [&str; 13] = [
+const PROTECTED: [&str; 14] = [
     "/stress?number=1",
     "/cpu?percent=0",
     "/memory?mb=1&hold=1",
@@ -17,6 +17,7 @@ const PROTECTED: [&str; 13] = [
     "/block?ms=1",
     "/oom",
     "/payload?mb=1",
+    "/scenario",
 ];
 const OPEN: [&str; 9] = ["/", "/ready", "/info", "/metrics", "/delay?ms=1", "/status/204", "/echo", "/help", "/config"];
 

@@ -1,6 +1,6 @@
 # Watching a server
 
-`torchio watch` shows what a server is doing in the terminal, refreshing every second with bars and a short history of the last samples (workers, memory, process memory, disk and file descriptors), plus whether `/ready` is answering `200` or `503`. It is a command of the same binary, reads [`/info`](endpoints.md#info) and works against any running instance:
+`torchio watch` shows what a server is doing in the terminal, refreshing every second with bars and a short history of the last samples (workers, memory, process memory, disk and file descriptors), plus whether `/ready` is answering `200` or `503`, and a line for the [scenario](scenarios.md) while one runs or after it ends. It is a command of the same binary, reads [`/info`](endpoints.md#info) and works against any running instance:
 
 ```
 torchio watch
