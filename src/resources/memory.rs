@@ -46,6 +46,7 @@ impl Memory {
     pub async fn hold(&self, mb: i64, seconds: u64) -> Result<(), HoldError> {
         let reservation = self.budget.reserve(mb).map_err(HoldError::OverBudget)?;
         let (allocated, answer) = oneshot::channel();
+        let budget = Arc::clone(&self.budget);
         tokio::spawn(async move {
             match allocate_blocking(mb).await {
                 Err(e) => {
@@ -53,6 +54,7 @@ impl Memory {
                     let _ = allocated.send(Err(e));
                 }
                 Ok(held) => {
+                    let _ending = budget.ends_in(seconds);
                     let _ = allocated.send(Ok(()));
                     tokio::time::sleep(Duration::from_secs(seconds)).await;
                     drop(held);
@@ -80,6 +82,7 @@ impl Memory {
                     break;
                 }
             }
+            let _ending = leak.budget.ends_in(seconds);
             tokio::time::sleep(Duration::from_secs(seconds)).await;
             drop(leak);
         });

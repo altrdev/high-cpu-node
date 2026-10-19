@@ -327,8 +327,8 @@ async fn info_has_these_fields() {
         ]
     );
     assert_eq!(keys(&info["stress"]), ["burn", "inFlight", "perWorker", "workers"]);
-    assert_eq!(keys(&info["memory"]), ["containerLimitMb", "heldMb", "limitMb", "processRssMb"]);
-    assert_eq!(keys(&info["disk"]), ["dir", "freeMb", "heldMb", "limitMb"]);
+    assert_eq!(keys(&info["memory"]), ["containerLimitMb", "heldMb", "limitMb", "processRssMb", "secondsLeft"]);
+    assert_eq!(keys(&info["disk"]), ["dir", "freeMb", "heldMb", "limitMb", "secondsLeft"]);
     assert_eq!(keys(&info["ready"]), ["ready", "secondsLeft"]);
     assert_eq!(keys(&info["block"]), ["count", "lastMs", "msLeft"]);
     assert_eq!(
