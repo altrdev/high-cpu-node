@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
-## Unreleased
+## 3.5.0 - 2026-10-19
 
 ### Added
 - `GET /log?lines=&rate=` writes lines to stdout at a given rate, then stops (`MAX_LOG_LINES`, `MAX_LOG_RATE`). It needs the token with `TOKEN`. `/info` has `log` while it writes, and `watch` and the control panel show it.
