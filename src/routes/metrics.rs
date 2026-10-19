@@ -1,4 +1,5 @@
 use crate::app::{AppState, VERSION};
+use crate::http::counters::BUCKETS;
 use crate::units::MB;
 use axum::extract::State;
 use axum::http::header;
@@ -105,6 +106,23 @@ pub async fn handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
         "Requests answered, by route and status code.",
         state.counters.entries().into_iter().map(|e| (vec![("route", e.route), ("code", e.code.to_string())], e.count as f64)).collect(),
     );
+
+    let entries = state.counters.entries();
+    if !entries.is_empty() {
+        let name = "torchio_http_request_duration_seconds";
+        lines.push(format!("# HELP {name} Time taken to answer, by route and status code."));
+        lines.push(format!("# TYPE {name} histogram"));
+        for e in entries {
+            let route = escape_label(&e.route);
+            let series = format!("route=\"{route}\",code=\"{}\"", e.code);
+            for (bound, n) in BUCKETS.iter().zip(&e.cumulative) {
+                lines.push(format!("{name}_bucket{{{series},le=\"{bound}\"}} {n}"));
+            }
+            lines.push(format!("{name}_bucket{{{series},le=\"+Inf\"}} {}", e.count));
+            lines.push(format!("{name}_sum{{{series}}} {}", e.sum_seconds));
+            lines.push(format!("{name}_count{{{series}}} {}", e.count));
+        }
+    }
 
     ([(header::CONTENT_TYPE, "text/plain; version=0.0.4; charset=utf-8")], lines.join("\n") + "\n")
 }

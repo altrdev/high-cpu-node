@@ -354,7 +354,7 @@ Returns a JSON document with what the server is doing right now. It takes no par
 
 ### `/metrics`
 
-The figures of [`/info`](#info) in the Prometheus text format, plus a counter of the requests answered. It takes no parameters and doesn't use up any budget.
+The figures of [`/info`](#info) in the Prometheus text format, plus a counter of the requests answered and a histogram of the time they took. It takes no parameters and doesn't use up any budget.
 
 | Metric                                      | Type    | Meaning                                                     |
 |---------------------------------------------|---------|-------------------------------------------------------------|
@@ -376,6 +376,7 @@ The figures of [`/info`](#info) in the Prometheus text format, plus a counter of
 | `torchio_fd_limit`                      | gauge   | Total descriptors `/fd` may hold (`MAX_FD`)                 |
 | `torchio_ready`                         | gauge   | `1` while `/ready` answers `200`, `0` while it answers `503` |
 | `torchio_http_requests_total{route,code}` | counter | Requests answered, by route pattern (such as `/status/:code`) and status code. A request the client abandons before the answer is not counted |
+| `torchio_http_request_duration_seconds{route,code}` | histogram | Time taken to answer, in seconds, with the same labels (`_bucket{le}`, `_sum`, `_count`). Buckets go from 5 ms to 60 s, which is the default `MAX_DELAY_MS`. It includes the time of `/delay`, and the requests to `/metrics` and `/info` themselves |
 
 To collect them with Prometheus:
 
@@ -391,6 +392,7 @@ Some queries to start from:
 - `torchio_memory_held_bytes / torchio_memory_limit_bytes` is how much of the `/memory` budget is used.
 - `process_resident_memory_bytes / torchio_container_memory_limit_bytes` is how close the process is to an OOM kill.
 - `rate(torchio_http_requests_total{code=~"4..|5.."}[1m])` is the rate of rejected and failed requests (`429`, `507`, `/status/...`).
+- `histogram_quantile(0.95, sum by (le, route) (rate(torchio_http_request_duration_seconds_bucket[5m])))` is the 95th percentile of the response time of each route.
 
 ### `/help`
 
