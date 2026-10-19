@@ -10,6 +10,7 @@ mod params;
 mod ready;
 mod routes;
 mod units;
+mod workers;
 
 use app::AppState;
 use config::Config;

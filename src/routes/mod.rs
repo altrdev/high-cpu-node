@@ -1,4 +1,5 @@
 pub mod config;
+pub mod cpu;
 pub mod delay;
 pub mod disk;
 pub mod fd;
@@ -7,3 +8,4 @@ pub mod leak;
 pub mod memory;
 pub mod ready;
 pub mod status;
+pub mod stress;

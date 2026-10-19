@@ -6,6 +6,7 @@ use crate::routes;
 use crate::routes::delay::Delay;
 use crate::routes::disk::Disk;
 use crate::routes::fd::Fd;
+use crate::workers::WorkerPool;
 use axum::Router;
 use axum::middleware::from_fn_with_state;
 use axum::routing::get;
@@ -25,6 +26,7 @@ pub struct AppState {
     pub memory: Arc<Budget>,
     pub disk: Disk,
     pub fd: Fd,
+    pub pool: WorkerPool,
 }
 
 impl AppState {
@@ -36,6 +38,7 @@ impl AppState {
             memory: Budget::new(config.max_memory_mb),
             disk: Disk::new(&config.disk_dir, config.max_disk_mb),
             fd: Fd::new(config.max_fd),
+            pool: WorkerPool::new(config.workers as usize),
             config,
         }
     }
@@ -51,6 +54,8 @@ pub fn router(state: Arc<AppState>) -> Router {
     let guarded = Router::new()
         .route("/ready/off", get(routes::ready::off))
         .route("/ready/on", get(routes::ready::on))
+        .route("/stress", get(routes::stress::handler))
+        .route("/cpu", get(routes::cpu::handler))
         .route("/memory", get(routes::memory::handler))
         .route("/leak", get(routes::leak::handler))
         .route("/disk", get(routes::disk::handler))
