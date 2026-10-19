@@ -9,6 +9,7 @@ on:
     paths:
       - book/**
       - docs/**
+      - skills/**
       - examples/endpoints_reference.rs
       - src/endpoints.rs
       - src/config.rs
@@ -68,6 +69,14 @@ jobs:
         run: |
           head -n 1 install.sh | grep -q '^#!/bin/sh$'
           cp install.sh book/book/install
+
+      # for language models: the index of the pages and all of them in one file (llmstxt.org), and the skill
+      # that tells an agent how to run a test, which is also copied to a place that can be curled
+      - name: Publish llms.txt, llms-full.txt and the skill next to the pages
+        run: |
+          python3 book/llms.py book/book
+          cp skills/torchio/SKILL.md book/book/SKILL.md
+          grep -q '^name: torchio$' book/book/SKILL.md
 
       - name: Every link between the pages has a target
         run: python3 book/check-links.py book/book

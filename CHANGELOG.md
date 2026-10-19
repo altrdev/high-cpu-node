@@ -10,6 +10,9 @@ All notable changes to this project are documented here. The GitHub release of e
 ### Changed
 - `/info` reports the limit of descriptors of the process (`fd.processLimit`, the soft `ulimit -n`), and the descriptors bar of `watch` and of the control panel compares with the lower of that and `MAX_FD`, so it is full when `EMFILE` comes and not at a quarter of a limit the process can't reach. `watch` marks it with `(ulimit)`.
 
+### Documentation
+- The site has `llms.txt` (an index of the pages) and `llms-full.txt` (all of them in one file) for language models, and a skill for agents that use torchio, at `/SKILL.md` and in `skills/torchio/`. The page *For AI agents* says how to install it.
+
 ## 4.6.0 - 2026-10-19
 
 ### Added
