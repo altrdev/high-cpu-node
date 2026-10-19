@@ -35,6 +35,7 @@ pub struct Config {
     pub default_cpu_percent: i64,
     pub default_leak_rate_mb: i64,
     pub start_delay_seconds: i64,
+    pub shutdown_grace_seconds: i64,
     pub default_fd: i64,
     pub max_fd: i64,
     pub default_connections: i64,
@@ -131,6 +132,7 @@ impl Config {
         let max_log_lines = int("MAX_LOG_LINES", 100000);
         let max_log_rate = int("MAX_LOG_RATE", 10000);
         let start_delay_seconds = positive_int(&get, &mut warn, "START_DELAY_SECONDS", 0, 0);
+        let shutdown_grace_seconds = positive_int(&get, &mut warn, "SHUTDOWN_GRACE_SECONDS", 0, 0);
 
         Config {
             name: "torchio",
@@ -152,6 +154,7 @@ impl Config {
             default_cpu_percent: 50,
             default_leak_rate_mb: 10,
             start_delay_seconds,
+            shutdown_grace_seconds,
             default_fd: 100,
             max_fd,
             default_connections: 10,

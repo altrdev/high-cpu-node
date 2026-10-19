@@ -2,8 +2,9 @@
 mod common;
 
 use common::*;
-use std::net::TcpListener;
-use std::time::Instant;
+use std::io::{Read, Write};
+use std::net::{TcpListener, TcpStream};
+use std::time::{Duration, Instant};
 
 #[test]
 fn it_says_where_it_listens() {
@@ -118,6 +119,119 @@ fn sigint_ends_it_with_success_too() {
     let mut server = Server::start();
     server.signal(libc::SIGINT);
     assert_eq!(server.wait_exit(5000).code(), Some(0));
+}
+
+// A request on a connection that stays open, and its answer: the headers and the body by Content-Length
+fn exchange(stream: &mut TcpStream, path: &str) -> String {
+    stream.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+    write!(stream, "GET {path} HTTP/1.1\r\nHost: torchio\r\n\r\n").unwrap();
+    let mut answer = Vec::new();
+    let mut byte = [0u8; 1];
+    while !answer.ends_with(b"\r\n\r\n") {
+        stream.read_exact(&mut byte).unwrap();
+        answer.push(byte[0]);
+    }
+    let head = String::from_utf8_lossy(&answer).to_lowercase();
+    let length: usize = head.lines().find_map(|line| line.strip_prefix("content-length: ")).unwrap().trim().parse().unwrap();
+    let mut body = vec![0u8; length];
+    stream.read_exact(&mut body).unwrap();
+    String::from_utf8(body).unwrap()
+}
+
+#[test]
+fn the_signal_is_logged_when_it_ends_it_right_away() {
+    let mut server = Server::start();
+    assert!(server.terminate().success());
+    assert!(server.output().contains("SIGTERM received, exiting"), "{}", server.output());
+}
+
+#[test]
+fn with_a_grace_period_it_serves_the_request_in_progress_and_refuses_new_connections() {
+    let mut server = Server::with(&[("SHUTDOWN_GRACE_SECONDS", "10")]);
+    let url = server.url();
+    let waiting = std::thread::spawn(move || try_get(&format!("{url}/delay?ms=1500"), &[]));
+    sleep(300);
+
+    server.signal(libc::SIGTERM);
+    sleep(300);
+    assert!(server.exited().is_none(), "it ended with a request in progress");
+    assert!(TcpStream::connect(("127.0.0.1", server.port)).is_err(), "a new connection was accepted while draining");
+
+    assert_eq!(waiting.join().unwrap().unwrap().body, "Answered after 1500 ms");
+    assert!(server.wait_exit(5000).success());
+    let output = server.output();
+    assert!(output.contains("SIGTERM received, draining for up to 10 s"), "{output}");
+    assert!(output.contains("Drained after"), "{output}");
+}
+
+#[test]
+fn the_grace_period_ends_the_drain_even_if_a_request_is_still_open() {
+    let mut server = Server::with(&[("SHUTDOWN_GRACE_SECONDS", "1")]);
+    let url = server.url();
+    let waiting = std::thread::spawn(move || try_get(&format!("{url}/delay?ms=4000"), &[]));
+    sleep(300);
+
+    let started = Instant::now();
+    server.signal(libc::SIGTERM);
+    assert!(server.wait_exit(5000).success());
+    assert!((900..3000).contains(&(started.elapsed().as_millis() as u64)), "{:?}", started.elapsed());
+    assert!(
+        server.output().contains("The grace period of 1 s is over with 1 requests and 1 connections still open"),
+        "{}",
+        server.output()
+    );
+    assert!(waiting.join().unwrap().is_err(), "the request was cut when the time was up");
+}
+
+#[test]
+fn while_draining_info_and_metrics_say_so_on_a_connection_that_was_open() {
+    let mut server = Server::with(&[("SHUTDOWN_GRACE_SECONDS", "20")]);
+    let mut stream = TcpStream::connect(("127.0.0.1", server.port)).unwrap();
+    let before: serde_json::Value = serde_json::from_str(&exchange(&mut stream, "/info")).unwrap();
+    assert_eq!(before["shutdown"]["draining"], false);
+    assert_eq!(before["shutdown"]["graceSeconds"], 20);
+    assert!(before["shutdown"]["drainSeconds"].is_null());
+
+    server.signal(libc::SIGTERM);
+    sleep(1500);
+    assert!(server.exited().is_none(), "it ended with a connection open");
+    let during: serde_json::Value = serde_json::from_str(&exchange(&mut stream, "/info")).unwrap();
+    assert_eq!(during["shutdown"]["draining"], true);
+    assert!(during["shutdown"]["drainSeconds"].as_f64().unwrap() >= 1.0);
+    assert_eq!(during["shutdown"]["openConnections"], 1);
+    assert_eq!(during["shutdown"]["openRequests"], 1, "the request for /info itself");
+    let metrics = exchange(&mut stream, "/metrics");
+    assert_eq!(metric(&metrics, "torchio_draining"), Some(1.0));
+    assert_eq!(metric(&metrics, "torchio_open_connections"), Some(1.0));
+
+    drop(stream);
+    assert!(server.wait_exit(5000).success(), "it ends when the last connection is closed");
+    assert!(server.output().contains("Drained after"), "{}", server.output());
+}
+
+#[test]
+fn a_second_signal_ends_the_drain_at_once() {
+    let mut server = Server::with(&[("SHUTDOWN_GRACE_SECONDS", "60")]);
+    let _stream = TcpStream::connect(("127.0.0.1", server.port)).unwrap();
+    server.signal(libc::SIGTERM);
+    sleep(300);
+    assert!(server.exited().is_none());
+
+    let started = Instant::now();
+    server.signal(libc::SIGTERM);
+    assert!(server.wait_exit(5000).success());
+    assert!(started.elapsed().as_millis() < 2500);
+    assert!(server.output().contains("SIGTERM received again, exiting now"), "{}", server.output());
+}
+
+#[test]
+fn held_connections_keep_the_drain_open_until_the_grace_period_is_over() {
+    let mut server = Server::with(&[("SHUTDOWN_GRACE_SECONDS", "2")]);
+    assert!(server.text("/connections?count=3&hold=30").starts_with("Opened 3 connections"));
+    server.signal(libc::SIGTERM);
+    assert!(server.wait_exit(8000).success());
+    let output = server.output();
+    assert!(output.contains("with 0 requests and 3 connections still open"), "{output}");
 }
 
 #[test]

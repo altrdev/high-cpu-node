@@ -1,7 +1,7 @@
 //! What the routes share, and the router.
 use crate::config::Config;
 use crate::http::counters::{self, Counters};
-use crate::http::{auth, trust::Trust};
+use crate::http::{auth, open, trust::Trust};
 use crate::logging;
 use crate::resources::connections::Connections;
 use crate::resources::delay::Delay;
@@ -11,6 +11,7 @@ use crate::resources::flaky::Flaky;
 use crate::resources::log::Log;
 use crate::resources::memory::Memory;
 use crate::resources::ready::Ready;
+use crate::resources::shutdown::Shutdown;
 use crate::resources::workers::WorkerPool;
 use crate::routes;
 use axum::Router;
@@ -38,6 +39,7 @@ pub struct AppState {
     pub flaky: Flaky,
     pub log: Arc<Log>,
     pub pool: WorkerPool,
+    pub shutdown: Arc<Shutdown>,
 }
 
 impl AppState {
@@ -57,6 +59,7 @@ impl AppState {
             flaky: Flaky::default(),
             log: Arc::new(Log::new(config.log_format)),
             pool: WorkerPool::new(config.workers as usize),
+            shutdown: Arc::new(Shutdown::new(config.shutdown_grace_seconds)),
             config,
         })
     }
@@ -102,6 +105,7 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route_layer(axum::middleware::from_fn(counters::mark))
         .layer(from_fn_with_state(state.clone(), counters::count))
         .layer(from_fn_with_state(state.clone(), logging::access))
+        .layer(from_fn_with_state(state.clone(), open::track))
         .layer(CorsLayer::permissive())
         .with_state(state)
 }

@@ -97,6 +97,27 @@ pub async fn handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
         one(s.disk.limit_mb as f64 * mb),
     );
     metric(&mut lines, "torchio_disk_free_bytes", "gauge", "Free space in DISK_DIR.", optional(s.disk.free_bytes));
+    metric(
+        &mut lines,
+        "torchio_draining",
+        "gauge",
+        "1 after SIGTERM, while the server serves what is open and accepts nothing new.",
+        one(if s.shutdown.draining { 1.0 } else { 0.0 }),
+    );
+    metric(
+        &mut lines,
+        "torchio_open_requests",
+        "gauge",
+        "Requests being answered, this one included.",
+        one(s.shutdown.open_requests as f64),
+    );
+    metric(
+        &mut lines,
+        "torchio_open_connections",
+        "gauge",
+        "Connections open, this one included.",
+        one(s.shutdown.open_connections as f64),
+    );
     metric(&mut lines, "torchio_fd_held", "gauge", "File descriptors held by /fd.", one(s.fd.held as f64));
     metric(&mut lines, "torchio_connections_held", "gauge", "TCP connections held by /connections.", one(s.connections.held as f64));
     metric(
