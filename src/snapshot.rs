@@ -24,6 +24,8 @@ pub struct Disk {
 pub struct Fd {
     pub held: i64,
     pub limit: i64,
+    /// What the process can open at all (`ulimit -n`), which may be lower than `limit`
+    pub process_limit: Option<u64>,
 }
 
 pub struct Connections {
@@ -61,7 +63,7 @@ impl AppState {
                 dir: self.config.disk_dir.clone(),
                 free_bytes: system::free_bytes(&self.config.disk_dir),
             },
-            fd: Fd { held: self.fd.budget().held(), limit: self.fd.budget().limit() },
+            fd: Fd { held: self.fd.budget().held(), limit: self.fd.budget().limit(), process_limit: system::fd_limit() },
             connections: Connections { held: self.connections.budget().held(), limit: self.connections.budget().limit() },
             ready: self.ready.state(),
             block: self.block.snapshot(),

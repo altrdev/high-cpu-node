@@ -638,7 +638,11 @@ async function tick() {
 
         gauges.forEach((g) => draw(g.key, g.get(info)));
         if (info.connections) draw('connections', {v: info.connections.held, max: info.connections.limit, text: `${info.connections.held} / ${info.connections.limit}`, cap: 'held by /connections'});
-        if (info.fd) draw('fd', {v: info.fd.held, max: info.fd.limit, text: `${info.fd.held} / ${info.fd.limit}`, cap: 'held by /fd'});
+        if (info.fd) {
+            const byProcess = info.fd.processLimit != null && info.fd.processLimit < info.fd.limit;
+            const max = byProcess ? info.fd.processLimit : info.fd.limit;
+            draw('fd', {v: info.fd.held, max, text: `${info.fd.held} / ${max}`, cap: byProcess ? 'held by /fd, process limit (ulimit -n)' : 'held by /fd'});
+        }
         requests(metrics);
     } catch (e) {
         setTab('bad', 'torchio · unreachable');
