@@ -2,7 +2,7 @@
 
 # The binary is compiled for the platform of the image on the platform that builds it, with
 # cargo-zigbuild (zig is the linker), so a multi-platform build needs no emulation.
-FROM --platform=$BUILDPLATFORM rust:1.99-slim-bookworm AS build
+FROM --platform=$BUILDPLATFORM rust:1.99-slim-trixie AS build
 ARG TARGETARCH
 ARG CARGO_ZIGBUILD_VERSION=0.23.4
 ARG ZIGLANG_VERSION=0.17.0
