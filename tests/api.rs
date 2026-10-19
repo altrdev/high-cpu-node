@@ -331,7 +331,10 @@ async fn info_has_these_fields() {
     assert_eq!(keys(&info["disk"]), ["dir", "freeMb", "heldMb", "limitMb"]);
     assert_eq!(keys(&info["ready"]), ["ready", "secondsLeft"]);
     assert_eq!(keys(&info["block"]), ["count", "lastMs", "msLeft"]);
-    assert_eq!(keys(&info["limits"]), ["maxBlockMs", "maxDelayMs", "maxHoldSeconds", "maxLogLines", "maxLogRate", "maxNumber"]);
+    assert_eq!(
+        keys(&info["limits"]),
+        ["maxBlockMs", "maxDelayMs", "maxHoldSeconds", "maxLogLines", "maxLogRate", "maxNumber", "maxPayloadMb"]
+    );
 }
 
 #[tokio::test]

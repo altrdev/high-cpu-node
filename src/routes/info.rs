@@ -48,6 +48,7 @@ pub async fn handler(State(state): State<Arc<AppState>>) -> Json<Value> {
             "maxDelayMs": config.max_delay_ms,
             "maxHoldSeconds": config.max_hold_seconds,
             "maxBlockMs": config.max_block_ms,
+            "maxPayloadMb": config.max_payload_mb,
             "maxLogLines": config.max_log_lines,
             "maxLogRate": config.max_log_rate,
         },
