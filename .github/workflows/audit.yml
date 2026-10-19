@@ -32,7 +32,10 @@ jobs:
           rustup toolchain install stable --profile minimal --no-self-update
           rustup default stable
 
-      - run: cargo install cargo-audit --locked --version 0.22.1
+      # a prebuilt binary, whose checksum the action verifies, instead of compiling it for two minutes
+      - uses: taiki-e/install-action@v2.87.29
+        with:
+          tool: cargo-audit@0.22.1
 
       # fails on a vulnerability, and only warns on an unmaintained or yanked crate
       - run: cargo audit

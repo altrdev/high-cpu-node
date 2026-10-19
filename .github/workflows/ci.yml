@@ -22,6 +22,9 @@ jobs:
           rustup toolchain install stable --profile minimal --component clippy,rustfmt --no-self-update
           rustup default stable
 
+      # the compiled dependencies, which only change with Cargo.lock
+      - uses: Swatinem/rust-cache@v2.9.2
+
       - name: Changelog has a section for this version
         run: |
           VERSION=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n 1)
@@ -54,12 +57,26 @@ jobs:
 
       - uses: docker/setup-buildx-action@v4
 
+      # The layers of the dependencies are kept between runs, so only torchio itself is compiled again.
+      # The image for the tests and the one for both platforms share them: the second build finds
+      # the amd64 layers of the first in the cache.
       - name: Build the Docker image
-        run: docker buildx build --load -t torchio .
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: true
+          tags: torchio
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       # the same Dockerfile compiles for both platforms on this one, without emulation
       - name: Build the Docker image for both platforms
-        run: docker buildx build --platform linux/amd64,linux/arm64 .
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: The image is a single small binary
         run: |
