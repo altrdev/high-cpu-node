@@ -388,6 +388,7 @@ Returns a JSON document with what the server is doing right now. It takes no par
 | `fd.held`, `limit`            | File descriptors held by `/fd` and the total it may hold (`MAX_FD`)     |
 | `connections.held`, `limit`   | Connections held by `/connections` and the total it may hold (`MAX_CONNECTIONS`) |
 | `log`                         | What `/log` is writing, `{ "sent", "lines", "rate" }`, or `null` when it is not running |
+| `shutdown`                    | `{ "draining", "graceSeconds", "drainSeconds", "openRequests", "openConnections" }`: whether SIGTERM started a [drain](#shutdown), for how long (`null` if not), and what is open now, the request for `/info` and its connection included |
 | `ready.ready`, `secondsLeft`  | What `/ready` answers, and the seconds left before it is ready again (`null` if nothing is counting down) |
 
 ### `/metrics`
@@ -416,6 +417,9 @@ The figures of [`/info`](#info) in the Prometheus text format, plus a counter of
 | `torchio_connections_held`              | gauge   | TCP connections held by `/connections`                      |
 | `torchio_connections_limit`             | gauge   | Total connections `/connections` may hold (`MAX_CONNECTIONS`) |
 | `torchio_ready`                         | gauge   | `1` while `/ready` answers `200`, `0` while it answers `503` |
+| `torchio_draining`                      | gauge   | `1` after SIGTERM while the server [drains](#shutdown)      |
+| `torchio_open_requests`                 | gauge   | Requests being answered, the one for `/metrics` included    |
+| `torchio_open_connections`              | gauge   | Connections open, the one for `/metrics` included           |
 | `torchio_http_requests_total{route,code}` | counter | Requests answered, by route pattern (such as `/status/:code`) and status code. A request the client abandons before the answer is not counted |
 | `torchio_http_request_duration_seconds{route,code}` | histogram | Time taken to answer, in seconds, with the same labels (`_bucket{le}`, `_sum`, `_count`). Buckets go from 5 ms to 60 s, which is the default `MAX_DELAY_MS`. It includes the time of `/delay`, and the requests to `/metrics` and `/info` themselves |
 
@@ -596,6 +600,7 @@ Environment variables:
 | `MAX_DISK_MB`      | `1024`          | Total disk space `/disk` can hold at once         |
 | `UI`               | off             | `1` turns on the control panel at `/ui`           |
 | `START_DELAY_SECONDS` | `0`         | Seconds the port stays closed after the start     |
+| `SHUTDOWN_GRACE_SECONDS` | `0`      | Seconds SIGTERM drains for before the process ends, see [Shutdown](#shutdown) |
 | `MAX_FD`           | `10000`         | Total descriptors `/fd` can hold at once          |
 | `MAX_CONNECTIONS`  | `500`           | Total connections `/connections` can hold at once |
 | `MAX_LOG_LINES`    | `100000`        | Highest `lines` accepted by `/log`                |
@@ -623,6 +628,21 @@ By default the server writes plain text: what it is doing at the start, the sett
 ```
 
 The effective format is `logFormat` in [`/config`](#config).
+
+## Shutdown
+
+By default SIGTERM and SIGINT end the process right away, without waiting for the requests in progress, and release what the server holds (the files of `/disk`). To see what an orchestrator or a load balancer does during a rollout, set `SHUTDOWN_GRACE_SECONDS`: the server then **drains** first.
+
+- It closes the port, so a new connection is refused, and keeps serving the requests and the connections that are already open.
+- It writes what is going on every second: `Draining, 3 s: 2 requests and 5 connections open`.
+- It ends when nothing is open (`Drained after 2.4 s`) or when the grace period is over, whichever comes first, and releases what it holds then. A second signal ends it at once.
+- While it drains, [`/info`](#info) (`shutdown`) and [`/metrics`](#metrics) (`torchio_draining`, `torchio_open_requests`, `torchio_open_connections`) say so, for a client that still has a connection open: it is served as before, and a connection that stays idle keeps the drain waiting.
+
+```
+docker run -p 3000:3000 -e SHUTDOWN_GRACE_SECONDS=30 altrdev/torchio
+```
+
+[`/delay`](#delay) and [`/connections`](#connections) make something to wait for: `/delay?ms=10000` is a request in progress, and `/connections?count=50&hold=60` leaves 50 connections open that the drain waits for until the grace period is over. In Kubernetes, `terminationGracePeriodSeconds` must be longer than `SHUTDOWN_GRACE_SECONDS`, or the kubelet ends the container first.
 
 ## Docker
 
@@ -739,6 +759,7 @@ src/
     connections.rs   the connections of /connections
     workers.rs       the pool of worker threads for /stress and /cpu
     ready.rs         the readiness switch
+    shutdown.rs      the drain after SIGTERM, and what is open
     log.rs           the lines of /log
     delay.rs         the requests of /delay still waiting
     flaky.rs         the coin of /flaky: which requests fail
@@ -748,6 +769,7 @@ src/
     trust.rs         TRUST_PROXY
     accept.rs        JSON or text for /help
     counters.rs      requests answered, for /metrics
+    open.rs          the listener that counts connections and stops accepting, and the count of requests
   cli/             the commands besides the server
     watch.rs         torchio watch
     view.rs          what watch draws

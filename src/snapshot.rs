@@ -2,6 +2,7 @@
 use crate::app::AppState;
 use crate::resources::log::LogState;
 use crate::resources::ready::ReadyState;
+use crate::resources::shutdown::ShutdownSnapshot;
 use crate::resources::workers::StressSnapshot;
 use crate::system;
 
@@ -38,6 +39,7 @@ pub struct Snapshot {
     pub connections: Connections,
     pub ready: ReadyState,
     pub log: Option<LogState>,
+    pub shutdown: ShutdownSnapshot,
 }
 
 impl AppState {
@@ -61,6 +63,7 @@ impl AppState {
             connections: Connections { held: self.connections.budget().held(), limit: self.connections.budget().limit() },
             ready: self.ready.state(),
             log: self.log.state(),
+            shutdown: self.shutdown.snapshot(),
         }
     }
 }

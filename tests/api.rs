@@ -282,6 +282,7 @@ async fn the_configuration_has_these_keys() {
             "maxNumber",
             "name",
             "port",
+            "shutdownGraceSeconds",
             "startDelaySeconds",
             "trustProxy",
             "ui",
@@ -303,7 +304,22 @@ async fn info_has_these_fields() {
     };
     assert_eq!(
         keys(&info),
-        ["auth", "connections", "delay", "disk", "fd", "limits", "log", "memory", "name", "ready", "stress", "uptimeSeconds", "version"]
+        [
+            "auth",
+            "connections",
+            "delay",
+            "disk",
+            "fd",
+            "limits",
+            "log",
+            "memory",
+            "name",
+            "ready",
+            "shutdown",
+            "stress",
+            "uptimeSeconds",
+            "version"
+        ]
     );
     assert_eq!(keys(&info["stress"]), ["burn", "inFlight", "perWorker", "workers"]);
     assert_eq!(keys(&info["memory"]), ["containerLimitMb", "heldMb", "limitMb", "processRssMb"]);
@@ -328,11 +344,14 @@ async fn metrics_have_these_names() {
         "torchio_disk_free_bytes",
         "torchio_disk_held_bytes",
         "torchio_disk_limit_bytes",
+        "torchio_draining",
         "torchio_fd_held",
         "torchio_fd_limit",
         "torchio_info",
         "torchio_memory_held_bytes",
         "torchio_memory_limit_bytes",
+        "torchio_open_connections",
+        "torchio_open_requests",
         "torchio_ready",
         "torchio_start_time_seconds",
         "torchio_stress_requests_in_flight",

@@ -40,6 +40,7 @@ pub async fn handler(State(state): State<Arc<AppState>>) -> Json<Value> {
         "connections": {"held": snapshot.connections.held, "limit": snapshot.connections.limit},
         "ready": snapshot.ready,
         "log": snapshot.log,
+        "shutdown": snapshot.shutdown,
         "limits": {
             "maxNumber": config.max_number,
             "maxDelayMs": config.max_delay_ms,

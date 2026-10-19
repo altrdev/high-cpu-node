@@ -10,4 +10,5 @@ pub mod flaky;
 pub mod log;
 pub mod memory;
 pub mod ready;
+pub mod shutdown;
 pub mod workers;
