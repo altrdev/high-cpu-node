@@ -2,7 +2,7 @@
 # Installs the torchio binary of a release from GitHub: the one for this system, with its checksum
 # verified.
 #
-#   curl -fsSL https://raw.githubusercontent.com/altrdev/torchio/main/install.sh | sh
+#   curl -fsSL https://torchio.altr.dev/install | sh
 #
 # TORCHIO_VERSION      a tag, like v4.0.0 (default: the latest release)
 # TORCHIO_INSTALL_DIR  where to put it (default: /usr/local/bin, or ~/.local/bin without root or sudo)

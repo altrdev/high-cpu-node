@@ -8,6 +8,9 @@ All notable changes to this project are documented here. The GitHub release of e
 - `/block?ms=` freezes the server: after answering, every thread of the runtime sleeps for `ms` (up to `MAX_BLOCK_MS`, `30000` by default), so the process is alive but accepts and answers nothing, to test liveness probes and timeouts. `/info` (`block`), the control panel and `torchio block [ms]` have it, and `TOKEN` protects it.
 - `/oom` allocates memory without a budget until the kernel kills the process, to test `OOMKilled`, the exit code `137` and restart policies. It needs `ALLOW_OOM=1` (otherwise it answers `403` and does nothing) and, with `TOKEN` set, the token. `/config` shows `allowOom`.
 
+### Changed
+- The installer is also served by the site: `curl -fsSL https://torchio.altr.dev/install | sh`, which the README and the install page now show. The address on raw.githubusercontent.com keeps working and is the one to use if the site is down; the binary comes from the GitHub release either way.
+
 ## 4.3.0 - 2026-10-19
 
 ### Added

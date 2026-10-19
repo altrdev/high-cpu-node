@@ -12,6 +12,7 @@ on:
       - src/endpoints.rs
       - src/config.rs
       - CHANGELOG.md
+      - install.sh
       - .github/workflows/docs.yml
   push:
     tags:
@@ -54,6 +55,14 @@ jobs:
           tool: mdbook@0.5.4
 
       - run: mdbook build book
+
+      # the installer, at torchio.altr.dev/install: the one of the commit that is published. The
+      # address on raw.githubusercontent.com keeps working, and the script itself downloads the
+      # binary from the GitHub release, so a site that is down only takes this copy away.
+      - name: Publish the installer next to the pages
+        run: |
+          head -n 1 install.sh | grep -q '^#!/bin/sh$'
+          cp install.sh book/book/install
 
       - name: Every link between the pages has a target
         run: python3 book/check-links.py book/book
