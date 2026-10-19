@@ -7,18 +7,23 @@ use serde_json::{Map, Value, json};
 
 pub const STATUS_MIN: i64 = 200;
 pub const STATUS_MAX: i64 = 599;
+/// The lowest status that `/flaky` fails with: a failure is a 4xx or a 5xx
+pub const FAILURE_MIN: i64 = 400;
 
 type Specs1 = [(&'static str, Param); 1];
 type Specs2 = [(&'static str, Param); 2];
+type Specs3 = [(&'static str, Param); 3];
 
 pub struct Specs {
     pub stress: Specs1,
-    pub cpu: Specs2,
+    pub cpu: Specs3,
     pub delay: Specs1,
+    pub flaky: Specs3,
     pub memory: Specs2,
     pub leak: [(&'static str, Param); 3],
     pub disk: Specs2,
     pub fd: Specs2,
+    pub connections: Specs2,
     pub ready_off: Specs1,
     pub log: Specs2,
     pub crash: Specs2,
@@ -28,8 +33,17 @@ pub fn specs(config: &Config) -> Specs {
     let hold = ("hold", Param::new(config.default_hold_seconds, 0, config.max_hold_seconds));
     Specs {
         stress: [("number", Param::new(config.default_number, 0, config.max_number))],
-        cpu: [("percent", Param::new(config.default_cpu_percent, 0, 100)), hold],
+        cpu: [
+            ("percent", Param::new(config.default_cpu_percent, 0, 100)),
+            hold,
+            ("workers", Param::new(config.workers, 1, config.workers)),
+        ],
         delay: [("ms", Param::new(config.default_delay_ms, 0, config.max_delay_ms))],
+        flaky: [
+            ("rate", Param::new(50, 0, 100)),
+            ("code", Param::new(503, FAILURE_MIN, STATUS_MAX)),
+            ("ms", Param::new(0, 0, config.max_delay_ms)),
+        ],
         memory: [("mb", Param::new(config.default_memory_mb, 1, config.max_memory_mb)), hold],
         leak: [
             ("rate", Param::new(config.default_leak_rate_mb, 1, config.max_memory_mb)),
@@ -38,6 +52,7 @@ pub fn specs(config: &Config) -> Specs {
         ],
         disk: [("mb", Param::new(config.default_disk_mb, 1, config.max_disk_mb)), hold],
         fd: [("count", Param::new(config.default_fd, 1, config.max_fd)), hold],
+        connections: [("count", Param::new(config.default_connections, 1, config.max_connections)), hold],
         ready_off: [("seconds", Param::new(config.default_not_ready_seconds, 0, config.max_hold_seconds))],
         log: [
             ("lines", Param::new(config.default_log_lines, 1, config.max_log_lines)),
@@ -65,7 +80,12 @@ pub fn catalog(config: &Config) -> Vec<Endpoint> {
     let mut list = vec![
         endpoint("/", false, &[], "Health check, returns \"Status: OK\""),
         endpoint("/stress", true, &s.stress, "Runs a Fibonacci calculation in a worker, to keep a core busy"),
-        endpoint("/cpu", true, &s.cpu, "Keeps the workers busy for a share of the time, percent=0 stops it"),
+        endpoint(
+            "/cpu",
+            true,
+            &s.cpu,
+            "Keeps the workers (or the first ones, with workers) busy for a share of the time, percent=0 stops it",
+        ),
         endpoint("/delay", false, &s.delay, "Answers after a delay, without blocking the server"),
         Endpoint {
             path: "/status/:code",
@@ -74,10 +94,12 @@ pub fn catalog(config: &Config) -> Vec<Endpoint> {
             location: Some("path"),
             description: "Answers with the given HTTP status",
         },
+        endpoint("/flaky", false, &s.flaky, "Fails rate percent of the requests with code, and answers 200 to the rest"),
         endpoint("/memory", true, &s.memory, "Allocates memory (MB) and holds it"),
         endpoint("/leak", true, &s.leak, "Memory that grows by itself, rate MB each second up to mb MB"),
         endpoint("/disk", true, &s.disk, "Writes a file (MB) in DISK_DIR and keeps it"),
         endpoint("/fd", true, &s.fd, "Opens file descriptors and holds them"),
+        endpoint("/connections", true, &s.connections, "Opens TCP connections to the server itself and holds them"),
         endpoint("/ready", false, &[], "Readiness check: 200, or 503 after /ready/off"),
         endpoint("/ready/off", true, &s.ready_off, "Makes /ready answer 503 for seconds (0 until /ready/on)"),
         endpoint("/ready/on", true, &[], "Makes /ready answer 200 again"),
@@ -186,7 +208,10 @@ mod tests {
     #[test]
     fn the_endpoints_that_change_the_state_are_the_protected_ones() {
         let protected: Vec<&str> = catalog(&config(false)).iter().filter(|e| e.auth).map(|e| e.path).collect();
-        assert_eq!(protected, ["/stress", "/cpu", "/memory", "/leak", "/disk", "/fd", "/ready/off", "/ready/on", "/crash", "/log"]);
+        assert_eq!(
+            protected,
+            ["/stress", "/cpu", "/memory", "/leak", "/disk", "/fd", "/connections", "/ready/off", "/ready/on", "/crash", "/log"]
+        );
     }
 
     #[test]

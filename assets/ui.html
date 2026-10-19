@@ -92,8 +92,11 @@ const gauges = [
       // what /stress keeps busy counts as 100, the other workers as much as /cpu burns
       const busy = i.stress.perWorker.filter((n) => n > 0).length, w = i.stress.workers;
       const burn = i.stress.burn ? i.stress.burn.percent : 0;
-      const load = busy * 100 + (w - busy) * burn;
-      return {v: load, max: w * 100, text: `${w ? Math.round(load / w) : 0}%`, cap: `${busy} busy with /stress` + (i.stress.burn ? `, ${burn}% /cpu` : '')};
+      // /cpu loads the first workers, all of them unless it was asked for fewer
+      const burned = i.stress.burn ? (i.stress.burn.workers ?? w) : 0;
+      let load = 0;
+      for (let n = 0; n < w; n++) load += i.stress.perWorker[n] > 0 ? 100 : n < burned ? burn : 0;
+      return {v: load, max: w * 100, text: `${w ? Math.round(load / w) : 0}%`, cap: `${busy} busy with /stress` + (i.stress.burn ? `, ${burn}% /cpu on ${burned < w ? `${burned} of ${w} workers` : 'every worker'}` : '')};
     }},
     {key: 'mem', label: 'Memory held', get: (i) => ({v: i.memory.heldMb, max: i.memory.limitMb, text: `${i.memory.heldMb} / ${i.memory.limitMb} MB`, cap: '/memory and /leak'})},
     {key: 'rss', label: 'Process RSS', get: (i) => {
@@ -275,11 +278,12 @@ function buildControls(info) {
     const hold = info.limits.maxHoldSeconds;
     const secs = (name, value) => ({name, label: name, min: 0, max: hold, value, step: 1, unit: ' s'});
     [
-        {title: 'CPU level', path: '/cpu', params: [{name: 'percent', label: 'percent', min: 0, max: 100, value: 70, step: 5, unit: '%'}, secs('hold', 60)], actions: [{label: 'Start'}]},
+        {title: 'CPU level', path: '/cpu', params: [{name: 'percent', label: 'percent', min: 0, max: 100, value: 70, step: 5, unit: '%'}, secs('hold', 60), {name: 'workers', label: 'workers', min: 1, max: info.stress.workers, value: info.stress.workers}], actions: [{label: 'Start'}]},
         {title: 'CPU request', path: '/stress', params: [{name: 'number', label: 'number', min: 0, max: info.limits.maxNumber, value: 40}], actions: [{label: 'Run'}]},
         {title: 'Memory', path: '/memory', params: [{name: 'mb', label: 'mb', min: 1, max: info.memory.limitMb, value: 100, unit: ' MB'}, secs('hold', 20)], actions: [{label: 'Allocate'}]},
         {title: 'Memory leak', path: '/leak', params: [{name: 'rate', label: 'rate', min: 1, max: info.memory.limitMb, value: 10, unit: ' MB/s'}, {name: 'mb', label: 'up to', min: 1, max: info.memory.limitMb, value: 200, unit: ' MB'}, secs('hold', 20)], actions: [{label: 'Start'}]},
         {title: 'Disk', path: '/disk', params: [{name: 'mb', label: 'mb', min: 1, max: info.disk.limitMb, value: 100, unit: ' MB'}, secs('hold', 20)], actions: [{label: 'Write'}]},
+        ...(info.connections ? [{title: 'Connections', path: '/connections', params: [{name: 'count', label: 'count', min: 1, max: info.connections.limit, value: 50}, secs('hold', 20)], actions: [{label: 'Open'}]}] : []),
         {title: 'File descriptors', path: '/fd', params: [{name: 'count', label: 'count', min: 1, max: info.fd ? info.fd.limit : 10000, value: 500}, secs('hold', 20)], actions: [{label: 'Open'}]},
         {title: 'Readiness', path: '/ready/off', params: [{name: 'seconds', label: 'seconds', min: 0, max: hold, value: 60, unit: ' s'}], actions: [{label: 'Make not ready'}, {label: 'Ready again', path: '/ready/on'}]},
         {title: 'Delay', path: '/delay', params: [{name: 'ms', label: 'ms', min: 0, max: info.limits.maxDelayMs, value: 3000, step: 100}], actions: [{label: 'Wait'}]},
@@ -316,6 +320,7 @@ async function tick() {
             built = true;
             gauges.forEach((g) => buildGauge(g.key, g.label));
             buildGauge('fd', 'File descriptors held');
+            if (info.connections) buildGauge('connections', 'Connections held');
             buildGauge('req', 'Requests by status');
             buildControls(info);
         }
@@ -331,11 +336,15 @@ async function tick() {
         setTab(state.ready ? 'ok' : 'bad', state.ready ? `${info.name} ${info.version}` : `${info.name} · not ready`);
 
         const status = [`/stress in progress: ${info.stress.inFlight}`, `/delay waiting: ${info.delay.inFlight}`];
-        if (info.stress.burn) status.unshift(`/cpu: ${info.stress.burn.percent}% on every worker, ${info.stress.burn.secondsLeft} s left`);
+        if (info.stress.burn) {
+            const n = info.stress.burn.workers ?? info.stress.workers;
+            status.unshift(`/cpu: ${info.stress.burn.percent}% on ${n < info.stress.workers ? `${n} of ${info.stress.workers} workers` : 'every worker'}, ${info.stress.burn.secondsLeft} s left`);
+        }
         if (info.log) status.unshift(`/log: ${info.log.sent} of ${info.log.lines} lines, ${info.log.rate} lines/s`);
         $('status').replaceChildren(...status.map((text) => el('span', '', text)));
 
         gauges.forEach((g) => draw(g.key, g.get(info)));
+        if (info.connections) draw('connections', {v: info.connections.held, max: info.connections.limit, text: `${info.connections.held} / ${info.connections.limit}`, cap: 'held by /connections'});
         if (info.fd) draw('fd', {v: info.fd.held, max: info.fd.limit, text: `${info.fd.held} / ${info.fd.limit}`, cap: 'held by /fd'});
         requests(metrics);
     } catch (e) {

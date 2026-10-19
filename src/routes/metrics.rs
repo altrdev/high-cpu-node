@@ -64,6 +64,13 @@ pub async fn handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
         "Share of the time each worker is kept busy by /cpu, 0 when it is not running.",
         one(s.stress.burn.as_ref().map_or(0.0, |burn| burn.percent as f64)),
     );
+    metric(
+        &mut lines,
+        "torchio_cpu_burn_workers",
+        "gauge",
+        "Workers kept busy by /cpu, 0 when it is not running.",
+        one(s.stress.burn.as_ref().map_or(0.0, |burn| burn.workers as f64)),
+    );
     metric(&mut lines, "torchio_delay_requests_in_flight", "gauge", "/delay requests still waiting.", one(s.delay_in_flight as f64));
     metric(&mut lines, "torchio_memory_held_bytes", "gauge", "Memory held by /memory.", one(s.memory.held_mb as f64 * mb));
     metric(
@@ -91,6 +98,14 @@ pub async fn handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     );
     metric(&mut lines, "torchio_disk_free_bytes", "gauge", "Free space in DISK_DIR.", optional(s.disk.free_bytes));
     metric(&mut lines, "torchio_fd_held", "gauge", "File descriptors held by /fd.", one(s.fd.held as f64));
+    metric(&mut lines, "torchio_connections_held", "gauge", "TCP connections held by /connections.", one(s.connections.held as f64));
+    metric(
+        &mut lines,
+        "torchio_connections_limit",
+        "gauge",
+        "Total connections /connections may hold (MAX_CONNECTIONS).",
+        one(s.connections.limit as f64),
+    );
     metric(&mut lines, "torchio_fd_limit", "gauge", "Total file descriptors /fd may hold (MAX_FD).", one(s.fd.limit as f64));
     metric(
         &mut lines,

@@ -155,6 +155,25 @@ fn disk_removes_the_files_it_still_holds_on_shutdown() {
 }
 
 #[test]
+fn connections_are_held_within_its_budget_and_closed() {
+    let server = Server::with(&[("MAX_CONNECTIONS", "20")]);
+    assert_eq!(server.text("/connections?count=12&hold=1"), "Opened 12 connections, held for 1 s");
+    assert_eq!(server.info()["connections"]["held"], 12);
+    assert_eq!(metric(&server.text("/metrics"), "torchio_connections_held"), Some(12.0));
+    assert_eq!(server.text("/"), "Status: OK", "the server keeps answering with the connections open");
+
+    let over = server.get("/connections?count=12&hold=1");
+    assert_eq!(over.status, 429);
+    assert_eq!(over.body, "12 connections already held, limit is 20");
+    assert_eq!(server.status("/connections?count=21"), 400);
+    assert_eq!(server.status("/connections?count=0"), 400);
+
+    wait_for("the connections to be closed", 3000, || server.info()["connections"]["held"] == 0);
+    assert_eq!(metric(&server.text("/metrics"), "torchio_connections_limit"), Some(20.0));
+    assert_eq!(server.text("/connections?count=20&hold=0"), "Opened 20 connections, held for 0 s", "the limit itself is allowed");
+}
+
+#[test]
 fn fd_holds_descriptors_within_its_budget_and_releases_them() {
     let server = Server::with(&[("MAX_FD", "50")]);
     assert_eq!(server.text("/fd?count=30&hold=1"), "Opened 30 descriptors, held for 1 s");

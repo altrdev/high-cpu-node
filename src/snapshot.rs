@@ -24,12 +24,18 @@ pub struct Fd {
     pub limit: i64,
 }
 
+pub struct Connections {
+    pub held: i64,
+    pub limit: i64,
+}
+
 pub struct Snapshot {
     pub stress: StressSnapshot,
     pub delay_in_flight: usize,
     pub memory: Memory,
     pub disk: Disk,
     pub fd: Fd,
+    pub connections: Connections,
     pub ready: ReadyState,
     pub log: Option<LogState>,
 }
@@ -52,6 +58,7 @@ impl AppState {
                 free_bytes: system::free_bytes(&self.config.disk_dir),
             },
             fd: Fd { held: self.fd.budget().held(), limit: self.fd.budget().limit() },
+            connections: Connections { held: self.connections.budget().held(), limit: self.connections.budget().limit() },
             ready: self.ready.state(),
             log: self.log.state(),
         }

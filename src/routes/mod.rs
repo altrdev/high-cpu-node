@@ -1,11 +1,13 @@
 //! One file for each endpoint: it reads the parameters, asks `resources` to do the work and writes the answer.
 pub mod config;
+pub mod connections;
 pub mod cpu;
 pub mod crash;
 pub mod delay;
 pub mod disk;
 pub mod echo;
 pub mod fd;
+pub mod flaky;
 pub mod help;
 pub mod info;
 pub mod leak;

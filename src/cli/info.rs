@@ -14,6 +14,7 @@ pub struct Info {
     pub memory: Memory,
     pub disk: Disk,
     pub fd: Option<Fd>,
+    pub connections: Option<Connections>,
     pub ready: Option<Ready>,
     pub log: Option<Log>,
 }
@@ -32,6 +33,8 @@ pub struct Stress {
 pub struct Burn {
     pub percent: i64,
     pub seconds_left: i64,
+    /// How many workers are loaded; a server that does not say loads all of them
+    pub workers: Option<i64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -56,6 +59,12 @@ pub struct Disk {
     pub limit_mb: i64,
     pub dir: String,
     pub free_mb: Option<i64>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Connections {
+    pub held: i64,
+    pub limit: i64,
 }
 
 #[derive(Debug, Deserialize)]

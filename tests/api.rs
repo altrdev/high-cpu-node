@@ -97,7 +97,8 @@ async fn every_endpoint_of_the_catalog_is_routed_and_the_token_protects_the_ones
 #[tokio::test]
 async fn every_parameter_is_rejected_one_step_outside_its_range() {
     let app = app(&[("TOKEN", "s3cret")]);
-    let config = Config::read(|_| None, |_| {});
+    // the same workers as the app, which has one: that is the range of /cpu?workers=
+    let config = Config::read(|name| (name == "WORKERS").then(|| "1".to_string()), |_| {});
     let token = [("authorization", "Bearer s3cret")];
     let mut checked = 0;
     for endpoint in catalog(&config) {
@@ -150,6 +151,38 @@ async fn status_answers_every_code_it_promises() {
             assert_eq!(answer.body, format!("Status: {code}"));
         }
     }
+}
+
+#[tokio::test]
+async fn flaky_never_fails_at_rate_0_and_always_does_at_rate_100() {
+    let app = app(&[]);
+    for _ in 0..50 {
+        let answer = get(&app, "/flaky?rate=0").await;
+        assert_eq!((answer.status, answer.body.as_str()), (StatusCode::OK, "Status: OK"));
+        let answer = get(&app, "/flaky?rate=100").await;
+        assert_eq!((answer.status, answer.body.as_str()), (StatusCode::SERVICE_UNAVAILABLE, "Status: 503"), "503 is the default");
+    }
+    assert_eq!(get(&app, "/flaky?rate=100&code=429").await.status, StatusCode::TOO_MANY_REQUESTS);
+    assert_eq!(get(&app, "/flaky?rate=100&code=599").await.status.as_u16(), 599);
+}
+
+#[tokio::test]
+async fn flaky_fails_about_half_of_the_requests_by_default() {
+    let app = app(&[]);
+    let mut failed = 0;
+    for _ in 0..400 {
+        failed += i32::from(get(&app, "/flaky").await.status != StatusCode::OK);
+    }
+    assert!((120..=280).contains(&failed), "{failed} of 400 failed with the default rate of 50");
+}
+
+#[tokio::test]
+async fn flaky_only_takes_a_code_that_is_a_failure() {
+    let app = app(&[]);
+    assert_eq!(get(&app, "/flaky?code=399").await.body, "code must be between 400 and 599");
+    assert_eq!(get(&app, "/flaky?code=600").await.status, StatusCode::BAD_REQUEST);
+    assert_eq!(get(&app, "/flaky?rate=101").await.body, "rate must be between 0 and 100");
+    assert_eq!(get(&app, "/flaky?ms=60001").await.status, StatusCode::BAD_REQUEST, "the limit of /delay");
 }
 
 #[tokio::test]
@@ -223,6 +256,7 @@ async fn the_configuration_has_these_keys() {
         keys,
         [
             "auth",
+            "defaultConnections",
             "defaultCpuPercent",
             "defaultDelayMs",
             "defaultDiskMb",
@@ -237,6 +271,7 @@ async fn the_configuration_has_these_keys() {
             "diskDir",
             "host",
             "logFormat",
+            "maxConnections",
             "maxDelayMs",
             "maxDiskMb",
             "maxFd",
@@ -268,7 +303,7 @@ async fn info_has_these_fields() {
     };
     assert_eq!(
         keys(&info),
-        ["auth", "delay", "disk", "fd", "limits", "log", "memory", "name", "ready", "stress", "uptimeSeconds", "version"]
+        ["auth", "connections", "delay", "disk", "fd", "limits", "log", "memory", "name", "ready", "stress", "uptimeSeconds", "version"]
     );
     assert_eq!(keys(&info["stress"]), ["burn", "inFlight", "perWorker", "workers"]);
     assert_eq!(keys(&info["memory"]), ["containerLimitMb", "heldMb", "limitMb", "processRssMb"]);
@@ -285,7 +320,10 @@ async fn metrics_have_these_names() {
     names.sort_unstable();
     let expected = [
         "process_resident_memory_bytes",
+        "torchio_connections_held",
+        "torchio_connections_limit",
         "torchio_cpu_burn_percent",
+        "torchio_cpu_burn_workers",
         "torchio_delay_requests_in_flight",
         "torchio_disk_free_bytes",
         "torchio_disk_held_bytes",

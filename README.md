@@ -93,9 +93,10 @@ More about it in [Load testing](#load-testing).
 ```
 curl -i http://127.0.0.1:3000/status/503
 curl --max-time 2 "http://127.0.0.1:3000/delay?ms=5000"
+curl -i "http://127.0.0.1:3000/flaky?rate=30"
 ```
 
-`/status/:code` answers with any status from `200` to `599`, and `/delay` waits without blocking the server, so the rest keeps being served while a slow request is pending.
+`/status/:code` answers with any status from `200` to `599`, and `/delay` waits without blocking the server, so the rest keeps being served while a slow request is pending. `/flaky` fails only some of the requests, to see how retries, circuit breakers and outlier detection behave.
 
 ### Disk and volumes
 
@@ -140,6 +141,7 @@ The server listens on port 3000.
 | `/cpu`          | `percent`, `hold`  | Keeps the workers busy for a share of the time, to test CPU based autoscaling |
 | `/delay`        | `ms`               | Answers after a delay, to test timeouts and slow backends   |
 | `/status/:code` | `code` (in the path) | Answers with the given HTTP status, to test probes and retries |
+| `/flaky`        | `rate`, `code`, `ms` | Fails a share of the requests, to test retries and circuit breakers |
 | `/memory`       | `mb`, `hold`       | Allocates memory and holds it, to test memory limits and OOM kills |
 | `/leak`         | `rate`, `mb`, `hold` | Memory that grows by itself up to a ceiling, to test alerts and leaks |
 | `/disk`         | `mb`, `hold`       | Writes a file and keeps it, to test disk limits and volumes |
@@ -148,6 +150,7 @@ The server listens on port 3000.
 | `/ready/on`     |                    | Makes `/ready` answer `200` again                           |
 | `/crash`        | `code`, `after`    | Ends the process, to test restarts and backoff              |
 | `/fd`           | `count`, `hold`    | Opens file descriptors and holds them, to test `EMFILE`     |
+| `/connections`  | `count`, `hold`    | Opens TCP connections to the server and holds them, to test connection limits |
 | `/log`          | `lines`, `rate`    | Writes lines to stdout at a rate, to test log collection and rotation |
 | `/echo`         |                    | The request as the server sees it, to see what proxies add or remove |
 | `/ui`           |                    | Control panel in the browser, only with `UI=1`              |
@@ -176,17 +179,19 @@ curl "http://127.0.0.1:3000/stress?number=40"
 
 Use [`/stress`](#stress) when the load must come from requests, so that response times show the pressure and concurrent requests queue up; use `/cpu` when you only need the CPU held at a level, as a percentage, for a while.
 
-Keeps every worker busy for `percent` of the time during `hold` seconds, instead of running one calculation. With one worker for each CPU (the default), `percent` is the load of the machine, which is what a CPU based autoscaler looks at. A new request replaces the previous one, and `percent=0` stops it.
+Keeps the workers busy for `percent` of the time during `hold` seconds, instead of running one calculation. With one worker for each CPU (the default), `percent` is the load of the machine, which is what a CPU based autoscaler looks at. `workers` loads only the first ones and leaves the others idle, for an uneven load across the cores. A new request replaces the previous one, and `percent=0` stops it.
 
 | Parameter | Default | Allowed range         |
 |-----------|---------|-----------------------|
 | `percent` | `50`    | `0..100`              |
 | `hold`    | `10`    | `0..MAX_HOLD_SECONDS` |
+| `workers` | all of them | `1..WORKERS`      |
 
-The answer comes right away. `/stress` keeps working while `/cpu` runs, and what is left is in `/info` (`stress.burn`) and in `/metrics` (`torchio_cpu_burn_percent`). The default number of workers is the number of CPUs the process can use, so a CPU limit of the container counts (a limit of 2 CPUs gives 2 workers); set `WORKERS` to choose another.
+The answer comes right away. `/stress` keeps working while `/cpu` runs, and what is left is in `/info` (`stress.burn`, with how many workers are loaded) and in `/metrics` (`torchio_cpu_burn_percent` and `torchio_cpu_burn_workers`). The default number of workers is the number of CPUs the process can use, so a CPU limit of the container counts (a limit of 2 CPUs gives 2 workers); set `WORKERS` to choose another.
 
 ```
 curl "http://127.0.0.1:3000/cpu?percent=70&hold=120"
+curl "http://127.0.0.1:3000/cpu?percent=90&workers=1"   # one core at 90%, the others idle
 ```
 
 ### `/delay`
@@ -208,6 +213,23 @@ Answers with the HTTP status you ask for. Codes must be integers from `200` to `
 ```
 curl -i http://127.0.0.1:3000/status/503
 ```
+
+### `/flaky`
+
+Answers with `code` for `rate` percent of the requests and with `200` for the rest, to test retries, circuit breakers and outlier detection. Each request is decided on its own, so the share is only exact over many requests; `rate=0` never fails and `rate=100` always does. A failing answer waits `ms` milliseconds first, like [`/delay`](#delay), and a request that succeeds never waits.
+
+| Parameter | Default | Allowed range     |
+|-----------|---------|-------------------|
+| `rate`    | `50`    | `0..100`          |
+| `code`    | `503`   | `400..599`        |
+| `ms`      | `0`     | `0..MAX_DELAY_MS` |
+
+```
+curl -i "http://127.0.0.1:3000/flaky?rate=30"
+curl -i "http://127.0.0.1:3000/flaky?rate=100&code=429&ms=500"
+```
+
+The answers are counted in [`/metrics`](#metrics) by status as usual, so `torchio_http_requests_total{route="/flaky",code="503"}` is the number of failures. Like `/status/:code` and `/delay`, it changes nothing in the server, so [`TOKEN`](#token) does not protect it.
 
 ### `/memory`
 
@@ -307,6 +329,21 @@ Opens `count` file descriptors and closes them after `hold` seconds.
 curl "http://127.0.0.1:3000/fd?count=2000&hold=30"
 ```
 
+### `/connections`
+
+Opens `count` TCP connections to the server itself and closes them after `hold` seconds. It is the same shape as [`/fd`](#fd), for what a load balancer, a proxy or a connection limit sees: a server with many open connections, which stay idle. The connections are also closed when the process ends, so a shutdown with open sockets is easy to try.
+
+| Parameter | Default | Allowed range         |
+|-----------|---------|-----------------------|
+| `count`   | `10`    | `1..MAX_CONNECTIONS`  |
+| `hold`    | `10`    | `0..MAX_HOLD_SECONDS` |
+
+`MAX_CONNECTIONS` is the total that can be held at the same time, with the same `400` and `429` rules as `/fd`. Each connection takes a descriptor on the side that opens it and another on the side that accepts it, both in this process, so the limit of the process (`ulimit -n`) is reached at half of it: the answer is then a `503` that says how many could be opened, and those stay open until `hold` ends. The answer comes when the connections are open.
+
+```
+curl "http://127.0.0.1:3000/connections?count=200&hold=60"
+```
+
 ### `/log`
 
 Writes `lines` lines (default 1000) to stdout at `rate` lines each second (default 100), then stops, to test log collection pipelines, rotation and how fast the logs of a container fill a disk. Each line has a timestamp and its number: `2026-10-18T14:00:00.000Z torchio-log line 7 of 1000`. A new request replaces the one still running; the lines already written stay. `MAX_LOG_LINES` and `MAX_LOG_RATE` set the limits. While it writes, [`/info`](#info) has `log` (`{ "sent", "lines", "rate" }`, `null` otherwise), and `watch` and the control panel show it.
@@ -341,7 +378,7 @@ Returns a JSON document with what the server is doing right now. It takes no par
 | Field                         | Meaning                                                                 |
 |-------------------------------|-------------------------------------------------------------------------|
 | `stress.inFlight`, `perWorker`| `/stress` requests being calculated, in total and for each worker       |
-| `stress.burn`                 | What `/cpu` is doing, `{ "percent", "secondsLeft" }`, or `null` when it is not running |
+| `stress.burn`                 | What `/cpu` is doing, `{ "percent", "secondsLeft", "workers" }` (`workers` is how many are loaded), or `null` when it is not running |
 | `delay.inFlight`              | `/delay` requests still waiting                                         |
 | `memory.heldMb`, `limitMb`    | Memory held by `/memory` and the total it may hold (`MAX_MEMORY_MB`); the difference is what a new request can still allocate |
 | `memory.processRssMb`         | Memory the whole process uses, the figure that counts for an OOM kill   |
@@ -349,6 +386,7 @@ Returns a JSON document with what the server is doing right now. It takes no par
 | `disk.heldMb`, `limitMb`      | Same as for memory, for `/disk` (`MAX_DISK_MB`)                         |
 | `disk.freeMb`                 | Free space in `DISK_DIR`, `null` if the directory is not usable         |
 | `fd.held`, `limit`            | File descriptors held by `/fd` and the total it may hold (`MAX_FD`)     |
+| `connections.held`, `limit`   | Connections held by `/connections` and the total it may hold (`MAX_CONNECTIONS`) |
 | `log`                         | What `/log` is writing, `{ "sent", "lines", "rate" }`, or `null` when it is not running |
 | `ready.ready`, `secondsLeft`  | What `/ready` answers, and the seconds left before it is ready again (`null` if nothing is counting down) |
 
@@ -364,6 +402,7 @@ The figures of [`/info`](#info) in the Prometheus text format, plus a counter of
 | `torchio_stress_requests_in_flight`     | gauge   | `/stress` requests being calculated                         |
 | `torchio_worker_requests_in_flight{worker}` | gauge | The same, for each worker                                 |
 | `torchio_cpu_burn_percent`              | gauge   | Share of the time each worker is kept busy by `/cpu`, `0` when it is not running |
+| `torchio_cpu_burn_workers`              | gauge   | Workers `/cpu` keeps busy, `0` when it is not running       |
 | `torchio_delay_requests_in_flight`      | gauge   | `/delay` requests still waiting                             |
 | `torchio_memory_held_bytes`             | gauge   | Memory held by `/memory`                                    |
 | `torchio_memory_limit_bytes`            | gauge   | Total memory `/memory` may hold (`MAX_MEMORY_MB`)           |
@@ -374,6 +413,8 @@ The figures of [`/info`](#info) in the Prometheus text format, plus a counter of
 | `torchio_disk_free_bytes`               | gauge   | Free space in `DISK_DIR`, only present when it is usable    |
 | `torchio_fd_held`                       | gauge   | File descriptors held by `/fd`                              |
 | `torchio_fd_limit`                      | gauge   | Total descriptors `/fd` may hold (`MAX_FD`)                 |
+| `torchio_connections_held`              | gauge   | TCP connections held by `/connections`                      |
+| `torchio_connections_limit`             | gauge   | Total connections `/connections` may hold (`MAX_CONNECTIONS`) |
 | `torchio_ready`                         | gauge   | `1` while `/ready` answers `200`, `0` while it answers `503` |
 | `torchio_http_requests_total{route,code}` | counter | Requests answered, by route pattern (such as `/status/:code`) and status code. A request the client abandons before the answer is not counted |
 | `torchio_http_request_duration_seconds{route,code}` | histogram | Time taken to answer, in seconds, with the same labels (`_bucket{le}`, `_sum`, `_count`). Buckets go from 5 ms to 60 s, which is the default `MAX_DELAY_MS`. It includes the time of `/delay`, and the requests to `/metrics` and `/info` themselves |
@@ -436,18 +477,20 @@ torchio crash 137 --after 5
 | Command                          | Endpoint                 |
 |----------------------------------|--------------------------|
 | `torchio stress [number]`        | [`/stress`](#stress)     |
-| `torchio cpu [percent] [hold]`   | [`/cpu`](#cpu)           |
+| `torchio cpu [percent] [hold] [workers]` | [`/cpu`](#cpu)   |
 | `torchio delay [ms]`             | [`/delay`](#delay)       |
 | `torchio status <code>`          | [`/status/:code`](#statuscode) |
+| `torchio flaky [rate] [code] [ms]` | [`/flaky`](#flaky)     |
 | `torchio memory [mb] [hold]`     | [`/memory`](#memory)     |
 | `torchio leak [rate] [mb] [hold]`| [`/leak`](#leak)         |
 | `torchio disk [mb] [hold]`       | [`/disk`](#disk)         |
 | `torchio fd [count] [hold]`      | [`/fd`](#fd)             |
+| `torchio connections [count] [hold]` | [`/connections`](#connections) |
 | `torchio log [lines] [rate]`     | [`/log`](#log)           |
 | `torchio crash [code] [after]`   | [`/crash`](#crash)       |
 | `torchio ready on \| off [seconds]` | [`/ready`](#ready)   |
 
-The values after the name are the parameters of the endpoint, in the order of the table; any of them can also be given by name, as `--hold 60` or `--hold=60`. The limits are the ones of the server: a value it refuses is printed with its `400` and the command exits with `1`. With [`TOKEN`](#token), pass `--token <token>` or set `TOKEN`. `/stress` and `/delay` answer when they finish, so the command waits for them. Like `watch`, it speaks plain HTTP only.
+The values after the name are the parameters of the endpoint, in the order of the table; any of them can also be given by name, as `--hold 60` or `--hold=60`. The limits are the ones of the server: a value it refuses is printed with its `400` and the command exits with `1`. With [`TOKEN`](#token), pass `--token <token>` or set `TOKEN`. `/stress`, `/delay` and `/flaky` with `ms` answer when they finish, so the command waits for them. Like `watch`, it speaks plain HTTP only.
 
 ## Shell completion
 
@@ -528,14 +571,14 @@ The page makes [`/crash`](#crash) a button, which is why it is off by default (a
 
 ## Token
 
-Anyone who can reach the port can call `/crash` or `/disk`. Set `TOKEN` to ask for a password on the endpoints that change the state of the instance (`/stress`, `/cpu`, `/memory`, `/leak`, `/disk`, `/fd`, `/log`, `/ready/off`, `/ready/on` and `/crash`):
+Anyone who can reach the port can call `/crash` or `/disk`. Set `TOKEN` to ask for a password on the endpoints that change the state of the instance (`/stress`, `/cpu`, `/memory`, `/leak`, `/disk`, `/fd`, `/connections`, `/log`, `/ready/off`, `/ready/on` and `/crash`):
 
 ```
 docker run -p 3000:3000 -e TOKEN=secret altrdev/torchio:latest
 curl -H "Authorization: Bearer secret" localhost:3000/crash
 ```
 
-Without the header, or with a wrong token, they answer `401`. `/`, `/ready`, `/info`, `/metrics`, `/help`, `/config`, `/echo`, `/delay` and `/status/:code` stay open, so probes, Prometheus and `watch` work as before. [`/info`](#info) tells whether a token is needed (`auth`). The control panel asks for it the first time a server answers `401` and keeps it for that tab. Without `TOKEN` nothing is checked.
+Without the header, or with a wrong token, they answer `401`. `/`, `/ready`, `/info`, `/metrics`, `/help`, `/config`, `/echo`, `/delay`, `/status/:code` and `/flaky` stay open, so probes, Prometheus and `watch` work as before. [`/info`](#info) tells whether a token is needed (`auth`). The control panel asks for it the first time a server answers `401` and keeps it for that tab. Without `TOKEN` nothing is checked.
 
 It is a shared password, not a login: without HTTPS it travels in clear, so on the internet put a proxy with TLS in front.
 
@@ -554,6 +597,7 @@ Environment variables:
 | `UI`               | off             | `1` turns on the control panel at `/ui`           |
 | `START_DELAY_SECONDS` | `0`         | Seconds the port stays closed after the start     |
 | `MAX_FD`           | `10000`         | Total descriptors `/fd` can hold at once          |
+| `MAX_CONNECTIONS`  | `500`           | Total connections `/connections` can hold at once |
 | `MAX_LOG_LINES`    | `100000`        | Highest `lines` accepted by `/log`                |
 | `MAX_LOG_RATE`     | `10000`         | Highest `rate` accepted by `/log`                 |
 | `TRUST_PROXY`      | off             | Trusts `X-Forwarded-*` (`true`, a number of hops, or addresses and subnets), see `/echo` |
@@ -692,10 +736,12 @@ src/
     memory.rs        memory taken from the OS (/memory, /leak)
     disk.rs          the files of /disk
     fd.rs            the descriptors of /fd
+    connections.rs   the connections of /connections
     workers.rs       the pool of worker threads for /stress and /cpu
     ready.rs         the readiness switch
     log.rs           the lines of /log
     delay.rs         the requests of /delay still waiting
+    flaky.rs         the coin of /flaky: which requests fail
   http/            what serves requests and is not specific to an endpoint
     params.rs        the integer query parameters
     auth.rs          TOKEN

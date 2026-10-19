@@ -18,13 +18,20 @@ struct Action {
 
 const ACTIONS: &[Action] = &[
     Action { name: "stress", about: "Keep a core busy with a calculation", path: "/stress", params: &["number"] },
-    Action { name: "cpu", about: "Keep every worker busy for a share of the time", path: "/cpu", params: &["percent", "hold"] },
+    Action { name: "cpu", about: "Keep every worker busy for a share of the time", path: "/cpu", params: &["percent", "hold", "workers"] },
     Action { name: "delay", about: "Make the server answer after a delay", path: "/delay", params: &["ms"] },
     Action { name: "status", about: "Make the server answer with an HTTP status", path: "/status/{code}", params: &["code"] },
+    Action { name: "flaky", about: "Make the server fail a share of the requests", path: "/flaky", params: &["rate", "code", "ms"] },
     Action { name: "memory", about: "Allocate memory and hold it", path: "/memory", params: &["mb", "hold"] },
     Action { name: "leak", about: "Grow memory by itself up to a ceiling", path: "/leak", params: &["rate", "mb", "hold"] },
     Action { name: "disk", about: "Write a file and keep it", path: "/disk", params: &["mb", "hold"] },
     Action { name: "fd", about: "Open file descriptors and hold them", path: "/fd", params: &["count", "hold"] },
+    Action {
+        name: "connections",
+        about: "Open TCP connections to the server and hold them",
+        path: "/connections",
+        params: &["count", "hold"],
+    },
     Action { name: "log", about: "Write lines to the log at a rate", path: "/log", params: &["lines", "rate"] },
     Action { name: "crash", about: "End the server process", path: "/crash", params: &["code", "after"] },
     // `ready on` and `ready off [seconds]`: the word picks the endpoint
@@ -158,7 +165,7 @@ fn target(action: &Action, values: &[(&'static str, String)]) -> Result<String, 
 /// How long to wait for the answer: `/stress` and `/delay` answer when they are done
 fn timeout(action: &Action) -> Duration {
     match action.name {
-        "stress" | "delay" => Duration::from_secs(600),
+        "stress" | "delay" | "flaky" => Duration::from_secs(600),
         _ => Duration::from_secs(30),
     }
 }
@@ -251,6 +258,12 @@ mod tests {
     }
 
     #[test]
+    fn flaky_takes_the_rate_the_code_and_the_delay() {
+        assert_eq!(url_of("flaky", &["30", "502"]).unwrap(), "/flaky?rate=30&code=502");
+        assert_eq!(usage("flaky").unwrap(), "flaky [rate] [code] [ms]");
+    }
+
+    #[test]
     fn the_code_of_status_goes_in_the_path() {
         assert_eq!(url_of("status", &["503"]).unwrap(), "/status/503");
         assert!(url_of("status", &[]).is_err());
@@ -287,7 +300,7 @@ mod tests {
     fn a_line_is_an_action_and_its_values() {
         assert_eq!(perform("", "http://h:1", None), Err("Type a command, like cpu 80".into()));
         assert_eq!(perform("nope 1", "http://h:1", None), Err("Unknown command 'nope'".into()));
-        assert_eq!(perform("cpu 1 2 3", "http://h:1", None), Err("Unexpected argument '3'".into()));
+        assert_eq!(perform("cpu 1 2 3 4", "http://h:1", None), Err("Unexpected argument '4'".into()));
         let port = std::net::TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port();
         let url = format!("http://127.0.0.1:{port}");
         assert!(perform("cpu 50", &url, None).unwrap_err().starts_with(&format!("Cannot reach {url}: ")));
@@ -295,7 +308,7 @@ mod tests {
 
     #[test]
     fn usage_shows_the_parameters_of_a_command() {
-        assert_eq!(usage("cpu").as_deref(), Some("cpu [percent] [hold]"));
+        assert_eq!(usage("cpu").as_deref(), Some("cpu [percent] [hold] [workers]"));
         assert_eq!(usage("status").as_deref(), Some("status <code>"));
         assert_eq!(usage("ready").as_deref(), Some("ready on | off [seconds]"));
         assert_eq!(usage("watch"), None);

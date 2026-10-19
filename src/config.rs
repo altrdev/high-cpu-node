@@ -37,6 +37,8 @@ pub struct Config {
     pub start_delay_seconds: i64,
     pub default_fd: i64,
     pub max_fd: i64,
+    pub default_connections: i64,
+    pub max_connections: i64,
     pub default_not_ready_seconds: i64,
     pub default_log_lines: i64,
     pub max_log_lines: i64,
@@ -125,6 +127,7 @@ impl Config {
         let max_hold_seconds = int("MAX_HOLD_SECONDS", 300);
         let max_disk_mb = int("MAX_DISK_MB", 1024);
         let max_fd = int("MAX_FD", 10000);
+        let max_connections = int("MAX_CONNECTIONS", 500);
         let max_log_lines = int("MAX_LOG_LINES", 100000);
         let max_log_rate = int("MAX_LOG_RATE", 10000);
         let start_delay_seconds = positive_int(&get, &mut warn, "START_DELAY_SECONDS", 0, 0);
@@ -151,6 +154,8 @@ impl Config {
             start_delay_seconds,
             default_fd: 100,
             max_fd,
+            default_connections: 10,
+            max_connections,
             default_not_ready_seconds: 30,
             default_log_lines: 1000,
             max_log_lines,

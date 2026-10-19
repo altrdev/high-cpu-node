@@ -37,6 +37,7 @@ pub async fn handler(State(state): State<Arc<AppState>>) -> Json<Value> {
             "freeMb": snapshot.disk.free_bytes.map(to_mb),
         },
         "fd": {"held": snapshot.fd.held, "limit": snapshot.fd.limit},
+        "connections": {"held": snapshot.connections.held, "limit": snapshot.connections.limit},
         "ready": snapshot.ready,
         "log": snapshot.log,
         "limits": {

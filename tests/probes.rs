@@ -100,6 +100,29 @@ fn delay_waits_without_blocking_the_server() {
 }
 
 #[test]
+fn flaky_waits_only_before_a_failure() {
+    let server = Server::start();
+    let started = Instant::now();
+    assert_eq!(server.status("/flaky?rate=0&ms=2000"), 200);
+    assert!(started.elapsed().as_millis() < 1000, "a request that succeeds waited");
+
+    let started = Instant::now();
+    assert_eq!(server.status("/flaky?rate=100&code=502&ms=300"), 502);
+    assert!(started.elapsed().as_millis() >= 290, "a failure did not wait");
+}
+
+#[test]
+fn flaky_requests_are_counted_by_status() {
+    let server = Server::start();
+    server.get("/flaky?rate=100&code=500");
+    server.get("/flaky?rate=100&code=500");
+    server.get("/flaky?rate=0");
+    let metrics = server.text("/metrics");
+    assert_eq!(metric(&metrics, r#"torchio_http_requests_total{route="/flaky",code="500"}"#), Some(2.0));
+    assert_eq!(metric(&metrics, r#"torchio_http_requests_total{route="/flaky",code="200"}"#), Some(1.0));
+}
+
+#[test]
 fn delay_checks_its_limits() {
     let server = Server::start();
     assert_eq!(server.status("/delay?ms=6000"), 400);
