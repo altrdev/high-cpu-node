@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
-## Unreleased
+## 4.5.0 - 2026-10-19
 
 ### Added
 - `/payload?mb=` answers with `mb` MB of data, streamed and announced with its `Content-Length`, and `POST /payload` takes an upload, throws it away and reports its bytes, time and speed (`413` over the limit). `MAX_PAYLOAD_MB` (`1024` by default) limits both, and `TOKEN` protects it. It is for testing the limits on the size of a body and the timeouts of proxies, ingresses and load balancers.
