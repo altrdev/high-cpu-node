@@ -134,6 +134,8 @@ The server listens on port 3000.
 | `/ready/on`     |                    | Makes `/ready` answer `200` again                           |
 | `/crash`        | `code`, `after`    | Ends the process, to test restarts and backoff              |
 | `/fd`           | `count`, `hold`    | Opens file descriptors and holds them, to test `EMFILE`     |
+| `/log`          | `lines`, `rate`    | Writes lines to stdout at a rate, to test log collection and rotation |
+| `/echo`         |                    | The request as the server sees it, to see what proxies add or remove |
 | `/ui`           |                    | Control panel in the browser, only with `UI=1`              |
 | `/info`         |                    | JSON with what the server is doing and the remaining budgets |
 | `/metrics`      |                    | The same figures in the Prometheus text format               |
@@ -291,6 +293,16 @@ Opens `count` file descriptors and closes them after `hold` seconds.
 curl "http://127.0.0.1:3000/fd?count=2000&hold=30"
 ```
 
+### `/log`
+
+Writes `lines` lines (default 1000) to stdout at `rate` lines each second (default 100), then stops, to test log collection pipelines, rotation and how fast the logs of a container fill a disk. Each line has a timestamp and its number: `2026-10-18T14:00:00.000Z torchio-log line 7 of 1000`. A new request replaces the one still running; the lines already written stay. `MAX_LOG_LINES` and `MAX_LOG_RATE` set the limits. While it writes, [`/info`](#info) has `log` (`{ "sent", "lines", "rate" }`, `null` otherwise), and `watch` and the control panel show it.
+
+### `/echo`
+
+Returns the request as this server sees it: method, URL, protocol, `hostname`, client address (`ip`, the `ips` chain and `remoteAddress`, the peer of the connection) and all the headers. Call it through an ingress controller, a proxy or a load balancer to see what they add, remove or rewrite (`Host`, `X-Forwarded-For`, `X-Forwarded-Proto`). `Authorization`, `Proxy-Authorization` and `Cookie` are shown as `[masked]`.
+
+By default the `X-Forwarded-*` headers are not trusted: `ip` is the peer and `protocol` is `http`. Set `TRUST_PROXY` to let them decide, as in Express (`true`, a number of proxies, or addresses such as `loopback` or `10.0.0.0/8`); `ip`, `ips`, `protocol`, `secure` and `hostname` then follow the proxy.
+
 ### `/info`
 
 Returns a JSON document with what the server is doing right now. It takes no parameters and doesn't use up any budget, so you can poll it while you test, for example with `watch -n1 curl -s http://127.0.0.1:3000/info`.
@@ -307,7 +319,8 @@ Returns a JSON document with what the server is doing right now. It takes no par
   "disk": { "heldMb": 100, "limitMb": 1024, "dir": "/tmp", "freeMb": 8120 },
   "fd": { "held": 0, "limit": 10000 },
   "ready": { "ready": true, "secondsLeft": null },
-  "limits": { "maxNumber": 50, "maxDelayMs": 60000, "maxHoldSeconds": 300 }
+  "log": null,
+  "limits": { "maxNumber": 50, "maxDelayMs": 60000, "maxHoldSeconds": 300, "maxLogLines": 100000, "maxLogRate": 10000 }
 }
 ```
 
@@ -322,6 +335,7 @@ Returns a JSON document with what the server is doing right now. It takes no par
 | `disk.heldMb`, `limitMb`      | Same as for memory, for `/disk` (`MAX_DISK_MB`)                         |
 | `disk.freeMb`                 | Free space in `DISK_DIR`, `null` if the directory is not usable         |
 | `fd.held`, `limit`            | File descriptors held by `/fd` and the total it may hold (`MAX_FD`)     |
+| `log`                         | What `/log` is writing, `{ "sent", "lines", "rate" }`, or `null` when it is not running |
 | `ready.ready`, `secondsLeft`  | What `/ready` answers, and the seconds left before it is ready again (`null` if nothing is counting down) |
 
 ### `/metrics`
@@ -429,14 +443,14 @@ The page makes [`/crash`](#crash) a button, which is why it is off by default (a
 
 ## Token
 
-Anyone who can reach the port can call `/crash` or `/disk`. Set `TOKEN` to ask for a password on the endpoints that change the state of the instance (`/stress`, `/cpu`, `/memory`, `/leak`, `/disk`, `/fd`, `/ready/off`, `/ready/on` and `/crash`):
+Anyone who can reach the port can call `/crash` or `/disk`. Set `TOKEN` to ask for a password on the endpoints that change the state of the instance (`/stress`, `/cpu`, `/memory`, `/leak`, `/disk`, `/fd`, `/log`, `/ready/off`, `/ready/on` and `/crash`):
 
 ```
 docker run -p 3000:3000 -e TOKEN=secret altrdev/torchio:latest
 curl -H "Authorization: Bearer secret" localhost:3000/crash
 ```
 
-Without the header, or with a wrong token, they answer `401`. `/`, `/ready`, `/info`, `/metrics`, `/delay` and `/status/:code` stay open, so probes, Prometheus and `watch` work as before. [`/info`](#info) tells whether a token is needed (`auth`). The control panel asks for it the first time a server answers `401` and keeps it for that tab. Without `TOKEN` nothing is checked.
+Without the header, or with a wrong token, they answer `401`. `/`, `/ready`, `/info`, `/metrics`, `/help`, `/config`, `/echo`, `/delay` and `/status/:code` stay open, so probes, Prometheus and `watch` work as before. [`/info`](#info) tells whether a token is needed (`auth`). The control panel asks for it the first time a server answers `401` and keeps it for that tab. Without `TOKEN` nothing is checked.
 
 It is a shared password, not a login: without HTTPS it travels in clear, so on the internet put a proxy with TLS in front.
 
@@ -455,6 +469,9 @@ Environment variables:
 | `UI`               | off             | `1` turns on the control panel at `/ui`           |
 | `START_DELAY_SECONDS` | `0`         | Seconds the port stays closed after the start     |
 | `MAX_FD`           | `10000`         | Total descriptors `/fd` can hold at once          |
+| `MAX_LOG_LINES`    | `100000`        | Highest `lines` accepted by `/log`                |
+| `MAX_LOG_RATE`     | `10000`         | Highest `rate` accepted by `/log`                 |
+| `TRUST_PROXY`      | off             | Trusts `X-Forwarded-*` as Express does (`true`, a number or addresses), see `/echo` |
 | `TOKEN`            | none            | Makes the endpoints that change the state need `Authorization: Bearer <token>` |
 | `MAX_HOLD_SECONDS` | `300`           | Highest `hold`, `seconds` and `after` accepted by the endpoints that take them |
 | `DISK_DIR`         | system temp dir | Directory where `/disk` writes its files          |

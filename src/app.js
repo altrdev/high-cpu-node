@@ -18,6 +18,8 @@ const createAuth = require('./auth');
 const createUi = require('./routes/ui');
 const createInfo = require('./routes/info');
 const createMetrics = require('./routes/metrics');
+const createLog = require('./routes/log');
+const createEcho = require('./routes/echo');
 const createHelp = require('./routes/help');
 const createConfig = require('./routes/config');
 
@@ -25,6 +27,7 @@ const createConfig = require('./routes/config');
 function createApp(config) {
     const startedAt = Date.now();
     const app = express();
+    app.set('trust proxy', config.trustProxy);
     app.use(express.json());
     app.use(cors());
 
@@ -38,8 +41,9 @@ function createApp(config) {
     const leak = createLeak(config, memory);
     const fd = createFd(config);
     const ready = createReady(config);
+    const log = createLog(config);
     const guard = createAuth(config);
-    const snapshot = createSnapshot({config, pool, delay, memory, disk, fd, ready});
+    const snapshot = createSnapshot({config, pool, delay, memory, disk, fd, ready, log});
 
     app.get('/', (req, res) => res.status(200).end('Status: OK'));
     app.get('/stress', guard, createStress(config, pool));
@@ -53,6 +57,8 @@ function createApp(config) {
     app.get('/ready', ready.handler);
     app.get('/ready/off', guard, ready.off);
     app.get('/ready/on', guard, ready.on);
+    app.get('/log', guard, log.handler);
+    app.get('/echo', createEcho());
     app.get('/crash', guard, createCrash(config));
     if (config.ui) app.get('/ui', createUi());
     app.get('/info', createInfo({config, version, startedAt, snapshot}));
@@ -65,6 +71,7 @@ function createApp(config) {
         fd.closeAll();
         leak.stop();
         ready.stop();
+        log.stop();
         pool.stop();
     };
 

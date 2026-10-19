@@ -175,7 +175,7 @@ describe('endpoints', () => {
         assert.equal(info.disk.limitMb, 300);
         assert.equal(info.disk.dir, server.diskDir);
         assert.equal(typeof info.disk.freeMb, 'number');
-        assert.deepEqual(info.limits, {maxNumber: 50, maxDelayMs: 5000, maxHoldSeconds: 30});
+        assert.deepEqual(info.limits, {maxNumber: 50, maxDelayMs: 5000, maxHoldSeconds: 30, maxLogLines: 100000, maxLogRate: 10000});
     });
 
     test('/metrics is valid Prometheus text and follows the server', async () => {
@@ -653,6 +653,113 @@ describe('/help and /config', () => {
             assert.equal(config.maxMemoryMb, 300);
             assert.equal(config.diskDir, server.diskDir);
             assert.equal(config.ui, false);
+        } finally {
+            await server.stop();
+        }
+    });
+});
+
+describe('/echo', () => {
+    test('returns the request as the server sees it and masks the credentials', async () => {
+        const server = await startServer();
+        try {
+            const echo = await (await server.get('/echo?a=1', {
+                headers: {authorization: 'Bearer s3cret', cookie: 'sid=abc', 'x-forwarded-for': '203.0.113.7', 'x-custom': 'yes'},
+            })).json();
+            assert.equal(echo.method, 'GET');
+            assert.equal(echo.url, '/echo?a=1');
+            assert.equal(echo.protocol, 'http');
+            assert.equal(echo.hostname, '127.0.0.1');
+            assert.match(echo.remoteAddress, /127\.0\.0\.1/);
+            assert.equal(echo.headers['x-custom'], 'yes');
+            assert.equal(echo.headers.authorization, '[masked]');
+            assert.equal(echo.headers.cookie, '[masked]');
+            assert.ok(!JSON.stringify(echo).includes('s3cret') && !JSON.stringify(echo).includes('sid=abc'));
+            assert.match(echo.ip, /127\.0\.0\.1/, 'X-Forwarded-For is not trusted by default');
+            assert.deepEqual(echo.ips, []);
+        } finally {
+            await server.stop();
+        }
+    });
+
+    test('with TRUST_PROXY the forwarded headers decide the client, the protocol and the host', async () => {
+        const server = await startServer({TRUST_PROXY: 'true'});
+        try {
+            const echo = await (await server.get('/echo', {
+                headers: {'x-forwarded-for': '203.0.113.7', 'x-forwarded-proto': 'https', 'x-forwarded-host': 'app.example.com'},
+            })).json();
+            assert.equal(echo.ip, '203.0.113.7');
+            assert.deepEqual(echo.ips, ['203.0.113.7']);
+            assert.equal(echo.protocol, 'https');
+            assert.equal(echo.secure, true);
+            assert.equal(echo.hostname, 'app.example.com');
+            assert.equal((await (await server.get('/config')).json()).trustProxy, true);
+        } finally {
+            await server.stop();
+        }
+    });
+});
+
+describe('/log', () => {
+    const logged = (server) => server.output.split('\n').filter((line) => line.includes('torchio-log line'));
+
+    test('writes the lines to stdout at the given rate, then stops', async () => {
+        const server = await startServer();
+        try {
+            const started = Date.now();
+            assert.match(await server.text('/log?lines=100&rate=200'), /Writing 100 lines at 200 lines\/s/);
+            while (logged(server).length < 100 && Date.now() - started < 5000) await sleep(50);
+            const lines = logged(server);
+            assert.equal(lines.length, 100);
+            assert.match(lines[0], /^\d{4}-\d\d-\d\dT[\d:.]+Z torchio-log line 1 of 100$/);
+            assert.match(lines[99], /line 100 of 100$/);
+            assert.ok(Date.now() - started >= 400, 'the rate is respected');
+            await sleep(100);
+            assert.equal((await server.info()).log, null);
+            assert.equal(logged(server).length, 100, 'nothing after the last line');
+        } finally {
+            await server.stop();
+        }
+    });
+
+    test('is in /info while it writes, and a new request replaces the running one', async () => {
+        const server = await startServer();
+        try {
+            await server.get('/log?lines=1000&rate=10');
+            await sleep(300);
+            const log = (await server.info()).log;
+            assert.equal(log.lines, 1000);
+            assert.equal(log.rate, 10);
+            assert.ok(log.sent >= 1 && log.sent < 1000);
+
+            await server.get('/log?lines=5&rate=1000');
+            await sleep(300);
+            assert.equal((await server.info()).log, null);
+            assert.ok(logged(server).some((line) => line.endsWith('line 5 of 5')));
+            assert.ok(!logged(server).some((line) => line.endsWith('of 1000') && / line (1000|[5-9]\d\d) /.test(line)));
+        } finally {
+            await server.stop();
+        }
+    });
+
+    test('limits come from MAX_LOG_LINES and MAX_LOG_RATE', async () => {
+        const server = await startServer({MAX_LOG_LINES: '50', MAX_LOG_RATE: '20'});
+        try {
+            assert.equal((await server.get('/log?lines=51')).status, 400);
+            assert.equal((await server.get('/log?rate=21')).status, 400);
+            assert.equal((await server.get('/log?lines=0')).status, 400);
+            assert.equal((await server.get('/log?lines=10&rate=20')).status, 200);
+        } finally {
+            await server.stop();
+        }
+    });
+
+    test('--once shows what /log is doing', async () => {
+        const server = await startServer();
+        try {
+            await server.get('/log?lines=1000&rate=10');
+            const output = execFileSync(process.execPath, ['cli.js', 'watch', '--once', '--url', server.url], {cwd: ROOT}).toString();
+            assert.match(output, /\/log: \d+ of 1000 lines, 10 lines\/s/);
         } finally {
             await server.stop();
         }
