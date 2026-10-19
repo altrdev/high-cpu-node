@@ -135,3 +135,12 @@ fn payload_needs_its_words() {
         assert!(text(&output.stderr).starts_with("Usage: torchio payload"), "{args:?}: {}", text(&output.stderr));
     }
 }
+
+#[test]
+fn version_prints_the_version_of_the_binary_in_the_three_spellings() {
+    for flag in ["version", "--version", "-V"] {
+        let out = run(&[flag], &[]);
+        assert!(out.status.success(), "{flag}");
+        assert_eq!(text(&out.stdout).trim(), concat!("torchio ", env!("CARGO_PKG_VERSION")), "{flag}");
+    }
+}

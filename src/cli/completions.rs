@@ -59,6 +59,7 @@ fn entries() -> Vec<Entry> {
         }
         entries.push(Entry { name, about, options, words });
     }
+    entries.push(Entry { name: "version", about: "Print the version", options: vec![], words: vec![] });
     entries.push(Entry { name: "healthcheck", about: "Exit with 0 when the server answers", options: vec![], words: vec![] });
     entries.push(Entry {
         name: "completions",
@@ -169,7 +170,7 @@ mod tests {
 
     #[test]
     fn every_command_is_in_every_script() {
-        for name in action::names().into_iter().chain(["serve", "watch", "healthcheck", "completions", "help"]) {
+        for name in action::names().into_iter().chain(["serve", "watch", "healthcheck", "completions", "version", "help"]) {
             for (shell, script) in [("bash", bash()), ("zsh", zsh()), ("fish", fish())] {
                 assert!(script.contains(name), "{name} is missing from {shell}");
             }

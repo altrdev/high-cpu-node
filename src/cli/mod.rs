@@ -4,6 +4,7 @@
 //! - `torchio watch [--url <url>] [--interval <seconds>] [--once] [--read-only]`: a terminal view of
 //!   `/info`, with keys that start the tests unless it is read only;
 //! - `torchio healthcheck`: exits with 0 when the server answers;
+//! - `torchio version`: prints the version;
 //! - `torchio completions <bash|zsh|fish>`: the script that completes the commands in a shell;
 //! - `torchio cpu 80`, `torchio memory 512`…: start a test on a running server.
 mod action;
@@ -48,7 +49,8 @@ The two that send or read a body (--url and --token work on both):
 Other commands:
   torchio serve        start the server (the same as torchio with no command)
   torchio completions  print the completion script of a shell: bash, zsh or fish
-  torchio healthcheck  exit with status 0 when the server answers on $PORT (or 3000)";
+  torchio healthcheck  exit with status 0 when the server answers on $PORT (or 3000)
+  torchio version      print the version (also --version and -V)";
 
 /// Runs the command in `args` (what follows the name of the program) and says how it ended
 pub fn run(args: &[String]) -> ExitCode {
@@ -61,6 +63,10 @@ pub fn run(args: &[String]) -> ExitCode {
         Some("payload") => body::payload(&args[1..]),
         Some("healthcheck") => healthcheck::run(),
         Some("completions") => completions::run(&args[1..]),
+        Some("version" | "--version" | "-V") => {
+            println!("torchio {}", env!("CARGO_PKG_VERSION"));
+            ExitCode::SUCCESS
+        }
         Some("help" | "--help" | "-h") => {
             println!("{USAGE}");
             ExitCode::SUCCESS
