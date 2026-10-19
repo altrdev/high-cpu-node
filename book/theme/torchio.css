@@ -5,6 +5,8 @@
   --torchio-amber: #f59e0b;
   --torchio-red: #ef4444;
   --torchio-slate: #94a3b8;
+  /* the table of contents is narrower than the 300px of mdBook; whoever drags it keeps their own width */
+  --sidebar-target-width: 230px;
 }
 
 .light, .rust, .coal, .navy, .ayu {
