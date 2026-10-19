@@ -88,7 +88,7 @@ fn disk_writes_a_file_keeps_it_and_removes_it() {
     assert_eq!(server.info()["disk"]["heldMb"], 10);
 
     wait_for("the file to be removed", 4000, || server.disk_files().is_empty());
-    assert_eq!(server.info()["disk"]["heldMb"], 0);
+    wait_for("the budget to be released", 4000, || server.info()["disk"]["heldMb"] == 0);
 }
 
 #[test]
