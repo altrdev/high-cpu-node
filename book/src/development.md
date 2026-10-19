@@ -65,10 +65,11 @@ CI runs them on Linux and macOS with the format check, `clippy` and the document
 
 ## The documentation site
 
-The pages are in `book/src`, written in Markdown, and `book/book.toml` and `book/theme` set the title and the colours. The reference of the endpoints is not written by hand: `cargo run --example endpoints_reference > book/src/reference.md` writes it from the catalog that `/help` is built from, so it is always right. With [mdBook](https://rust-lang.github.io/mdBook/) installed:
+The pages are in `book/src`, written in Markdown, and `book/book.toml` and `book/theme` set the title and the colours. The images are in `docs/`, where the README takes them from, and the second command below copies them next to the pages. The reference of the endpoints is not written by hand: `cargo run --example endpoints_reference > book/src/reference.md` writes it from the catalog that `/help` is built from, so it is always right. With [mdBook](https://rust-lang.github.io/mdBook/) installed:
 
 ```
 cargo run --example endpoints_reference > book/src/reference.md
+mkdir -p book/src/images && cp docs/* book/src/images/
 mdbook serve book --open
 python3 book/check-links.py book/book     # after mdbook build book
 ```
