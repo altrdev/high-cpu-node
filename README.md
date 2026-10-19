@@ -607,6 +607,8 @@ applies the Deployment and the Service as they are in [`deploy/kubernetes`](depl
 helm install torchio deploy/helm/torchio --set replicaCount=3 --set config.workers=2
 ```
 
+They are a starting point: copy and change them, or leave them as they are and override what you need (in a kustomization of your own, or with `-f my-values.yaml` for the chart; the `env` value takes any variable the chart has no value for).
+
 Both use the image of the version they sit next to, `altrdev/torchio:X.Y.Z`, and CI fails when it is not the one of `Cargo.toml`. The memory budget of the manifests (`MAX_MEMORY_MB`) is above the container limit, so `/memory` can trigger an OOM kill.
 
 Some things to try, after `kubectl port-forward deploy/torchio 3000:3000`:
