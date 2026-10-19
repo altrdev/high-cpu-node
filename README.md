@@ -10,6 +10,8 @@
 
 Documentation: <https://torchio.altr.dev> · Source code and issues: <https://github.com/altrdev/torchio>
 
+For AI agents: [llms.txt](https://torchio.altr.dev/llms.txt), [llms-full.txt](https://torchio.altr.dev/llms-full.txt) and a [skill](https://torchio.altr.dev/agents.html) to run tests with torchio.
+
 > **Warning:** this server is meant to consume resources on purpose. Don't expose it to the public internet.
 
 ## Install
