@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
+## Unreleased
+
+### Added
+- `GET /help` lists every endpoint with its parameters, defaults and limits, as JSON or as plain text for a browser. `GET /config` shows the effective configuration, without the token. Both are open, and `/help` is built from the same definitions the endpoints read their parameters from (`src/endpoints.js`).
+
 ## 3.4.0 - 2026-10-18
 
 ### Added

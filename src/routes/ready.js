@@ -1,4 +1,5 @@
 const {readParams} = require('../params');
+const {specs} = require('../endpoints');
 
 // A readiness switch you can flip over HTTP: /ready answers 200 or 503, /ready/off makes it
 // answer 503 (for `seconds`, or until /ready/on when 0) so you can watch what a readiness
@@ -26,9 +27,7 @@ module.exports = function createReady(config) {
     };
 
     const off = (req, res) => {
-        const params = readParams(req, res, {
-            seconds: {fallback: config.defaultNotReadySeconds, min: 0, max: config.maxHoldSeconds},
-        });
+        const params = readParams(req, res, specs(config).readyOff);
         if (!params) return;
         const {seconds} = params;
 

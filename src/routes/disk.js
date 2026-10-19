@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const {Budget} = require('../budget');
 const {readParams} = require('../params');
+const {specs} = require('../endpoints');
 
 const PREFIX = 'torchio-disk-';
 const chunk = Buffer.alloc(1024 * 1024, 1);
@@ -36,10 +37,7 @@ module.exports = function createDisk(config) {
     }
 
     const handler = async (req, res) => {
-        const params = readParams(req, res, {
-            mb: {fallback: config.defaultDiskMb, min: 1, max: config.maxDiskMb},
-            hold: {fallback: config.defaultHoldSeconds, min: 0, max: config.maxHoldSeconds},
-        });
+        const params = readParams(req, res, specs(config).disk);
         if (!params) return;
         const {mb, hold} = params;
 

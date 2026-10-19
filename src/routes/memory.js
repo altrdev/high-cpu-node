@@ -3,6 +3,7 @@ const vm = require('vm');
 const {Budget} = require('../budget');
 const {MB} = require('../units');
 const {readParams} = require('../params');
+const {specs} = require('../endpoints');
 
 // Buffers are only returned to the OS when the garbage collector runs, so collect
 // right after releasing instead of waiting for V8 to decide
@@ -15,10 +16,7 @@ module.exports = function createMemory(config) {
     const budget = new Budget(config.maxMemoryMb);
 
     const handler = (req, res) => {
-        const params = readParams(req, res, {
-            mb: {fallback: config.defaultMemoryMb, min: 1, max: config.maxMemoryMb},
-            hold: {fallback: config.defaultHoldSeconds, min: 0, max: config.maxHoldSeconds},
-        });
+        const params = readParams(req, res, specs(config).memory);
         if (!params) return;
         const {mb, hold} = params;
 

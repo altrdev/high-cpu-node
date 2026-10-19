@@ -137,6 +137,8 @@ The server listens on port 3000.
 | `/ui`           |                    | Control panel in the browser, only with `UI=1`              |
 | `/info`         |                    | JSON with what the server is doing and the remaining budgets |
 | `/metrics`      |                    | The same figures in the Prometheus text format               |
+| `/help`         |                    | Every endpoint with its parameters, defaults and limits      |
+| `/config`       |                    | The effective configuration, without the token               |
 
 Every query parameter is optional. A value that is not a number falls back to its default; a number outside the allowed range gets a `400`. All the limits are configurable, see [Configuration](#configuration).
 
@@ -362,6 +364,32 @@ Some queries to start from:
 - `process_resident_memory_bytes / torchio_container_memory_limit_bytes` is how close the process is to an OOM kill.
 - `rate(torchio_http_requests_total{code=~"4..|5.."}[1m])` is the rate of rejected and failed requests (`429`, `507`, `/status/...`).
 
+### `/help`
+
+Lists every endpoint with what it does, whether `TOKEN` protects it and its parameters with the default and the allowed range, so you can use the image without reading this page. It answers JSON, or plain text when asked by a browser:
+
+```
+curl -s localhost:3000/help | jq '.endpoints[] | select(.path == "/cpu")'
+```
+
+```json
+{
+  "path": "/cpu",
+  "auth": true,
+  "params": {
+    "percent": { "fallback": 50, "min": 0, "max": 100 },
+    "hold": { "fallback": 10, "min": 0, "max": 300 }
+  },
+  "description": "Keeps the workers busy for a share of the time, percent=0 stops it"
+}
+```
+
+The limits are the ones of this instance (`MAX_*`). The list is built from the same definitions the endpoints read their parameters from (`src/endpoints.js`), so it can't go out of date. `/ui` is listed only with `UI=1`.
+
+### `/config`
+
+Returns the effective configuration as JSON: port, number of workers, defaults and limits, `DISK_DIR`, `UI`, `START_DELAY_SECONDS`. The token is never shown, only whether there is one (`auth`). Like `/info`, it is always open.
+
 ## Watching a server
 
 `cli.js` shows what a server is doing in the terminal, refreshing every second with bars and a short history of the last samples (workers, memory, process memory, disk and file descriptors), plus whether `/ready` is answering `200` or `503`. It reads [`/info`](#info), needs no extra dependency and works against any running instance:
@@ -569,6 +597,7 @@ src/
   fibonacci.js     what a worker runs
   snapshot.js      the figures behind /info and /metrics
   counters.js      requests answered, for /metrics
+  endpoints.js     the parameters and limits of every endpoint, shared by the routes and /help
   routes/          one file for each endpoint
 test/              the tests
 ```

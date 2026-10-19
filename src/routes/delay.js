@@ -1,13 +1,12 @@
 const {readParams} = require('../params');
+const {specs} = require('../endpoints');
 
 // Answers after `ms` milliseconds without blocking the event loop
 module.exports = function createDelay(config) {
     let inFlight = 0;
 
     const handler = (req, res) => {
-        const params = readParams(req, res, {
-            ms: {fallback: config.defaultDelayMs, min: 0, max: config.maxDelayMs},
-        });
+        const params = readParams(req, res, specs(config).delay);
         if (!params) return;
         const {ms} = params;
 

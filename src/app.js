@@ -18,6 +18,8 @@ const createAuth = require('./auth');
 const createUi = require('./routes/ui');
 const createInfo = require('./routes/info');
 const createMetrics = require('./routes/metrics');
+const createHelp = require('./routes/help');
+const createConfig = require('./routes/config');
 
 // Builds the Express app and what it keeps (workers, budgets, files). `stop` releases them.
 function createApp(config) {
@@ -55,6 +57,8 @@ function createApp(config) {
     if (config.ui) app.get('/ui', createUi());
     app.get('/info', createInfo({config, version, startedAt, snapshot}));
     app.get('/metrics', createMetrics({version, startedAt, snapshot, counters}));
+    app.get('/help', createHelp({config, version}));
+    app.get('/config', createConfig({config}));
 
     const stop = () => {
         disk.removeFiles();

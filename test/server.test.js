@@ -590,3 +590,71 @@ describe('cli watch', () => {
         assert.match(result.stdout.toString(), /^Usage: node cli\.js watch/);
     });
 });
+
+describe('/help and /config', () => {
+    test('/help lists every endpoint with its parameters, defaults and limits', async () => {
+        const server = await startServer({MAX_NUMBER: '40'});
+        try {
+            const help = await (await server.get('/help')).json();
+            assert.equal(help.version, version);
+            const byPath = Object.fromEntries(help.endpoints.map((e) => [e.path, e]));
+            assert.deepEqual(byPath['/stress'].params.number, {fallback: 45, min: 0, max: 40});
+            assert.deepEqual(byPath['/memory'].params.mb, {fallback: 100, min: 1, max: 300});
+            assert.deepEqual(byPath['/status/:code'].params.code, {min: 200, max: 599, in: 'path'});
+            assert.equal(byPath['/crash'].auth, true);
+            assert.equal(byPath['/info'].auth, false);
+            assert.equal(byPath['/ui'], undefined, 'the panel is off');
+            for (const path of ['/', '/delay', '/ready', '/metrics', '/help', '/config']) assert.ok(byPath[path], path);
+        } finally {
+            await server.stop();
+        }
+    });
+
+    test('/help answers with plain text to a browser', async () => {
+        const server = await startServer();
+        try {
+            const response = await server.get('/help', {headers: {accept: 'text/html,application/xhtml+xml,*/*;q=0.8'}});
+            assert.match(response.headers.get('content-type'), /^text\/plain/);
+            const text = await response.text();
+            assert.match(text, /\/stress {2}\[needs TOKEN\]\n  Runs a Fibonacci/);
+            assert.match(text, /number: default 45, 0\.\.50/);
+            assert.match(text, /\/crash {2}\[needs TOKEN\]/);
+        } finally {
+            await server.stop();
+        }
+    });
+
+    test('/help marks as protected exactly the endpoints TOKEN protects, and lists /ui when it is on', async () => {
+        const server = await startServer({TOKEN: 's3cret', UI: '1'});
+        try {
+            const {endpoints} = await (await server.get('/help')).json();
+            assert.ok(endpoints.some((e) => e.path === '/ui'));
+            for (const {path, auth} of endpoints) {
+                if (path === '/ui' || path.includes(':')) continue;
+                const response = await server.get(path === '/crash' ? '/crash?after=60' : path);
+                assert.equal(response.status === 401, auth, path);
+            }
+        } finally {
+            await server.stop();
+        }
+    });
+
+    test('/config shows the effective configuration and never the token', async () => {
+        const server = await startServer({TOKEN: 's3cret', MAX_DELAY_MS: '1234'});
+        try {
+            const response = await server.get('/config');
+            const text = await response.text();
+            assert.ok(!text.includes('s3cret'));
+            const config = JSON.parse(text);
+            assert.equal(config.auth, true);
+            assert.equal(config.token, undefined);
+            assert.equal(config.maxDelayMs, 1234);
+            assert.equal(config.workers, 2);
+            assert.equal(config.maxMemoryMb, 300);
+            assert.equal(config.diskDir, server.diskDir);
+            assert.equal(config.ui, false);
+        } finally {
+            await server.stop();
+        }
+    });
+});
