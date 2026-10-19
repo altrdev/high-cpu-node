@@ -30,6 +30,16 @@ const ACTIONS: &[Action] = &[
     Action { name: "ready", path: "/ready/{state}", params: &["state", "seconds"] },
 ];
 
+/// How a command is written, like `cpu [percent] [hold]`
+pub fn usage(name: &str) -> Option<String> {
+    let action = ACTIONS.iter().find(|action| action.name == name)?;
+    Some(match name {
+        "ready" => "ready on | off [seconds]".to_string(),
+        "status" => "status <code>".to_string(),
+        _ => action.params.iter().fold(name.to_string(), |text, param| format!("{text} [{param}]")),
+    })
+}
+
 pub fn is_action(name: &str) -> bool {
     ACTIONS.iter().any(|action| action.name == name)
 }
@@ -121,6 +131,29 @@ fn timeout(action: &Action) -> Duration {
     }
 }
 
+/// Runs the command in `line` (an action and its values, as typed after `torchio`) against the
+/// server at `url` and returns what the server answered, or why it did not. For the interactive view.
+pub fn perform(line: &str, url: &str, token: Option<&str>) -> Result<String, String> {
+    let mut words = line.split_whitespace();
+    let name = words.next().ok_or("Type a command, like cpu 80")?;
+    let action = ACTIONS.iter().find(|action| action.name == name).ok_or(format!("Unknown command '{name}'"))?;
+    let mut args: Vec<String> = words.map(String::from).collect();
+    args.extend(["--url".into(), url.into()]);
+    let request = parse(action, &args, token.map(String::from))?;
+    let target = target(action, &request.values)?;
+    answer(http::get_with_token(&http::endpoint_url(&request.url, &target)?, request.token.as_deref(), timeout(action)), &request.url)
+}
+
+/// What the server answered as a message: its body, or what went wrong
+fn answer(result: Result<(u16, String), String>, url: &str) -> Result<String, String> {
+    match result {
+        Ok((status, body)) if status < 400 => Ok(body.trim_end().to_string()),
+        Ok((401, _)) => Err("The server asks for a token: use --token <token> or TOKEN".into()),
+        Ok((status, body)) => Err(format!("HTTP {status}: {}", body.trim_end())),
+        Err(message) => Err(format!("Cannot reach {url}: {message}")),
+    }
+}
+
 pub fn run(name: &str, args: &[String]) -> ExitCode {
     let Some(action) = ACTIONS.iter().find(|action| action.name == name) else { return ExitCode::FAILURE };
     let env_token = std::env::var("TOKEN").ok().filter(|token| !token.is_empty());
@@ -143,21 +176,13 @@ pub fn run(name: &str, args: &[String]) -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    match http::get_with_token(&url, request.token.as_deref(), timeout(action)) {
-        Ok((status, body)) if status < 400 => {
-            println!("{}", body.trim_end());
+    match answer(http::get_with_token(&url, request.token.as_deref(), timeout(action)), &request.url) {
+        Ok(body) => {
+            println!("{body}");
             ExitCode::SUCCESS
         }
-        Ok((401, _)) => {
-            eprintln!("The server asks for a token: use --token <token> or TOKEN");
-            ExitCode::FAILURE
-        }
-        Ok((status, body)) => {
-            eprintln!("HTTP {status}: {}", body.trim_end());
-            ExitCode::FAILURE
-        }
         Err(message) => {
-            eprintln!("Cannot reach {}: {message}", request.url);
+            eprintln!("{message}");
             ExitCode::FAILURE
         }
     }
@@ -224,6 +249,24 @@ mod tests {
         assert_eq!((request.url.as_str(), request.token.as_deref()), ("http://h:1", Some("t")));
         let request = parse(action("cpu"), &args(&["50"]), Some("env".into())).unwrap();
         assert_eq!(request.token.as_deref(), Some("env"));
+    }
+
+    #[test]
+    fn a_line_is_an_action_and_its_values() {
+        assert_eq!(perform("", "http://h:1", None), Err("Type a command, like cpu 80".into()));
+        assert_eq!(perform("nope 1", "http://h:1", None), Err("Unknown command 'nope'".into()));
+        assert_eq!(perform("cpu 1 2 3", "http://h:1", None), Err("Unexpected argument '3'".into()));
+        let port = std::net::TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port();
+        let url = format!("http://127.0.0.1:{port}");
+        assert!(perform("cpu 50", &url, None).unwrap_err().starts_with(&format!("Cannot reach {url}: ")));
+    }
+
+    #[test]
+    fn usage_shows_the_parameters_of_a_command() {
+        assert_eq!(usage("cpu").as_deref(), Some("cpu [percent] [hold]"));
+        assert_eq!(usage("status").as_deref(), Some("status <code>"));
+        assert_eq!(usage("ready").as_deref(), Some("ready on | off [seconds]"));
+        assert_eq!(usage("watch"), None);
     }
 
     #[test]

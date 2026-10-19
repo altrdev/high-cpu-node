@@ -439,6 +439,27 @@ torchio crash 137 --after 5
 
 The values after the name are the parameters of the endpoint, in the order of the table; any of them can also be given by name, as `--hold 60` or `--hold=60`. The limits are the ones of the server: a value it refuses is printed with its `400` and the command exits with `1`. With [`TOKEN`](#token), pass `--token <token>` or set `TOKEN`. `/stress` and `/delay` answer when they finish, so the command waits for them. Like `watch`, it speaks plain HTTP only.
 
+## Interactive view
+
+`torchio tui` is `watch` with keys that start the tests, so you can load a server and see the bars move in the same window:
+
+```
+torchio tui
+torchio tui --url http://my-host:3000 --token secret
+```
+
+A key opens a command line with the command already written, you add the values and press Enter:
+
+| Key | Command | Key | Command |
+|-----|---------|-----|---------|
+| `c` | `cpu`   | `g` | `log`   |
+| `m` | `memory`| `s` | `stress`|
+| `l` | `leak`  | `r` | `ready` |
+| `d` | `disk`  | `x` | `crash` |
+| `f` | `fd`    | `:` | any command, like `status 503` |
+
+The line shows the parameters of the command while you type (`cpu [percent] [hold]`), Enter with only the name uses the defaults, Esc cancels and `q` quits. The answer of the server, or its error, stays under the keys. The request runs in the background, so the view keeps refreshing while `/stress` or `/delay` wait. The commands are the ones of [Starting a test](#starting-a-test), and the options (`--url`, `--token` or `TOKEN`, `--interval`) are the same as `watch`. It needs a terminal and speaks plain HTTP only.
+
 ## Watching a server
 
 `torchio watch` shows what a server is doing in the terminal, refreshing every second with bars and a short history of the last samples (workers, memory, process memory, disk and file descriptors), plus whether `/ready` is answering `200` or `503`. It is a command of the same binary, reads [`/info`](#info) and works against any running instance:

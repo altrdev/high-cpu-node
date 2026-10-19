@@ -231,3 +231,11 @@ fn an_action_command_exits_with_1_when_the_server_cannot_be_reached() {
     assert_eq!(output.status.code(), Some(1));
     assert!(String::from_utf8_lossy(&output.stderr).starts_with(&format!("Cannot reach {url}: ")));
 }
+
+#[test]
+fn tui_needs_a_terminal() {
+    let output = run(&["tui"], &[]);
+    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(String::from_utf8_lossy(&output.stderr).trim(), "torchio tui needs a terminal");
+    assert!(output.stdout.is_empty());
+}
