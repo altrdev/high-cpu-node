@@ -20,28 +20,35 @@ Start the server with Docker:
 docker run --name torchio -p 3000:3000 altrdev/torchio
 ```
 
-Or on your local machine, with a binary from the [releases](https://github.com/altrdev/torchio/releases) or from the source (Rust 1.88 or later):
+Or on your local machine, with Homebrew (macOS and Linux):
 
 ```
-git clone https://github.com/altrdev/torchio.git
-cd torchio
-cargo run --release
+brew install altrdev/tap/torchio
+torchio
+```
+
+Other ways to get the `torchio` command: the binary of a [release](https://github.com/altrdev/torchio/releases) (macOS and Linux, `amd64` and `arm64`), or the source (Rust 1.88 or later):
+
+```
+cargo install --git https://github.com/altrdev/torchio
 ```
 
 In a second terminal, watch what it does:
 
 ```
 docker exec -it torchio torchio watch    # with Docker
-cargo run --release -- watch             # on your local machine
+torchio watch                            # on your local machine
 ```
 
 In a third one, put it under load, and see the bars move:
 
 ```
-curl "http://127.0.0.1:3000/memory?mb=200&hold=20"
-curl "http://127.0.0.1:3000/disk?mb=100&hold=20"
-for i in 1 2; do curl -s "http://127.0.0.1:3000/stress?number=44" & done; wait
+torchio memory 200 --hold 20
+torchio disk 100 --hold 20
+torchio stress 44
 ```
+
+The same thing with `curl`: `curl "http://127.0.0.1:3000/memory?mb=200&hold=20"`. See [Starting a test](#starting-a-test).
 
 ## What you can test
 
@@ -403,6 +410,35 @@ The limits are the ones of this instance (`MAX_*`). The list is built from the s
 
 Returns the effective configuration as JSON: port, number of workers, defaults and limits, `DISK_DIR`, `UI`, `START_DELAY_SECONDS`. The token is never shown, only whether there is one (`auth`). Like `/info`, it is always open.
 
+## Starting a test
+
+Every endpoint that changes the state of the server is also a command, so you don't need `curl`. It calls a running server (`--url`, by default `http://127.0.0.1:$PORT` or port `3000`) and prints its answer:
+
+```
+torchio cpu 80 --hold 60          # 80% of every worker for a minute
+torchio memory 512                # hold 512 MB for the default time
+torchio leak --rate 5 --mb 1000
+torchio ready off 30              # not ready for 30 seconds
+torchio status 503
+torchio crash 137 --after 5
+```
+
+| Command                          | Endpoint                 |
+|----------------------------------|--------------------------|
+| `torchio stress [number]`        | [`/stress`](#stress)     |
+| `torchio cpu [percent] [hold]`   | [`/cpu`](#cpu)           |
+| `torchio delay [ms]`             | [`/delay`](#delay)       |
+| `torchio status <code>`          | [`/status/:code`](#statuscode) |
+| `torchio memory [mb] [hold]`     | [`/memory`](#memory)     |
+| `torchio leak [rate] [mb] [hold]`| [`/leak`](#leak)         |
+| `torchio disk [mb] [hold]`       | [`/disk`](#disk)         |
+| `torchio fd [count] [hold]`      | [`/fd`](#fd)             |
+| `torchio log [lines] [rate]`     | [`/log`](#log)           |
+| `torchio crash [code] [after]`   | [`/crash`](#crash)       |
+| `torchio ready on \| off [seconds]` | [`/ready`](#ready)   |
+
+The values after the name are the parameters of the endpoint, in the order of the table; any of them can also be given by name, as `--hold 60` or `--hold=60`. The limits are the ones of the server: a value it refuses is printed with its `400` and the command exits with `1`. With [`TOKEN`](#token), pass `--token <token>` or set `TOKEN`. `/stress` and `/delay` answer when they finish, so the command waits for them. Like `watch`, it speaks plain HTTP only.
+
 ## Watching a server
 
 `torchio watch` shows what a server is doing in the terminal, refreshing every second with bars and a short history of the last samples (workers, memory, process memory, disk and file descriptors), plus whether `/ready` is answering `200` or `503`. It is a command of the same binary, reads [`/info`](#info) and works against any running instance:
@@ -485,7 +521,7 @@ docker run -p 3000:3000 -e WORKERS=2 -e MAX_MEMORY_MB=2048 altrdev/torchio:lates
 
 The image is built for `linux/amd64` and `linux/arm64`. It holds the static binary and an empty `/tmp`, about 1.4 MB in all, and nothing else: no shell and no package manager, so `docker exec` runs `torchio` itself (`torchio watch`) rather than a shell. It runs as the non-root user `65532` and has a `HEALTHCHECK` on `/`, which runs `torchio healthcheck`. With `START_DELAY_SECONDS` the container is unhealthy until the port opens, so give the healthcheck a longer `--start-period`. Because of the non-root user, a directory you use as `DISK_DIR` (for example a mounted volume) must be writable by it.
 
-The binary alone, for the same two platforms, is attached to each [release](https://github.com/altrdev/torchio/releases) with its `SHA256SUMS`.
+The binary alone, for Linux and macOS on `amd64` and `arm64`, is attached to each [release](https://github.com/altrdev/torchio/releases) with its `SHA256SUMS`.
 
 ## Examples
 

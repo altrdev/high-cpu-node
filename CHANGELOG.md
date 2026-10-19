@@ -15,7 +15,9 @@ All notable changes to this project are documented here. The GitHub release of e
 
 ### Added
 - `torchio healthcheck` exits with `0` when the server answers on `PORT`, for an image that has no `wget` or `curl`.
-- The binary alone for `linux/amd64` and `linux/arm64`, with its `SHA256SUMS`, is attached to each GitHub release.
+- `torchio cpu 80`, `torchio memory 512 --hold 60`, `torchio ready off 30`…: a command for each endpoint that changes the state of a server, so a test starts without `curl`. It takes `--url` and `--token` (or `TOKEN`).
+- The binary alone for `linux/amd64`, `linux/arm64`, `macos/amd64` and `macos/arm64`, with its `SHA256SUMS`, is attached to each GitHub release.
+- `brew install altrdev/tap/torchio`: the release updates the formula of the Homebrew tap.
 
 ## 3.5.0 - 2026-10-19
 

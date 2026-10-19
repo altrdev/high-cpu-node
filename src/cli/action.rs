@@ -1,0 +1,236 @@
+//! The commands that start a test on a running server, one for each endpoint that changes its
+//! state: `torchio cpu 80 --hold 60`, `torchio memory 512`, `torchio ready off 30`…
+//!
+//! The first values after the name are the parameters of the endpoint in the order of `/help`, and
+//! any of them can also be given as `--name value`. The limits are the server's: a value it does not
+//! accept comes back as its `400`.
+use super::{USAGE, http};
+use std::process::ExitCode;
+use std::time::Duration;
+
+/// A command, the endpoint it calls and the parameters it takes, in order
+struct Action {
+    name: &'static str,
+    path: &'static str,
+    params: &'static [&'static str],
+}
+
+const ACTIONS: &[Action] = &[
+    Action { name: "stress", path: "/stress", params: &["number"] },
+    Action { name: "cpu", path: "/cpu", params: &["percent", "hold"] },
+    Action { name: "delay", path: "/delay", params: &["ms"] },
+    Action { name: "status", path: "/status/{code}", params: &["code"] },
+    Action { name: "memory", path: "/memory", params: &["mb", "hold"] },
+    Action { name: "leak", path: "/leak", params: &["rate", "mb", "hold"] },
+    Action { name: "disk", path: "/disk", params: &["mb", "hold"] },
+    Action { name: "fd", path: "/fd", params: &["count", "hold"] },
+    Action { name: "log", path: "/log", params: &["lines", "rate"] },
+    Action { name: "crash", path: "/crash", params: &["code", "after"] },
+    // `ready on` and `ready off [seconds]`: the word picks the endpoint
+    Action { name: "ready", path: "/ready/{state}", params: &["state", "seconds"] },
+];
+
+pub fn is_action(name: &str) -> bool {
+    ACTIONS.iter().any(|action| action.name == name)
+}
+
+struct Request {
+    url: String,
+    token: Option<String>,
+    values: Vec<(&'static str, String)>,
+    help: bool,
+}
+
+fn parse(action: &Action, args: &[String], env_token: Option<String>) -> Result<Request, String> {
+    let mut request = Request { url: format!("http://127.0.0.1:{}", http::port()), token: env_token, values: Vec::new(), help: false };
+    let mut positional = action.params.iter();
+    let mut args = args.iter();
+    while let Some(arg) = args.next() {
+        let (name, inline) = match arg.split_once('=') {
+            Some((name, value)) if name.starts_with("--") => (name, Some(value.to_string())),
+            _ => (arg.as_str(), None),
+        };
+        if arg == "-h" || arg == "--help" {
+            request.help = true;
+            continue;
+        }
+        let Some(option) = name.strip_prefix("--") else {
+            let param = positional.next().ok_or(format!("Unexpected argument '{arg}'"))?;
+            set(&mut request.values, param, arg.clone())?;
+            continue;
+        };
+        let mut value = |what: &str| inline.clone().or_else(|| args.next().cloned()).ok_or(format!("Option '{what}' argument missing"));
+        match option {
+            "url" => request.url = value("--url <url>")?,
+            "token" => request.token = Some(value("--token <token>")?),
+            other => {
+                let param = action.params.iter().find(|param| **param == other).ok_or(format!("Unknown option '{name}'"))?;
+                set(&mut request.values, param, value(&format!("--{other} <value>"))?)?;
+            }
+        }
+    }
+    Ok(request)
+}
+
+fn set(values: &mut Vec<(&'static str, String)>, param: &&'static str, value: String) -> Result<(), String> {
+    if values.iter().any(|(name, _)| name == param) {
+        return Err(format!("'{param}' given twice"));
+    }
+    values.push((param, value));
+    Ok(())
+}
+
+/// The path and the query string of the request: parameters that are part of the path go in it
+fn target(action: &Action, values: &[(&'static str, String)]) -> Result<String, String> {
+    let get = |name: &str| values.iter().find(|(key, _)| *key == name).map(|(_, value)| value.as_str());
+    if action.name == "ready" {
+        let state = get("state").ok_or("Usage: torchio ready on | off [seconds]")?;
+        return match (state, get("seconds")) {
+            ("on", None) => Ok("/ready/on".into()),
+            ("off", seconds) => Ok(match seconds {
+                Some(seconds) => format!("/ready/off?{}", serde_urlencoded::to_string([("seconds", seconds)]).map_err(|e| e.to_string())?),
+                None => "/ready/off".into(),
+            }),
+            _ => Err("Usage: torchio ready on | off [seconds]".into()),
+        };
+    }
+    let mut path = action.path.to_string();
+    let mut query = Vec::new();
+    for (name, value) in values {
+        let placeholder = format!("{{{name}}}");
+        if path.contains(&placeholder) {
+            path = path.replace(&placeholder, &serde_urlencoded::to_string([("", value.as_str())]).map_err(|e| e.to_string())?[1..]);
+        } else {
+            query.push((*name, value.as_str()));
+        }
+    }
+    if path.contains('{') {
+        return Err(format!("Usage: torchio {} <{}>", action.name, action.params[0]));
+    }
+    if query.is_empty() {
+        return Ok(path);
+    }
+    Ok(format!("{path}?{}", serde_urlencoded::to_string(query).map_err(|e| e.to_string())?))
+}
+
+/// How long to wait for the answer: `/stress` and `/delay` answer when they are done
+fn timeout(action: &Action) -> Duration {
+    match action.name {
+        "stress" | "delay" => Duration::from_secs(600),
+        _ => Duration::from_secs(30),
+    }
+}
+
+pub fn run(name: &str, args: &[String]) -> ExitCode {
+    let Some(action) = ACTIONS.iter().find(|action| action.name == name) else { return ExitCode::FAILURE };
+    let env_token = std::env::var("TOKEN").ok().filter(|token| !token.is_empty());
+    let request = match parse(action, args, env_token) {
+        Ok(request) => request,
+        Err(message) => {
+            eprintln!("{message}");
+            println!("{USAGE}");
+            return ExitCode::FAILURE;
+        }
+    };
+    if request.help {
+        println!("{USAGE}");
+        return ExitCode::SUCCESS;
+    }
+    let url = match target(action, &request.values).and_then(|target| http::endpoint_url(&request.url, &target)) {
+        Ok(url) => url,
+        Err(message) => {
+            eprintln!("{message}");
+            return ExitCode::FAILURE;
+        }
+    };
+    match http::get_with_token(&url, request.token.as_deref(), timeout(action)) {
+        Ok((status, body)) if status < 400 => {
+            println!("{}", body.trim_end());
+            ExitCode::SUCCESS
+        }
+        Ok((401, _)) => {
+            eprintln!("The server asks for a token: use --token <token> or TOKEN");
+            ExitCode::FAILURE
+        }
+        Ok((status, body)) => {
+            eprintln!("HTTP {status}: {}", body.trim_end());
+            ExitCode::FAILURE
+        }
+        Err(message) => {
+            eprintln!("Cannot reach {}: {message}", request.url);
+            ExitCode::FAILURE
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn args(list: &[&str]) -> Vec<String> {
+        list.iter().map(|s| s.to_string()).collect()
+    }
+
+    fn action(name: &str) -> &'static Action {
+        ACTIONS.iter().find(|action| action.name == name).unwrap()
+    }
+
+    fn url_of(name: &str, list: &[&str]) -> Result<String, String> {
+        let request = parse(action(name), &args(list), None)?;
+        target(action(name), &request.values)
+    }
+
+    #[test]
+    fn the_first_values_are_the_parameters_in_order() {
+        assert_eq!(url_of("cpu", &["80", "60"]).unwrap(), "/cpu?percent=80&hold=60");
+        assert_eq!(url_of("memory", &["512"]).unwrap(), "/memory?mb=512");
+        assert_eq!(url_of("memory", &[]).unwrap(), "/memory");
+    }
+
+    #[test]
+    fn a_parameter_may_be_given_by_name() {
+        assert_eq!(url_of("memory", &["--hold", "5", "--mb=100"]).unwrap(), "/memory?hold=5&mb=100");
+        assert_eq!(url_of("leak", &["1", "--hold", "9"]).unwrap(), "/leak?rate=1&hold=9");
+    }
+
+    #[test]
+    fn the_code_of_status_goes_in_the_path() {
+        assert_eq!(url_of("status", &["503"]).unwrap(), "/status/503");
+        assert!(url_of("status", &[]).is_err());
+    }
+
+    #[test]
+    fn ready_is_on_or_off_with_seconds() {
+        assert_eq!(url_of("ready", &["on"]).unwrap(), "/ready/on");
+        assert_eq!(url_of("ready", &["off"]).unwrap(), "/ready/off");
+        assert_eq!(url_of("ready", &["off", "30"]).unwrap(), "/ready/off?seconds=30");
+        assert!(url_of("ready", &[]).is_err());
+        assert!(url_of("ready", &["maybe"]).is_err());
+        assert!(url_of("ready", &["on", "5"]).is_err());
+    }
+
+    #[test]
+    fn values_are_escaped_and_mistakes_are_errors() {
+        assert_eq!(url_of("delay", &["a b&c"]).unwrap(), "/delay?ms=a+b%26c");
+        assert!(url_of("delay", &["1", "2"]).is_err());
+        assert!(url_of("delay", &["--nope", "1"]).is_err());
+        assert!(url_of("delay", &["1", "--ms", "2"]).is_err());
+        assert!(url_of("delay", &["--ms"]).is_err());
+    }
+
+    #[test]
+    fn url_and_token_are_options_and_the_token_may_come_from_the_environment() {
+        let request = parse(action("cpu"), &args(&["--url", "http://h:1", "--token=t", "50"]), Some("env".into())).unwrap();
+        assert_eq!((request.url.as_str(), request.token.as_deref()), ("http://h:1", Some("t")));
+        let request = parse(action("cpu"), &args(&["50"]), Some("env".into())).unwrap();
+        assert_eq!(request.token.as_deref(), Some("env"));
+    }
+
+    #[test]
+    fn every_action_is_known() {
+        for name in ["stress", "cpu", "delay", "status", "memory", "leak", "disk", "fd", "log", "crash", "ready"] {
+            assert!(is_action(name), "{name}");
+        }
+        assert!(!is_action("watch"));
+    }
+}

@@ -4,8 +4,17 @@ use std::time::Duration;
 
 /// GET `url`: the status and the body
 pub fn get(url: &str, timeout: Duration) -> Result<(u16, String), String> {
+    get_with_token(url, None, timeout)
+}
+
+/// GET `url`, with `Authorization: Bearer <token>` when there is a token
+pub fn get_with_token(url: &str, token: Option<&str>, timeout: Duration) -> Result<(u16, String), String> {
     let agent: ureq::Agent = ureq::Agent::config_builder().timeout_global(Some(timeout)).http_status_as_error(false).build().into();
-    let mut response = agent.get(url).call().map_err(|e| e.to_string())?;
+    let mut request = agent.get(url);
+    if let Some(token) = token {
+        request = request.header("Authorization", format!("Bearer {token}"));
+    }
+    let mut response = request.call().map_err(|e| e.to_string())?;
     let status = response.status().as_u16();
     let body = response.body_mut().read_to_string().map_err(|e| e.to_string())?;
     Ok((status, body))
@@ -13,12 +22,17 @@ pub fn get(url: &str, timeout: Duration) -> Result<(u16, String), String> {
 
 /// The address of `/info` on the server that `base` points to, whatever the path of `base`
 pub fn info_url(base: &str) -> Result<String, String> {
+    endpoint_url(base, "/info")
+}
+
+/// The address of `path` (which starts with a `/`) on the server that `base` points to
+pub fn endpoint_url(base: &str, path: &str) -> Result<String, String> {
     let (scheme, rest) = base.split_once("://").ok_or("Invalid URL")?;
     let authority = rest.split(['/', '?', '#']).next().unwrap_or("");
     if scheme.is_empty() || authority.is_empty() {
         return Err("Invalid URL".into());
     }
-    Ok(format!("{scheme}://{authority}/info"))
+    Ok(format!("{scheme}://{authority}{path}"))
 }
 
 /// The port of the local server: `PORT`, or 3000

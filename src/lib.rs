@@ -8,7 +8,7 @@
 //! - [`resources`]: what the server holds or does on purpose (budgets, memory, files, workers…).
 //! - [`http`]: what serves requests and is not specific to an endpoint.
 //! - [`server`]: starts listening and ends the process.
-//! - [`cli`]: the commands besides the server (`watch`, `healthcheck`).
+//! - [`cli`]: the commands besides the server (`watch`, `healthcheck`, and one for each endpoint that starts a test).
 //! - [`system`]: what the operating system says about the process.
 pub mod app;
 pub mod cli;

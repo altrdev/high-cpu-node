@@ -9,8 +9,38 @@ env:
   TARGET_PLATFORMS: linux/amd64,linux/arm64
 
 jobs:
+  # The binary for macOS, built on the runner: the Dockerfile only builds for Linux
+  macos:
+    name: Binary for ${{ matrix.name }}
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        include:
+          - name: macos-arm64
+            target: aarch64-apple-darwin
+          - name: macos-amd64
+            target: x86_64-apple-darwin
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v7
+
+      - name: Install the Rust toolchain
+        run: |
+          rustup toolchain install stable --profile minimal --target ${{ matrix.target }} --no-self-update
+          rustup default stable
+
+      - run: cargo build --release --locked --target ${{ matrix.target }}
+
+      - run: cp target/${{ matrix.target }}/release/torchio torchio-${{ matrix.name }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: torchio-${{ matrix.name }}
+          path: torchio-${{ matrix.name }}
+
   push_to_registry:
     name: Push Docker image to Docker Hub
+    needs: macos
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -49,7 +79,18 @@ jobs:
           mkdir release
           cp dist/linux_amd64/torchio release/torchio-linux-amd64
           cp dist/linux_arm64/torchio release/torchio-linux-arm64
-          (cd release && sha256sum torchio-linux-* > SHA256SUMS)
+
+      - name: Collect the macOS binaries
+        uses: actions/download-artifact@v4
+        with:
+          pattern: torchio-macos-*
+          path: release
+          merge-multiple: true
+
+      - name: Checksums
+        run: |
+          chmod +x release/torchio-*
+          (cd release && sha256sum torchio-* > SHA256SUMS)
 
       - name: Create GitHub release
         env:
@@ -75,3 +116,70 @@ jobs:
           repository: altrdev/torchio
           short-description: Stress CPU, memory, disk and latency on demand. For testing autoscaling, limits and probes.
           readme-filepath: ./dockerhub-readme.md
+
+  # Updates the formula in the tap, so that `brew install altrdev/tap/torchio` installs this version.
+  # It needs the secret HOMEBREW_TAP_TOKEN, a token that can push to altrdev/homebrew-tap; without it
+  # the job is skipped.
+  homebrew:
+    name: Update the Homebrew tap
+    needs: push_to_registry
+    runs-on: ubuntu-latest
+    env:
+      TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+    steps:
+      - name: Write the formula and push it
+        if: env.TAP_TOKEN != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --pattern SHA256SUMS
+          checksum() { grep " torchio-$1\$" SHA256SUMS | cut -d' ' -f1; }
+          BASE="https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME"
+          cat > torchio.rb <<EOF
+          class Torchio < Formula
+            desc "Break your containers on purpose: burn CPU, hold memory, fill disk and more, on demand over HTTP"
+            homepage "https://github.com/$GITHUB_REPOSITORY"
+            version "$VERSION"
+            license "MIT"
+
+            on_macos do
+              on_arm do
+                url "$BASE/torchio-macos-arm64"
+                sha256 "$(checksum macos-arm64)"
+              end
+              on_intel do
+                url "$BASE/torchio-macos-amd64"
+                sha256 "$(checksum macos-amd64)"
+              end
+            end
+
+            on_linux do
+              on_arm do
+                url "$BASE/torchio-linux-arm64"
+                sha256 "$(checksum linux-arm64)"
+              end
+              on_intel do
+                url "$BASE/torchio-linux-amd64"
+                sha256 "$(checksum linux-amd64)"
+              end
+            end
+
+            def install
+              bin.install Dir["torchio-*"].first => "torchio"
+            end
+
+            test do
+              assert_match "Usage: torchio", shell_output("#{bin}/torchio help")
+            end
+          end
+          EOF
+          git clone "https://x-access-token:$TAP_TOKEN@github.com/altrdev/homebrew-tap.git" tap
+          mkdir -p tap/Formula
+          cp torchio.rb tap/Formula/torchio.rb
+          cd tap
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add Formula/torchio.rb
+          git commit -m "torchio $VERSION"
+          git push

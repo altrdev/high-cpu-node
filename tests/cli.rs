@@ -1,4 +1,4 @@
-//! The commands of the binary besides the server: `watch` and `healthcheck`.
+//! The commands of the binary besides the server: `watch`, `healthcheck` and the ones that start a test.
 mod common;
 
 use common::*;
@@ -184,4 +184,50 @@ fn healthcheck_does_not_depend_on_readiness() {
         Some(0),
         "an instance that is not ready is alive"
     );
+}
+
+#[test]
+fn an_action_command_starts_the_test_on_the_server() {
+    let server = Server::start();
+    let output = run(&["memory", "100", "--hold", "5", "--url", &server.url()], &[]);
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    assert!(String::from_utf8_lossy(&output.stdout).contains("100"));
+    assert_eq!(server.info()["memory"]["heldMb"], 100);
+
+    assert!(run(&["cpu", "30", "--hold=20", "--url", &server.url()], &[]).status.success());
+    assert!(run(&["ready", "off", "20", "--url", &server.url()], &[]).status.success());
+    assert_eq!(server.status("/ready"), 503);
+    assert!(run(&["ready", "on", "--url", &server.url()], &[]).status.success());
+    assert_eq!(server.status("/ready"), 200);
+}
+
+#[test]
+fn an_action_command_fails_with_what_the_server_said() {
+    let server = Server::start();
+    let output = run(&["memory", "99999", "--url", &server.url()], &[]);
+    assert_eq!(output.status.code(), Some(1));
+    assert!(String::from_utf8_lossy(&output.stderr).starts_with("HTTP 400: "));
+
+    let output = run(&["status", "503", "--url", &server.url()], &[]);
+    assert_eq!(output.status.code(), Some(1));
+    assert!(String::from_utf8_lossy(&output.stderr).starts_with("HTTP 503: "));
+}
+
+#[test]
+fn an_action_command_sends_the_token() {
+    let server = Server::with(&[("TOKEN", "s3cret")]);
+    let output = run(&["memory", "10", "--hold", "5", "--url", &server.url()], &[]);
+    assert_eq!(output.status.code(), Some(1));
+    assert!(String::from_utf8_lossy(&output.stderr).contains("asks for a token"));
+
+    assert!(run(&["memory", "10", "--hold", "5", "--url", &server.url(), "--token", "s3cret"], &[]).status.success());
+    assert!(run(&["memory", "10", "--hold", "5", "--url", &server.url()], &[("TOKEN", "s3cret")]).status.success());
+}
+
+#[test]
+fn an_action_command_exits_with_1_when_the_server_cannot_be_reached() {
+    let url = format!("http://127.0.0.1:{}", free_port());
+    let output = run(&["cpu", "10", "--url", &url], &[]);
+    assert_eq!(output.status.code(), Some(1));
+    assert!(String::from_utf8_lossy(&output.stderr).starts_with(&format!("Cannot reach {url}: ")));
 }
