@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
-## Unreleased
+## 4.1.0 - 2026-10-19
 
 ### Added
 - `torchio serve` starts the server, the same as `torchio` with no command, so the command is in `help` and in the completions. The Docker image still runs `torchio`.
