@@ -8,6 +8,7 @@ on:
   pull_request:
     paths:
       - book/**
+      - docs/**
       - examples/endpoints_reference.rs
       - src/endpoints.rs
       - src/config.rs
@@ -45,6 +46,10 @@ jobs:
           # the small label next to the title: the stylesheet says "dev", and this rule, which comes last, the version
           printf '\n.menu-title::after { content: "v%s"; }\n' "$VERSION" >> book/theme/torchio.css
           grep -q "content: \"v$VERSION\"" book/theme/torchio.css
+
+      # the images are in docs/, where the README takes them from, and the pages use the same files
+      - name: Copy the images next to the pages
+        run: mkdir -p book/src/images && cp docs/* book/src/images/
 
       - name: Write the reference of the endpoints from the catalog
         run: cargo run --locked --example endpoints_reference > book/src/reference.md
