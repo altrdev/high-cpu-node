@@ -88,7 +88,13 @@ const duration = (s) => {
 // ---- gauges: what /info says, with the last HISTORY samples of each
 const history = {};
 const gauges = [
-    {key: 'cpu', label: 'CPU workers busy', get: (i) => ({v: i.stress.perWorker.filter((n) => n > 0).length, max: i.stress.workers, text: `${i.stress.perWorker.filter((n) => n > 0).length} / ${i.stress.workers}`, cap: 'busy with /stress'})},
+    {key: 'cpu', label: 'CPU load', get: (i) => {
+      // what /stress keeps busy counts as 100, the other workers as much as /cpu burns
+      const busy = i.stress.perWorker.filter((n) => n > 0).length, w = i.stress.workers;
+      const burn = i.stress.burn ? i.stress.burn.percent : 0;
+      const load = busy * 100 + (w - busy) * burn;
+      return {v: load, max: w * 100, text: `${w ? Math.round(load / w) : 0}%`, cap: `${busy} busy with /stress` + (i.stress.burn ? `, ${burn}% /cpu` : '')};
+    }},
     {key: 'mem', label: 'Memory held', get: (i) => ({v: i.memory.heldMb, max: i.memory.limitMb, text: `${i.memory.heldMb} / ${i.memory.limitMb} MB`, cap: '/memory and /leak'})},
     {key: 'rss', label: 'Process RSS', get: (i) => {
         const limit = i.memory.containerLimitMb;

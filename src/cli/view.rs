@@ -18,7 +18,7 @@ pub struct History {
 impl History {
     pub fn record(&mut self, info: &Info) {
         let samples = [
-            (&mut self.busy, info.stress.per_worker.iter().filter(|n| **n > 0).count() as i64),
+            (&mut self.busy, cpu_load(info)),
             (&mut self.held, info.memory.held_mb),
             (&mut self.rss, info.memory.process_rss_mb),
             (&mut self.disk, info.disk.held_mb),
@@ -31,6 +31,14 @@ impl History {
             }
         }
     }
+}
+
+/// The load of the workers in percent of one worker: a worker that runs a `/stress` is at 100, and
+/// the others are at the percent of `/cpu`, if it is burning
+fn cpu_load(info: &Info) -> i64 {
+    let busy = info.stress.per_worker.iter().filter(|n| **n > 0).count() as i64;
+    let burn = info.stress.burn.as_ref().map_or(0, |burn| burn.percent.clamp(0, 100));
+    busy * 100 + (info.stress.workers - busy).max(0) * burn
 }
 
 /// Colours (256-colour palette), or plain text when `color` is off
@@ -189,8 +197,14 @@ fn rows(style: &Style, info: &Info, history: &History) -> Vec<String> {
     // without a container limit the bar is only a size reference: the memory budget of /memory
     let rss_max = container.unwrap_or_else(|| history.rss.iter().copied().fold(memory.limit_mb, i64::max));
 
+    // the bar is the load of the workers: what /stress keeps busy and what /cpu burns
+    let load = cpu_load(info);
+    let cpu_text = match &info.stress.burn {
+        Some(_) if workers > 0 => format!("{}% load, {busy} busy / {workers}", load / workers),
+        _ => format!("{busy} busy / {workers}"),
+    };
     let mut rows = vec![
-        style.row("CPU workers", busy, workers, &format!("{busy} busy / {workers}"), &history.busy, false),
+        style.row("CPU workers", load, workers * 100, &cpu_text, &history.busy, false),
         style.row(
             "Memory held",
             memory.held_mb,
@@ -313,7 +327,7 @@ mod tests {
     fn the_view_has_every_figure() {
         let view = plain(INFO);
         assert!(view.starts_with("torchio 3.5.0  http://x:3000  up 1h2m5s\n\n"));
-        assert!(view.contains("CPU workers   █████░░░░░░░░░░░░░░░  1 busy / 4"));
+        assert!(view.contains("CPU workers   ██████████░░░░░░░░░░  47% load, 1 busy / 4"), "{view}");
         assert!(view.contains("Memory held   ██████████░░░░░░░░░░  150 / 300 MB"));
         assert!(view.contains("Process RSS   ██████████████░░░░░░  180 / 256 MB (container)"));
         assert!(view.contains("FDs held      ░░░░░░░░░░░░░░░░░░░░  40 / 10000"));
@@ -322,6 +336,30 @@ mod tests {
         assert!(view.contains("/log: 10 of 1000 lines, 10 lines/s\n"));
         assert!(view.contains("readiness: NOT READY (ready again in 20 s)\n"));
         assert!(view.ends_with("disk dir: /tmp   not usable"));
+    }
+
+    #[test]
+    fn the_cpu_row_counts_what_stress_keeps_busy_and_what_cpu_burns() {
+        let info = |stress: &str| -> Info {
+            let json = INFO.replace(
+                r#""stress": {"workers": 4, "inFlight": 1, "perWorker": [1, 0, 0, 0], "burn": {"percent": 30, "secondsLeft": 12}}"#,
+                stress,
+            );
+            serde_json::from_str(&json).unwrap()
+        };
+        let idle = info(r#""stress": {"workers": 4, "inFlight": 0, "perWorker": [0, 0, 0, 0], "burn": null}"#);
+        let burning =
+            info(r#""stress": {"workers": 4, "inFlight": 0, "perWorker": [0, 0, 0, 0], "burn": {"percent": 80, "secondsLeft": 9}}"#);
+        let both = info(r#""stress": {"workers": 4, "inFlight": 1, "perWorker": [1, 0, 0, 0], "burn": {"percent": 80, "secondsLeft": 9}}"#);
+        assert_eq!((cpu_load(&idle), cpu_load(&burning), cpu_load(&both)), (0, 320, 340));
+        let view = |info: &Info| {
+            let mut history = History::default();
+            history.record(info);
+            render(&Style::new(false), "u", info, &history)
+        };
+        assert!(view(&idle).contains("CPU workers   ░░░░░░░░░░░░░░░░░░░░  0 busy / 4"));
+        assert!(view(&burning).contains("CPU workers   ████████████████░░░░  80% load, 0 busy / 4"));
+        assert!(view(&both).contains("85% load, 1 busy / 4"));
     }
 
     #[test]
