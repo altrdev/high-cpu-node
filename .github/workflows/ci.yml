@@ -19,7 +19,7 @@ jobs:
 
       - name: Install the Rust toolchain
         run: |
-          rustup toolchain install stable --profile minimal --component clippy rustfmt --no-self-update
+          rustup toolchain install stable --profile minimal --component clippy,rustfmt --no-self-update
           rustup default stable
 
       - name: Changelog has a section for this version
