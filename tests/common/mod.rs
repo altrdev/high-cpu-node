@@ -132,6 +132,7 @@ pub struct Server {
     pub port: u16,
     pub disk_dir: TempDir,
     output: Arc<Mutex<String>>,
+    readers: Vec<thread::JoinHandle<()>>,
 }
 
 impl Server {
@@ -173,18 +174,19 @@ impl Server {
         let output = Arc::new(Mutex::new(String::new()));
         let stdout = child.stdout.take().unwrap();
         let stderr = child.stderr.take().unwrap();
+        let mut readers = Vec::new();
         for stream in [Box::new(stdout) as Box<dyn Read + Send>, Box::new(stderr)] {
             let output = Arc::clone(&output);
-            thread::spawn(move || {
+            readers.push(thread::spawn(move || {
                 for line in BufReader::new(stream).lines().map_while(Result::ok) {
                     let mut output = output.lock().unwrap();
                     output.push_str(&line);
                     output.push('\n');
                 }
-            });
+            }));
         }
 
-        let mut server = Server { child, port, disk_dir, output };
+        let mut server = Server { child, port, disk_dir, output, readers };
         for _ in 0..100 {
             if let Some(status) = server.child.try_wait().unwrap() {
                 panic!("the server exited while starting ({status}): {}", server.output());
@@ -246,7 +248,12 @@ impl Server {
     }
 
     pub fn exited(&mut self) -> Option<ExitStatus> {
-        self.child.try_wait().unwrap()
+        let status = self.child.try_wait().unwrap()?;
+        // the last lines are still in the pipes: wait for the readers to take them, so `output()` is complete
+        for reader in self.readers.drain(..) {
+            let _ = reader.join();
+        }
+        Some(status)
     }
 
     // Waits for the process to end by itself
