@@ -319,6 +319,7 @@ async fn info_has_these_fields() {
             "memory",
             "name",
             "ready",
+            "scenario",
             "shutdown",
             "stress",
             "uptimeSeconds",

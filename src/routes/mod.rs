@@ -18,6 +18,7 @@ pub mod metrics;
 pub mod oom;
 pub mod payload;
 pub mod ready;
+pub mod scenario;
 pub mod status;
 pub mod stress;
 pub mod ui;

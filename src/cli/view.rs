@@ -1,5 +1,5 @@
 //! The view of `torchio watch`: bars, a short history of each figure and a few lines of text.
-use super::info::{Info, Ready};
+use super::info::{Info, Ready, Scenario};
 
 const HISTORY: usize = 30;
 const BAR_WIDTH: usize = 20;
@@ -201,6 +201,22 @@ fn readiness(ready: &Ready) -> String {
     format!("readiness: NOT READY ({back})")
 }
 
+/// What the scenario is doing, or why it ended; nothing when there is none
+fn scenario_line(scenario: &Scenario) -> Option<String> {
+    let (step, steps) = (scenario.step.unwrap_or(0), scenario.steps.unwrap_or(0));
+    match scenario.state.as_str() {
+        "running" => Some(format!(
+            "step {step} of {steps}, {} s left in it, {} s in all",
+            scenario.seconds_left.unwrap_or(0),
+            scenario.remaining_seconds.unwrap_or(0)
+        )),
+        "failed" => Some(format!("failed: {}", scenario.error.as_deref().unwrap_or("no reason given"))),
+        "finished" => Some(format!("finished, {steps} steps")),
+        "stopped" => Some(format!("stopped at step {step} of {steps}")),
+        _ => None,
+    }
+}
+
 /// The rows of figures, the same with colours and without
 fn rows(style: &Style, info: &Info, history: &History) -> Vec<String> {
     let busy = info.stress.per_worker.iter().filter(|n| **n > 0).count() as i64;
@@ -265,6 +281,9 @@ pub fn render(style: &Style, url: &str, info: &Info, history: &History) -> Strin
     if let Some(log) = &info.log {
         lines.push(format!("/log: {} of {} lines, {} lines/s", log.sent, log.lines, log.rate));
     }
+    if let Some(text) = info.scenario.as_ref().and_then(scenario_line) {
+        lines.push(format!("/scenario: {text}"));
+    }
     if let Some(ready) = &info.ready {
         lines.push(readiness(ready));
     }
@@ -314,6 +333,11 @@ fn render_color(style: &Style, url: &str, info: &Info, history: &History) -> Str
     }
     if let Some(log) = &info.log {
         lines.push(activity(true, 177, format!("/log {} of {} lines, {} lines/s", log.sent, log.lines, log.rate)));
+    }
+    if let Some(scenario) = &info.scenario
+        && let Some(text) = scenario_line(scenario)
+    {
+        lines.push(activity(scenario.state == "running", 117, format!("/scenario {text}")));
     }
     let place = format!("{}   {}", style.dim(&format!("disk dir {}", shorten(&info.disk.dir, 40))), style.dim(&free));
     lines.push(match ready {
@@ -408,6 +432,19 @@ mod tests {
         );
         assert!(view(&with).contains("25 / 500"));
         assert!(!view(INFO).contains("Connections"), "a server that does not report them has no row");
+    }
+
+    #[test]
+    fn the_scenario_is_a_line_while_it_runs_and_after_it_ends() {
+        let with = |scenario: &str| INFO.replace(r#""log": {"#, &format!(r#""scenario": {scenario}, "log": {{"#));
+        let running = plain(&with(r#"{"state": "running", "step": 2, "steps": 3, "secondsLeft": 12, "remainingSeconds": 40}"#));
+        assert!(running.contains("/scenario: step 2 of 3, 12 s left in it, 40 s in all\n"), "{running}");
+        let failed = plain(&with(r#"{"state": "failed", "step": 1, "steps": 2, "error": "step 1: no memory"}"#));
+        assert!(failed.contains("/scenario: failed: step 1: no memory\n"), "{failed}");
+        assert!(plain(&with(r#"{"state": "stopped", "step": 2, "steps": 3}"#)).contains("/scenario: stopped at step 2 of 3\n"));
+        assert!(plain(&with(r#"{"state": "finished", "step": 3, "steps": 3}"#)).contains("/scenario: finished, 3 steps\n"));
+        assert!(!plain(&with(r#"{"state": "idle"}"#)).contains("/scenario"), "nothing to say when there is none");
+        assert!(!plain(INFO).contains("/scenario"), "an older server has none");
     }
 
     #[test]

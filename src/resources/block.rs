@@ -57,6 +57,16 @@ impl Block {
     }
 }
 
+impl Block {
+    /// Reserves the block, says so in the log and freezes the threads after the answer has left
+    pub fn start(&self, ms: u64, format: crate::logging::LogFormat) -> Result<(), Busy> {
+        let end = self.reserve(ms)?;
+        format.warn(&format!("Blocking every thread of the server for {ms} ms"));
+        freeze(end, move || format.info("The server answers again"));
+        Ok(())
+    }
+}
+
 /// Puts every thread of the runtime to sleep until `end`. Each task holds its thread, so the next
 /// one is taken by a thread that is still free; a task that starts after `end` has nothing to do.
 pub fn freeze(end: Instant, then: impl Fn() + Send + Sync + 'static) {
