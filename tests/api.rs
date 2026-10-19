@@ -282,6 +282,7 @@ async fn the_configuration_has_these_keys() {
             "maxLogRate",
             "maxMemoryMb",
             "maxNumber",
+            "maxPayloadMb",
             "name",
             "port",
             "shutdownGraceSeconds",

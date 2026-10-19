@@ -16,6 +16,7 @@ pub mod log;
 pub mod memory;
 pub mod metrics;
 pub mod oom;
+pub mod payload;
 pub mod ready;
 pub mod status;
 pub mod stress;

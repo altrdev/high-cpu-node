@@ -11,6 +11,7 @@ pub mod flaky;
 pub mod log;
 pub mod memory;
 pub mod oom;
+pub mod payload;
 pub mod ready;
 pub mod shutdown;
 pub mod workers;

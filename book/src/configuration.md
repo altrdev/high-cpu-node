@@ -17,6 +17,7 @@ Environment variables:
 | `MAX_CONNECTIONS`  | `500`           | Total connections `/connections` can hold at once |
 | `MAX_BLOCK_MS`     | `30000`         | Highest `ms` accepted by `/block`                 |
 | `ALLOW_OOM`        | off             | `1` lets `/oom` run: it allocates until the kernel kills the process |
+| `MAX_PAYLOAD_MB`   | `1024`          | Highest `mb` accepted by `/payload`, and the biggest upload it takes |
 | `MAX_LOG_LINES`    | `100000`        | Highest `lines` accepted by `/log`                |
 | `MAX_LOG_RATE`     | `10000`         | Highest `rate` accepted by `/log`                 |
 | `TRUST_PROXY`      | off             | Trusts `X-Forwarded-*` (`true`, a number of hops, or addresses and subnets), see `/echo` |
