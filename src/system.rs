@@ -89,6 +89,15 @@ pub fn container_limit_bytes() -> Option<u64> {
     None
 }
 
+/// The soft limit of open descriptors of the process (`ulimit -n`), `None` when it has none
+pub fn fd_limit() -> Option<u64> {
+    // SAFETY: `limits` is plain data that getrlimit fills in
+    unsafe {
+        let mut limits: libc::rlimit = std::mem::zeroed();
+        (libc::getrlimit(libc::RLIMIT_NOFILE, &mut limits) == 0 && limits.rlim_cur != libc::RLIM_INFINITY).then_some(limits.rlim_cur as u64)
+    }
+}
+
 /// Free space for an unprivileged process in the file system of `dir`, `None` when it can't be read
 pub fn free_bytes(dir: &str) -> Option<u64> {
     let path = CString::new(dir).ok()?;
@@ -102,6 +111,12 @@ pub fn free_bytes(dir: &str) -> Option<u64> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_process_has_a_limit_of_descriptors() {
+        // there is always a soft limit, a few at least, unless it is unlimited
+        assert!(fd_limit().is_none_or(|limit| limit > 3));
+    }
 
     #[test]
     #[cfg(target_os = "linux")]

@@ -51,6 +51,8 @@ pub struct Memory {
     pub limit_mb: i64,
     pub process_rss_mb: i64,
     pub container_limit_mb: Option<i64>,
+    /// Seconds until the last `/memory` or `/leak` lets go; a server that does not say, or holds nothing, has none
+    pub seconds_left: Option<i64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -60,18 +62,35 @@ pub struct Disk {
     pub limit_mb: i64,
     pub dir: String,
     pub free_mb: Option<i64>,
+    pub seconds_left: Option<i64>,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Connections {
     pub held: i64,
     pub limit: i64,
+    pub seconds_left: Option<i64>,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Fd {
     pub held: i64,
     pub limit: i64,
+    pub process_limit: Option<i64>,
+    pub seconds_left: Option<i64>,
+}
+
+impl Fd {
+    /// What a bar should compare with: the budget of `/fd`, or the limit of the process when it is lower,
+    /// which is where `EMFILE` comes first. The flag says it is the process
+    pub fn ceiling(&self) -> (i64, bool) {
+        match self.process_limit {
+            Some(process) if process < self.limit => (process, true),
+            _ => (self.limit, false),
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]

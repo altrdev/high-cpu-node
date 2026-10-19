@@ -12,6 +12,8 @@ pub struct Memory {
     pub limit_mb: i64,
     pub rss_bytes: u64,
     pub container_limit_bytes: Option<u64>,
+    /// Seconds until the last `/memory` or `/leak` lets go, `None` when nothing is held
+    pub seconds_left: Option<u64>,
 }
 
 pub struct Disk {
@@ -19,16 +21,21 @@ pub struct Disk {
     pub limit_mb: i64,
     pub dir: String,
     pub free_bytes: Option<u64>,
+    pub seconds_left: Option<u64>,
 }
 
 pub struct Fd {
     pub held: i64,
     pub limit: i64,
+    /// What the process can open at all (`ulimit -n`), which may be lower than `limit`
+    pub process_limit: Option<u64>,
+    pub seconds_left: Option<u64>,
 }
 
 pub struct Connections {
     pub held: i64,
     pub limit: i64,
+    pub seconds_left: Option<u64>,
 }
 
 pub struct Snapshot {
@@ -54,15 +61,26 @@ impl AppState {
                 limit_mb: self.memory.budget().limit(),
                 rss_bytes: system::rss_bytes(),
                 container_limit_bytes: system::container_limit_bytes(),
+                seconds_left: self.memory.budget().seconds_left(),
             },
             disk: Disk {
                 held_mb: self.disk.budget().held(),
                 limit_mb: self.disk.budget().limit(),
                 dir: self.config.disk_dir.clone(),
                 free_bytes: system::free_bytes(&self.config.disk_dir),
+                seconds_left: self.disk.budget().seconds_left(),
             },
-            fd: Fd { held: self.fd.budget().held(), limit: self.fd.budget().limit() },
-            connections: Connections { held: self.connections.budget().held(), limit: self.connections.budget().limit() },
+            fd: Fd {
+                held: self.fd.budget().held(),
+                limit: self.fd.budget().limit(),
+                process_limit: system::fd_limit(),
+                seconds_left: self.fd.budget().seconds_left(),
+            },
+            connections: Connections {
+                held: self.connections.budget().held(),
+                limit: self.connections.budget().limit(),
+                seconds_left: self.connections.budget().seconds_left(),
+            },
             ready: self.ready.state(),
             block: self.block.snapshot(),
             log: self.log.state(),

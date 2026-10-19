@@ -20,7 +20,9 @@ fn info_describes_the_server() {
     assert_eq!(info["disk"]["limitMb"], 300);
     assert_eq!(info["disk"]["dir"], server.disk_dir.path().to_str().unwrap());
     assert!(info["disk"]["freeMb"].as_i64().unwrap() > 0);
-    assert_eq!(info["fd"], json!({"held": 0, "limit": 10000}));
+    assert_eq!((&info["fd"]["held"], &info["fd"]["limit"]), (&json!(0), &json!(10000)));
+    // the limit of the process (`ulimit -n`), a number or null when there is none
+    assert!(info["fd"]["processLimit"].is_u64() || info["fd"]["processLimit"].is_null(), "{}", info["fd"]);
     assert!(info["log"].is_null());
     assert_eq!(
         info["limits"],
@@ -46,6 +48,24 @@ fn info_follows_what_the_server_holds() {
     assert!(info["memory"]["processRssMb"].as_i64().unwrap() >= 100);
     assert_eq!(info["disk"]["heldMb"], 10);
     assert_eq!(info["fd"]["held"], 20);
+}
+
+#[test]
+fn info_says_how_long_is_left_of_each_hold_and_nothing_when_nothing_is_held() {
+    let server = Server::start();
+    let idle = server.info();
+    for key in ["memory", "disk", "fd", "connections"] {
+        assert!(idle[key]["secondsLeft"].is_null(), "{key}: {}", idle[key]);
+    }
+    server.get("/memory?mb=10&hold=30");
+    server.get("/disk?mb=1&hold=20");
+    server.get("/fd?count=5&hold=10");
+    server.get("/connections?count=3&hold=8");
+    let info = server.info();
+    for (key, most) in [("memory", 30), ("disk", 20), ("fd", 10), ("connections", 8)] {
+        let left = info[key]["secondsLeft"].as_i64().unwrap_or_else(|| panic!("{key}: {}", info[key]));
+        assert!((most - 2..=most).contains(&left), "{key} has {left} s left of {most}");
+    }
 }
 
 // Every sample must come after the TYPE of its metric, and be a name and a number
