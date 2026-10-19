@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
+## Unreleased
+
+### Added
+- `torchio version` (also `--version` and `-V`) prints the version of the binary, which was only in `/info` until now. It is in the shell completions.
+
 ## 4.5.0 - 2026-10-19
 
 ### Added
