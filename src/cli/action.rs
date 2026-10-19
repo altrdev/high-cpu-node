@@ -18,7 +18,7 @@ struct Action {
 
 const ACTIONS: &[Action] = &[
     Action { name: "stress", about: "Keep a core busy with a calculation", path: "/stress", params: &["number"] },
-    Action { name: "cpu", about: "Keep every worker busy for a share of the time", path: "/cpu", params: &["percent", "hold"] },
+    Action { name: "cpu", about: "Keep every worker busy for a share of the time", path: "/cpu", params: &["percent", "hold", "workers"] },
     Action { name: "delay", about: "Make the server answer after a delay", path: "/delay", params: &["ms"] },
     Action { name: "status", about: "Make the server answer with an HTTP status", path: "/status/{code}", params: &["code"] },
     Action { name: "flaky", about: "Make the server fail a share of the requests", path: "/flaky", params: &["rate", "code", "ms"] },
@@ -294,7 +294,7 @@ mod tests {
     fn a_line_is_an_action_and_its_values() {
         assert_eq!(perform("", "http://h:1", None), Err("Type a command, like cpu 80".into()));
         assert_eq!(perform("nope 1", "http://h:1", None), Err("Unknown command 'nope'".into()));
-        assert_eq!(perform("cpu 1 2 3", "http://h:1", None), Err("Unexpected argument '3'".into()));
+        assert_eq!(perform("cpu 1 2 3 4", "http://h:1", None), Err("Unexpected argument '4'".into()));
         let port = std::net::TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port();
         let url = format!("http://127.0.0.1:{port}");
         assert!(perform("cpu 50", &url, None).unwrap_err().starts_with(&format!("Cannot reach {url}: ")));
@@ -302,7 +302,7 @@ mod tests {
 
     #[test]
     fn usage_shows_the_parameters_of_a_command() {
-        assert_eq!(usage("cpu").as_deref(), Some("cpu [percent] [hold]"));
+        assert_eq!(usage("cpu").as_deref(), Some("cpu [percent] [hold] [workers]"));
         assert_eq!(usage("status").as_deref(), Some("status <code>"));
         assert_eq!(usage("ready").as_deref(), Some("ready on | off [seconds]"));
         assert_eq!(usage("watch"), None);

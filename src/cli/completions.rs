@@ -169,7 +169,7 @@ mod tests {
     #[test]
     fn the_options_of_a_command_are_its_parameters_and_the_common_ones() {
         let cpu = bash().lines().find(|line| line.trim_start().starts_with("cpu)")).unwrap().to_string();
-        assert!(cpu.contains("--percent --hold --url --token --help"), "{cpu}");
+        assert!(cpu.contains("--percent --hold --workers --url --token --help"), "{cpu}");
         let ready = bash().lines().find(|line| line.trim_start().starts_with("ready)")).unwrap().to_string();
         assert!(ready.contains("--seconds") && !ready.contains("--state") && ready.contains("words=\"on off\""), "{ready}");
         assert!(fish().contains("-n '__fish_seen_subcommand_from watch' -l read-only\n"), "a flag takes no value");

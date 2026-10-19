@@ -97,7 +97,8 @@ async fn every_endpoint_of_the_catalog_is_routed_and_the_token_protects_the_ones
 #[tokio::test]
 async fn every_parameter_is_rejected_one_step_outside_its_range() {
     let app = app(&[("TOKEN", "s3cret")]);
-    let config = Config::read(|_| None, |_| {});
+    // the same workers as the app, which has one: that is the range of /cpu?workers=
+    let config = Config::read(|name| (name == "WORKERS").then(|| "1".to_string()), |_| {});
     let token = [("authorization", "Bearer s3cret")];
     let mut checked = 0;
     for endpoint in catalog(&config) {
@@ -318,6 +319,7 @@ async fn metrics_have_these_names() {
     let expected = [
         "process_resident_memory_bytes",
         "torchio_cpu_burn_percent",
+        "torchio_cpu_burn_workers",
         "torchio_delay_requests_in_flight",
         "torchio_disk_free_bytes",
         "torchio_disk_held_bytes",

@@ -383,7 +383,7 @@ mod tests {
         type_in(&mut input, "c");
         let text = footer(&plain, &input, &Message::None);
         assert!(text.contains("> cpu _"), "{text}");
-        assert!(text.ends_with("cpu [percent] [hold]"), "{text}");
+        assert!(text.ends_with("cpu [percent] [hold] [workers]"), "{text}");
         assert!(text.starts_with(" c cpu  m memory  l leak"), "{text}");
         type_in(&mut input, "\x1b");
         assert!(footer(&plain, &input, &Message::Done("✔ memory 5: ok".into())).ends_with("✔ memory 5: ok"));

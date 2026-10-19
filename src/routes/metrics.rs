@@ -64,6 +64,13 @@ pub async fn handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
         "Share of the time each worker is kept busy by /cpu, 0 when it is not running.",
         one(s.stress.burn.as_ref().map_or(0.0, |burn| burn.percent as f64)),
     );
+    metric(
+        &mut lines,
+        "torchio_cpu_burn_workers",
+        "gauge",
+        "Workers kept busy by /cpu, 0 when it is not running.",
+        one(s.stress.burn.as_ref().map_or(0.0, |burn| burn.workers as f64)),
+    );
     metric(&mut lines, "torchio_delay_requests_in_flight", "gauge", "/delay requests still waiting.", one(s.delay_in_flight as f64));
     metric(&mut lines, "torchio_memory_held_bytes", "gauge", "Memory held by /memory.", one(s.memory.held_mb as f64 * mb));
     metric(

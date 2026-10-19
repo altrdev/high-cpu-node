@@ -72,6 +72,22 @@ fn cpu_keeps_the_workers_busy_for_a_while_and_can_be_stopped() {
 }
 
 #[test]
+fn cpu_can_burn_only_some_of_the_workers() {
+    let server = Server::start();
+    assert_eq!(server.text("/cpu?percent=40&hold=20&workers=1"), "Burning 40% of 1 workers for 20 s");
+    assert_eq!(server.info()["stress"]["burn"]["workers"], 1);
+    assert_eq!(metric(&server.text("/metrics"), "torchio_cpu_burn_workers"), Some(1.0));
+
+    assert_eq!(server.text("/cpu?percent=40&hold=20"), "Burning 40% of 2 workers for 20 s", "all of them by default");
+    assert_eq!(server.info()["stress"]["burn"]["workers"], 2);
+    assert_eq!(server.status("/cpu?workers=3"), 400, "more than there are");
+    assert_eq!(server.status("/cpu?workers=0"), 400);
+
+    server.get("/cpu?percent=0");
+    assert_eq!(metric(&server.text("/metrics"), "torchio_cpu_burn_workers"), Some(0.0));
+}
+
+#[test]
 fn cpu_with_no_hold_stops_too() {
     let server = Server::start();
     server.get("/cpu?percent=40&hold=20");

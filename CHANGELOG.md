@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The GitHub release of e
 
 ### Added
 - `/flaky?rate=&code=&ms=` fails `rate` percent of the requests with `code` (`503` by default) and answers `200` to the rest, to test retries, circuit breakers and outlier detection. `ms` makes a failing answer wait first, like `/delay`. `torchio flaky [rate] [code] [ms]` calls it.
+- `/cpu?workers=` loads only the first workers and leaves the others idle, to simulate an uneven load across the cores. `/info` (`stress.burn.workers`), `torchio_cpu_burn_workers`, `watch` and the control panel show how many are loaded. By default it is all of them, as before.
 
 ## 4.2.0 - 2026-10-19
 

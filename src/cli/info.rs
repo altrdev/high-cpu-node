@@ -32,6 +32,8 @@ pub struct Stress {
 pub struct Burn {
     pub percent: i64,
     pub seconds_left: i64,
+    /// How many workers are loaded; a server that does not say loads all of them
+    pub workers: Option<i64>,
 }
 
 #[derive(Debug, Deserialize)]

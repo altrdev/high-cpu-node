@@ -178,17 +178,19 @@ curl "http://127.0.0.1:3000/stress?number=40"
 
 Use [`/stress`](#stress) when the load must come from requests, so that response times show the pressure and concurrent requests queue up; use `/cpu` when you only need the CPU held at a level, as a percentage, for a while.
 
-Keeps every worker busy for `percent` of the time during `hold` seconds, instead of running one calculation. With one worker for each CPU (the default), `percent` is the load of the machine, which is what a CPU based autoscaler looks at. A new request replaces the previous one, and `percent=0` stops it.
+Keeps the workers busy for `percent` of the time during `hold` seconds, instead of running one calculation. With one worker for each CPU (the default), `percent` is the load of the machine, which is what a CPU based autoscaler looks at. `workers` loads only the first ones and leaves the others idle, for an uneven load across the cores. A new request replaces the previous one, and `percent=0` stops it.
 
 | Parameter | Default | Allowed range         |
 |-----------|---------|-----------------------|
 | `percent` | `50`    | `0..100`              |
 | `hold`    | `10`    | `0..MAX_HOLD_SECONDS` |
+| `workers` | all of them | `1..WORKERS`      |
 
-The answer comes right away. `/stress` keeps working while `/cpu` runs, and what is left is in `/info` (`stress.burn`) and in `/metrics` (`torchio_cpu_burn_percent`). The default number of workers is the number of CPUs the process can use, so a CPU limit of the container counts (a limit of 2 CPUs gives 2 workers); set `WORKERS` to choose another.
+The answer comes right away. `/stress` keeps working while `/cpu` runs, and what is left is in `/info` (`stress.burn`, with how many workers are loaded) and in `/metrics` (`torchio_cpu_burn_percent` and `torchio_cpu_burn_workers`). The default number of workers is the number of CPUs the process can use, so a CPU limit of the container counts (a limit of 2 CPUs gives 2 workers); set `WORKERS` to choose another.
 
 ```
 curl "http://127.0.0.1:3000/cpu?percent=70&hold=120"
+curl "http://127.0.0.1:3000/cpu?percent=90&workers=1"   # one core at 90%, the others idle
 ```
 
 ### `/delay`
@@ -360,7 +362,7 @@ Returns a JSON document with what the server is doing right now. It takes no par
 | Field                         | Meaning                                                                 |
 |-------------------------------|-------------------------------------------------------------------------|
 | `stress.inFlight`, `perWorker`| `/stress` requests being calculated, in total and for each worker       |
-| `stress.burn`                 | What `/cpu` is doing, `{ "percent", "secondsLeft" }`, or `null` when it is not running |
+| `stress.burn`                 | What `/cpu` is doing, `{ "percent", "secondsLeft", "workers" }` (`workers` is how many are loaded), or `null` when it is not running |
 | `delay.inFlight`              | `/delay` requests still waiting                                         |
 | `memory.heldMb`, `limitMb`    | Memory held by `/memory` and the total it may hold (`MAX_MEMORY_MB`); the difference is what a new request can still allocate |
 | `memory.processRssMb`         | Memory the whole process uses, the figure that counts for an OOM kill   |
@@ -383,6 +385,7 @@ The figures of [`/info`](#info) in the Prometheus text format, plus a counter of
 | `torchio_stress_requests_in_flight`     | gauge   | `/stress` requests being calculated                         |
 | `torchio_worker_requests_in_flight{worker}` | gauge | The same, for each worker                                 |
 | `torchio_cpu_burn_percent`              | gauge   | Share of the time each worker is kept busy by `/cpu`, `0` when it is not running |
+| `torchio_cpu_burn_workers`              | gauge   | Workers `/cpu` keeps busy, `0` when it is not running       |
 | `torchio_delay_requests_in_flight`      | gauge   | `/delay` requests still waiting                             |
 | `torchio_memory_held_bytes`             | gauge   | Memory held by `/memory`                                    |
 | `torchio_memory_limit_bytes`            | gauge   | Total memory `/memory` may hold (`MAX_MEMORY_MB`)           |
@@ -455,7 +458,7 @@ torchio crash 137 --after 5
 | Command                          | Endpoint                 |
 |----------------------------------|--------------------------|
 | `torchio stress [number]`        | [`/stress`](#stress)     |
-| `torchio cpu [percent] [hold]`   | [`/cpu`](#cpu)           |
+| `torchio cpu [percent] [hold] [workers]` | [`/cpu`](#cpu)   |
 | `torchio delay [ms]`             | [`/delay`](#delay)       |
 | `torchio status <code>`          | [`/status/:code`](#statuscode) |
 | `torchio flaky [rate] [code] [ms]` | [`/flaky`](#flaky)     |

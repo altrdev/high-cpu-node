@@ -34,11 +34,26 @@ impl History {
 }
 
 /// The load of the workers in percent of one worker: a worker that runs a `/stress` is at 100, and
-/// the others are at the percent of `/cpu`, if it is burning
+/// the others are at the percent of `/cpu` if it is burning them, which it does for the first ones
 fn cpu_load(info: &Info) -> i64 {
-    let busy = info.stress.per_worker.iter().filter(|n| **n > 0).count() as i64;
-    let burn = info.stress.burn.as_ref().map_or(0, |burn| burn.percent.clamp(0, 100));
-    busy * 100 + (info.stress.workers - busy).max(0) * burn
+    let burn = info.stress.burn.as_ref();
+    let percent = burn.map_or(0, |burn| burn.percent.clamp(0, 100));
+    let burned = burn.map_or(0, |burn| burn.workers.unwrap_or(info.stress.workers));
+    (0..info.stress.workers)
+        .map(|index| match info.stress.per_worker.get(index as usize) {
+            Some(n) if *n > 0 => 100,
+            _ if index < burned => percent,
+            _ => 0,
+        })
+        .sum()
+}
+
+/// Which workers `/cpu` loads: every one, or how many of them
+fn burned(info: &Info, burn: &super::info::Burn) -> String {
+    match burn.workers {
+        Some(n) if n < info.stress.workers => format!("{n} of {} workers", info.stress.workers),
+        _ => "every worker".to_string(),
+    }
 }
 
 /// Colours (256-colour palette), or plain text when `color` is off
@@ -240,7 +255,7 @@ pub fn render(style: &Style, url: &str, info: &Info, history: &History) -> Strin
     lines.push(String::new());
     lines.push(format!("/stress in progress: {}   /delay waiting: {}", info.stress.in_flight, info.delay.in_flight));
     if let Some(burn) = &info.stress.burn {
-        lines.push(format!("/cpu: {}% on every worker, {} s left", burn.percent, burn.seconds_left));
+        lines.push(format!("/cpu: {}% on {}, {} s left", burn.percent, burned(info, burn), burn.seconds_left));
     }
     if let Some(log) = &info.log {
         lines.push(format!("/log: {} of {} lines, {} lines/s", log.sent, log.lines, log.rate));
@@ -287,7 +302,9 @@ fn render_color(style: &Style, url: &str, info: &Info, history: &History) -> Str
     let (running, waiting) = (info.stress.in_flight, info.delay.in_flight);
     lines.push(activity(running + waiting > 0, 221, format!("/stress {running} running   /delay {waiting} waiting")));
     match &info.stress.burn {
-        Some(burn) => lines.push(activity(true, 209, format!("/cpu {}% on every worker, {} s left", burn.percent, burn.seconds_left))),
+        Some(burn) => {
+            lines.push(activity(true, 209, format!("/cpu {}% on {}, {} s left", burn.percent, burned(info, burn), burn.seconds_left)))
+        }
         None => lines.push(activity(false, 209, "/cpu idle".into())),
     }
     if let Some(log) = &info.log {
@@ -352,11 +369,21 @@ mod tests {
             info(r#""stress": {"workers": 4, "inFlight": 0, "perWorker": [0, 0, 0, 0], "burn": {"percent": 80, "secondsLeft": 9}}"#);
         let both = info(r#""stress": {"workers": 4, "inFlight": 1, "perWorker": [1, 0, 0, 0], "burn": {"percent": 80, "secondsLeft": 9}}"#);
         assert_eq!((cpu_load(&idle), cpu_load(&burning), cpu_load(&both)), (0, 320, 340));
+        // /cpu on 2 of the 4 workers: a worker that runs a /stress counts 100 wherever it is
+        let some = info(
+            r#""stress": {"workers": 4, "inFlight": 0, "perWorker": [0, 0, 0, 0], "burn": {"percent": 80, "secondsLeft": 9, "workers": 2}}"#,
+        );
+        let some_and_stress = info(
+            r#""stress": {"workers": 4, "inFlight": 1, "perWorker": [0, 0, 0, 1], "burn": {"percent": 80, "secondsLeft": 9, "workers": 2}}"#,
+        );
+        assert_eq!((cpu_load(&some), cpu_load(&some_and_stress)), (160, 260));
         let view = |info: &Info| {
             let mut history = History::default();
             history.record(info);
             render(&Style::new(false), "u", info, &history)
         };
+        assert!(view(&some).contains("/cpu: 80% on 2 of 4 workers, 9 s left"));
+        assert!(view(&burning).contains("/cpu: 80% on every worker, 9 s left"));
         assert!(view(&idle).contains("CPU workers   ░░░░░░░░░░░░░░░░░░░░  0 busy / 4"));
         assert!(view(&burning).contains("CPU workers   ████████████████░░░░  80% load, 0 busy / 4"));
         assert!(view(&both).contains("85% load, 1 busy / 4"));

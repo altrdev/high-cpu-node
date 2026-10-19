@@ -16,7 +16,7 @@ type Specs3 = [(&'static str, Param); 3];
 
 pub struct Specs {
     pub stress: Specs1,
-    pub cpu: Specs2,
+    pub cpu: Specs3,
     pub delay: Specs1,
     pub flaky: Specs3,
     pub memory: Specs2,
@@ -32,7 +32,11 @@ pub fn specs(config: &Config) -> Specs {
     let hold = ("hold", Param::new(config.default_hold_seconds, 0, config.max_hold_seconds));
     Specs {
         stress: [("number", Param::new(config.default_number, 0, config.max_number))],
-        cpu: [("percent", Param::new(config.default_cpu_percent, 0, 100)), hold],
+        cpu: [
+            ("percent", Param::new(config.default_cpu_percent, 0, 100)),
+            hold,
+            ("workers", Param::new(config.workers, 1, config.workers)),
+        ],
         delay: [("ms", Param::new(config.default_delay_ms, 0, config.max_delay_ms))],
         flaky: [
             ("rate", Param::new(50, 0, 100)),
@@ -74,7 +78,12 @@ pub fn catalog(config: &Config) -> Vec<Endpoint> {
     let mut list = vec![
         endpoint("/", false, &[], "Health check, returns \"Status: OK\""),
         endpoint("/stress", true, &s.stress, "Runs a Fibonacci calculation in a worker, to keep a core busy"),
-        endpoint("/cpu", true, &s.cpu, "Keeps the workers busy for a share of the time, percent=0 stops it"),
+        endpoint(
+            "/cpu",
+            true,
+            &s.cpu,
+            "Keeps the workers (or the first ones, with workers) busy for a share of the time, percent=0 stops it",
+        ),
         endpoint("/delay", false, &s.delay, "Answers after a delay, without blocking the server"),
         Endpoint {
             path: "/status/:code",
