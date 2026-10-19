@@ -1,7 +1,9 @@
 name: Documentation
 
 # The site at torchio.altr.dev: the pages in book/, and the reference of the endpoints, which is
-# written from the catalog in src/endpoints.rs. A pull request builds it; the main branch publishes it.
+# written from the catalog in src/endpoints.rs. A pull request builds it, to catch a mistake before
+# the merge. It is published with a release (a tag) or by hand, so the site describes the version
+# that can be installed and not what is in main and not released yet.
 on:
   pull_request:
     paths:
@@ -12,15 +14,9 @@ on:
       - CHANGELOG.md
       - .github/workflows/docs.yml
   push:
-    branches:
-      - main
-    paths:
-      - book/**
-      - examples/endpoints_reference.rs
-      - src/endpoints.rs
-      - src/config.rs
-      - CHANGELOG.md
-      - .github/workflows/docs.yml
+    tags:
+      - 'v*'
+  # to publish a correction of the pages without waiting for a release: it publishes the branch chosen
   workflow_dispatch:
 
 permissions:
@@ -59,8 +55,8 @@ jobs:
 
   deploy:
     name: Publish to GitHub Pages
-    # only the main branch publishes
-    if: github.ref == 'refs/heads/main'
+    # a pull request only builds
+    if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
     permissions:

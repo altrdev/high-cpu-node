@@ -72,8 +72,8 @@ mdbook serve book --open
 python3 book/check-links.py book/book     # after mdbook build book
 ```
 
-The `Documentation` workflow builds the site for a pull request, and publishes it to GitHub Pages when the change reaches `main`.
+The `Documentation` workflow builds the site for a pull request, to catch a mistake before the merge. It publishes to GitHub Pages when a release is tagged, so the site describes the version that can be installed, and when it is run by hand (*Actions*, *Documentation*, *Run workflow*) to publish a correction of the pages in between.
 
 ## Releasing
 
-`scripts/release.sh X.Y.Z` writes the version in `Cargo.toml`, `Cargo.lock`, the image tag of `deploy/kubernetes/deployment.yaml` and the `version` and `appVersion` of the Helm chart, and dates the `Unreleased` section of the changelog. It changes nothing else: review the diff, commit it as `chore: release X.Y.Z`, merge it and push the tag `vX.Y.Z`, which publishes the image and the binaries. CI fails when one of these places is left behind.
+`scripts/release.sh X.Y.Z` writes the version in `Cargo.toml`, `Cargo.lock`, the image tag of `deploy/kubernetes/deployment.yaml` and the `version` and `appVersion` of the Helm chart, and dates the `Unreleased` section of the changelog. It changes nothing else: review the diff, commit it as `chore: release X.Y.Z`, merge it and push the tag `vX.Y.Z`, which publishes the image, the binaries and the documentation. CI fails when one of these places is left behind.
