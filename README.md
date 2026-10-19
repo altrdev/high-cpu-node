@@ -478,7 +478,7 @@ The line shows the parameters of the command while you type (`cpu [percent] [hol
 
 The keys are on only when both the input and the output are a terminal. `--read-only` turns them off, which is the way to watch a shared instance without a key that can [`/crash`](#crash) it. With `--once`, or with the output in a pipe or a file, `watch` never takes keys.
 
-It speaks plain HTTP: to watch a server behind HTTPS, reach it with a port-forward. A server older than 3.1 doesn't report descriptors and readiness, so those two lines are left out. The history only covers the time the command has been running. The colour of a bar goes from green to red as it gets close to its limit; set `NO_COLOR=1` to turn colours off.
+It speaks plain HTTP: to watch a server behind HTTPS, reach it with a port-forward. A server older than 3.1 doesn't report descriptors and readiness, so those two lines are left out. The history only covers the time the command has been running. On a terminal the bars are smooth and shift from green to red as they get close to their limit (blue where there is no limit to compare with), the history is brighter when it is higher, and what is happening (`/stress`, `/cpu`, `/log`) lights up while the rest stays dim. Readiness is a badge, green or red. Set `NO_COLOR=1` for plain text, which is also what you get when the output is not a terminal.
 
 ## Control panel
 

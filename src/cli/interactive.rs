@@ -148,18 +148,35 @@ extern "C" fn restore_and_exit(_: libc::c_int) {
     unsafe { libc::_exit(0) }
 }
 
+/// What the last command came to
+#[derive(Debug, PartialEq)]
+enum Message {
+    None,
+    Waiting(String),
+    Done(String),
+    Failed(String),
+}
+
 /// The text of the bottom of the screen: the keys, then the command line or the last answer
-fn footer(input: &Input, message: &str) -> String {
-    let keys: Vec<String> = KEYS.iter().map(|(key, name)| format!("{} {name}", *key as char)).collect();
-    let mut text = format!("{}  : command  q quit\n", keys.join("  "));
-    match &input.mode {
+fn footer(style: &Style, input: &Input, message: &Message) -> String {
+    let mut keys: Vec<String> = KEYS.iter().map(|(key, name)| style.key(&(*key as char).to_string(), name)).collect();
+    keys.push(style.key(":", "command"));
+    keys.push(style.key("q", "quit"));
+    let last = match &input.mode {
         Mode::Prompt(line) => {
             let hint = action::usage(line.split_whitespace().next().unwrap_or("")).unwrap_or_default();
-            text.push_str(&format!("> {line}_\n{hint}"));
+            // the cursor is a lit block with colours and an underscore without
+            let cursor = if style.is_color() { style.paint("7", " ") } else { "_".to_string() };
+            format!("{} {}{cursor}\n {}", style.paint("1;38;5;75", ">"), style.paint("1", line), style.paint("38;5;244", &hint))
         }
-        Mode::Browse => text.push_str(message),
-    }
-    text
+        Mode::Browse => match message {
+            Message::None => String::new(),
+            Message::Waiting(text) => style.paint("38;5;221", text),
+            Message::Done(text) => style.paint("38;5;42", text),
+            Message::Failed(text) => style.paint("38;5;203", text),
+        },
+    };
+    format!(" {}\n {last}", keys.join(if style.is_color() { " " } else { "  " }))
 }
 
 /// One line of an answer, short enough for a terminal
@@ -210,7 +227,7 @@ pub fn run(url: &str, token: Option<&str>, interval: Duration) -> ExitCode {
     let style = Style::new(std::env::var("NO_COLOR").map_or(true, |value| value.is_empty()));
     let mut history = History::default();
     let mut input = Input { mode: Mode::Browse };
-    let mut message = String::new();
+    let mut message = Message::None;
     let mut view = String::new();
     let mut next = Instant::now();
     let (sender, results): (_, Receiver<(String, Result<String, String>)>) = channel();
@@ -222,11 +239,11 @@ pub fn run(url: &str, token: Option<&str>, interval: Duration) -> ExitCode {
         }
         while let Ok((line, result)) = results.try_recv() {
             message = match result {
-                Ok(body) => format!("{line}: {}", one_line(&body)),
-                Err(error) => format!("{line}: {}", one_line(&error)),
+                Ok(body) => Message::Done(format!("✔ {line}: {}", one_line(&body))),
+                Err(error) => Message::Failed(format!("✖ {line}: {}", one_line(&error))),
             };
         }
-        if !draw(&format!("{view}\n\n{}", footer(&input, &message))) {
+        if !draw(&format!("{view}\n\n{}", footer(&style, &input, &message))) {
             return ExitCode::SUCCESS; // the screen went away
         }
         let keys = read_keys(next.saturating_duration_since(Instant::now()).min(Duration::from_millis(100)));
@@ -234,7 +251,7 @@ pub fn run(url: &str, token: Option<&str>, interval: Duration) -> ExitCode {
             Effect::Quit => return ExitCode::SUCCESS,
             Effect::None => {}
             Effect::Run(line) => {
-                message = format!("{line}: waiting for the answer…");
+                message = Message::Waiting(format!("… {line}: waiting for the answer"));
                 let (sender, url, token) = (sender.clone(), url.to_string(), token.map(String::from));
                 std::thread::spawn(move || {
                     let result = action::perform(&line, &url, token.as_deref());
@@ -322,13 +339,26 @@ mod tests {
 
     #[test]
     fn the_footer_shows_the_usage_of_the_command_being_written() {
+        let plain = Style::new(false);
         let mut input = input();
         type_in(&mut input, "c");
-        let text = footer(&input, "");
+        let text = footer(&plain, &input, &Message::None);
         assert!(text.contains("> cpu _"), "{text}");
         assert!(text.ends_with("cpu [percent] [hold]"), "{text}");
+        assert!(text.starts_with(" c cpu  m memory  l leak"), "{text}");
         type_in(&mut input, "\x1b");
-        assert!(footer(&input, "memory 5: ok").ends_with("memory 5: ok"));
+        assert!(footer(&plain, &input, &Message::Done("✔ memory 5: ok".into())).ends_with("✔ memory 5: ok"));
+    }
+
+    #[test]
+    fn the_footer_has_colours_for_the_answer_and_a_lit_cursor() {
+        let style = Style::new(true);
+        let mut input = input();
+        assert!(footer(&style, &input, &Message::Done("ok".into())).contains("38;5;42mok"));
+        assert!(footer(&style, &input, &Message::Failed("no".into())).contains("38;5;203mno"));
+        assert!(footer(&style, &input, &Message::Waiting("…".into())).contains("38;5;221m…"));
+        type_in(&mut input, "m");
+        assert!(footer(&style, &input, &Message::None).contains("\x1b[7m \x1b[0m"), "the cursor is a lit block");
     }
 
     #[test]
