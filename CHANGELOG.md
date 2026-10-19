@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
-## Unreleased
+## 4.1.1 - 2026-10-19
 
 ### Changed
 - The completions list `serve` and `watch` first, then the commands that start a test, then `healthcheck`, `completions` and `help`.
