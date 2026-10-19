@@ -18,6 +18,10 @@ function specs(config) {
         disk: {mb: {fallback: config.defaultDiskMb, min: 1, max: config.maxDiskMb}, hold},
         fd: {count: {fallback: config.defaultFd, min: 1, max: config.maxFd}, hold},
         readyOff: {seconds: {fallback: config.defaultNotReadySeconds, min: 0, max: config.maxHoldSeconds}},
+        log: {
+            lines: {fallback: config.defaultLogLines, min: 1, max: config.maxLogLines},
+            rate: {fallback: config.defaultLogRate, min: 1, max: config.maxLogRate},
+        },
         crash: {code: {fallback: 1, min: 0, max: 255}, after: {fallback: 0, min: 0, max: config.maxHoldSeconds}},
     };
 }
@@ -42,6 +46,8 @@ function catalog(config) {
         {path: '/ready/off', auth: true, params: s.readyOff, description: 'Makes /ready answer 503 for seconds (0 until /ready/on)'},
         {path: '/ready/on', auth: true, description: 'Makes /ready answer 200 again'},
         {path: '/crash', auth: true, params: s.crash, description: 'Ends the process with the exit code, after the given seconds'},
+        {path: '/log', auth: true, params: s.log, description: 'Writes lines to stdout at rate lines/s, then stops'},
+        {path: '/echo', auth: false, description: 'The request as the server sees it: headers, client address, protocol (credentials masked)'},
         {path: '/info', auth: false, description: 'JSON with what the server is doing and the remaining budgets'},
         {path: '/metrics', auth: false, description: 'The same figures in the Prometheus text format'},
         {path: '/help', auth: false, description: 'This list'},
