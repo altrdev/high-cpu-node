@@ -548,7 +548,7 @@ dependencies = [
 
 [[package]]
 name = "torchio"
-version = "3.5.0"
+version = "4.0.0"
 dependencies = [
  "axum",
  "libc",

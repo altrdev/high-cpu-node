@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
-## 4.0.0 - unreleased
+## 4.0.0 - 2026-10-19
 
 ### Changed
 - torchio is rewritten in Rust and ships as a single static binary. The endpoints, parameters, limits, answers, environment variables and metrics are the same.
