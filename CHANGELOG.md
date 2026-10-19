@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
+## 4.2.0 - 2026-10-19
+
+### Added
+- `/metrics` has `torchio_http_request_duration_seconds`, a histogram of the time taken to answer, by route and status code, with buckets from 5 ms to 60 s.
+- `LOG_FORMAT=json` writes the logs as one JSON object a line (`timestamp`, `level`, `message`), the lines of `/log` included, and a line for each request with its method, path, status and duration. The default is still plain text, with no line for each request.
+- The `deploy` folder has Kubernetes manifests (a Deployment and a Service, with kustomize) and a Helm chart, with the probes, the limits and a non-root container with a read-only filesystem.
+
 ## 4.1.2 - 2026-10-19
 
 ### Added

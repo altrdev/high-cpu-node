@@ -33,9 +33,9 @@ jobs:
       - name: The manifests in deploy/ use this version
         run: |
           VERSION=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n 1)
-          grep -q "image: altrdev/torchio:$VERSION\$" deploy/kubernetes/deployment.yaml || { echo "deploy/kubernetes/deployment.yaml does not use altrdev/torchio:$VERSION"; exit 1; }
-          grep -q "^version: $VERSION\$" deploy/helm/torchio/Chart.yaml || { echo "deploy/helm/torchio/Chart.yaml has no version $VERSION"; exit 1; }
-          grep -q "^appVersion: $VERSION\$" deploy/helm/torchio/Chart.yaml || { echo "deploy/helm/torchio/Chart.yaml has no appVersion $VERSION"; exit 1; }
+          grep -q "image: altrdev/torchio:$VERSION\$" deploy/kubernetes/deployment.yaml || { echo "deploy/kubernetes/deployment.yaml does not use altrdev/torchio:$VERSION, scripts/release.sh writes it"; exit 1; }
+          grep -q "^version: $VERSION\$" deploy/helm/torchio/Chart.yaml || { echo "deploy/helm/torchio/Chart.yaml has no version $VERSION, scripts/release.sh writes it"; exit 1; }
+          grep -q "^appVersion: $VERSION\$" deploy/helm/torchio/Chart.yaml || { echo "deploy/helm/torchio/Chart.yaml has no appVersion $VERSION, scripts/release.sh writes it"; exit 1; }
 
       - run: cargo fmt --check
 
