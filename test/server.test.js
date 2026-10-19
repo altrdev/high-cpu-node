@@ -220,7 +220,8 @@ describe('endpoints', () => {
 });
 
 describe('failures', () => {
-    test('a worker that crashes is replaced and its request gets a 500', async () => {
+    // the workers of the Rust version are threads: there is no process to kill
+    test('a worker that crashes is replaced and its request gets a 500', {skip: process.env.TORCHIO_BIN && 'workers are threads'}, async () => {
         const server = await startServer({WORKERS: '1'});
         try {
             const request = server.get('/stress?number=45');
@@ -403,7 +404,8 @@ describe('/cpu, /leak and START_DELAY_SECONDS', () => {
         try {
             await server.get('/cpu?percent=100&hold=5');
             await sleep(500);
-            const worker = execFileSync('pgrep', ['-P', String(server.child.pid)]).toString().trim();
+            // the workers are child processes of server.js, and threads of the Rust binary
+            const worker = process.env.TORCHIO_BIN ? String(server.child.pid) : execFileSync('pgrep', ['-P', String(server.child.pid)]).toString().trim();
             const cpu = () => Number(execFileSync('ps', ['-o', 'cputime=', '-p', worker]).toString().trim().split(':').pop());
             const before = cpu();
             await sleep(2000);

@@ -3,17 +3,22 @@ mod app;
 mod auth;
 mod budget;
 mod config;
+mod counters;
 mod endpoints;
 mod errno;
 mod memory;
 mod params;
 mod ready;
 mod routes;
+mod snapshot;
+mod sys;
+mod trust;
 mod units;
 mod workers;
 
 use app::AppState;
 use config::Config;
+use std::net::SocketAddr;
 use std::process::exit;
 use std::sync::Arc;
 use std::time::Duration;
@@ -23,7 +28,7 @@ use tokio::signal::unix::{SignalKind, signal};
 #[tokio::main]
 async fn main() {
     let config = Config::from_env();
-    let state = Arc::new(AppState::new(config.clone()));
+    let state = Arc::new(AppState::new(config.clone()).unwrap_or_else(|e| fail(format!("TypeError: {e}"))));
     let app = app::router(state.clone());
 
     tokio::spawn(shutdown(state));
@@ -37,7 +42,7 @@ async fn main() {
     let address = (config.host, u16::try_from(config.port).unwrap_or_else(|_| fail(format!("port {} is out of range", config.port))));
     let listener = TcpListener::bind(address).await.unwrap_or_else(|e| fail(e));
     println!("{} running on {}:{} with {} workers", config.name, config.host, config.port, config.workers);
-    axum::serve(listener, app).await.unwrap_or_else(|e| fail(e));
+    axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>()).await.unwrap_or_else(|e| fail(e));
 }
 
 fn fail(error: impl std::fmt::Display) -> ! {

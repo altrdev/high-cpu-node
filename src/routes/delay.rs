@@ -69,7 +69,7 @@ mod tests {
 
     #[tokio::test]
     async fn a_request_the_client_gave_up_on_is_not_counted_any_more() {
-        let state = Arc::new(AppState::new(Config::read(|_| None, |_| {})));
+        let state = Arc::new(AppState::new(Config::read(|_| None, |_| {})).unwrap());
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let address = listener.local_addr().unwrap();
         tokio::spawn(axum::serve(listener, router(state.clone())).into_future());

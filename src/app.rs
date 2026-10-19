@@ -1,11 +1,14 @@
 use crate::auth;
 use crate::budget::Budget;
 use crate::config::Config;
+use crate::counters::{self, Counters};
 use crate::ready::Ready;
 use crate::routes;
 use crate::routes::delay::Delay;
 use crate::routes::disk::Disk;
 use crate::routes::fd::Fd;
+use crate::routes::log::Log;
+use crate::trust::Trust;
 use crate::workers::WorkerPool;
 use axum::Router;
 use axum::middleware::from_fn_with_state;
@@ -19,28 +22,35 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 // What the routes share: the configuration and the state that lives for the whole run
 pub struct AppState {
     pub config: Config,
+    pub trust: Trust,
     pub started_at: SystemTime,
+    pub counters: Counters,
     pub ready: Arc<Ready>,
     pub delay: Delay,
     // the budget of /memory, which /leak uses too
     pub memory: Arc<Budget>,
     pub disk: Disk,
     pub fd: Fd,
+    pub log: Log,
     pub pool: WorkerPool,
 }
 
 impl AppState {
-    pub fn new(config: Config) -> AppState {
-        AppState {
+    // Fails when TRUST_PROXY can't be understood
+    pub fn new(config: Config) -> Result<AppState, String> {
+        Ok(AppState {
+            trust: Trust::from_setting(&config.trust_proxy)?,
             started_at: SystemTime::now(),
+            counters: Counters::default(),
             ready: Arc::new(Ready::default()),
             delay: Delay::default(),
             memory: Budget::new(config.max_memory_mb),
             disk: Disk::new(&config.disk_dir, config.max_disk_mb),
             fd: Fd::new(config.max_fd),
+            log: Log::default(),
             pool: WorkerPool::new(config.workers as usize),
             config,
-        }
+        })
     }
 
     // Releases what the server keeps outside its own memory. Used on shutdown, which can't wait for timers.
@@ -60,16 +70,27 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/leak", get(routes::leak::handler))
         .route("/disk", get(routes::disk::handler))
         .route("/fd", get(routes::fd::handler))
+        .route("/log", get(routes::log::handler))
+        .route("/crash", get(routes::crash::handler))
         .route_layer(from_fn_with_state(state.clone(), auth::guard));
 
-    Router::new()
+    let mut open = Router::new()
         .route("/", get(|| async { "Status: OK" }))
         .route("/delay", get(routes::delay::handler))
         .route("/status/{code}", get(routes::status::handler))
         .route("/ready", get(routes::ready::handler))
+        .route("/echo", get(routes::echo::handler))
+        .route("/info", get(routes::info::handler))
+        .route("/metrics", get(routes::metrics::handler))
         .route("/help", get(routes::help::handler))
-        .route("/config", get(routes::config::handler))
-        .merge(guarded)
+        .route("/config", get(routes::config::handler));
+    if state.config.ui {
+        open = open.route("/ui", get(routes::ui::handler));
+    }
+
+    open.merge(guarded)
+        .route_layer(axum::middleware::from_fn(counters::mark))
+        .layer(from_fn_with_state(state.clone(), counters::count))
         .layer(CorsLayer::permissive())
         .with_state(state)
 }

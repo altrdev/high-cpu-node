@@ -1,11 +1,17 @@
 pub mod config;
 pub mod cpu;
+pub mod crash;
 pub mod delay;
 pub mod disk;
+pub mod echo;
 pub mod fd;
 pub mod help;
+pub mod info;
 pub mod leak;
+pub mod log;
 pub mod memory;
+pub mod metrics;
 pub mod ready;
 pub mod status;
 pub mod stress;
+pub mod ui;
