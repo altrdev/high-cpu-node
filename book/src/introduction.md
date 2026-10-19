@@ -11,4 +11,6 @@ This is the documentation of torchio {{#include version.md}}. The changes of eac
 
 Source code and issues: https://github.com/altrdev/torchio
 
+Using it from an AI agent: see [For AI agents](agents.md).
+
 > **Warning:** this server is meant to consume resources on purpose. Don't expose it to the public internet.
