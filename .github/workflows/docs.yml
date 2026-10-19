@@ -1,0 +1,74 @@
+name: Documentation
+
+# The site at torchio.altr.dev: the pages in book/, and the reference of the endpoints, which is
+# written from the catalog in src/endpoints.rs. A pull request builds it; the main branch publishes it.
+on:
+  pull_request:
+    paths:
+      - book/**
+      - examples/endpoints_reference.rs
+      - src/endpoints.rs
+      - src/config.rs
+      - CHANGELOG.md
+      - .github/workflows/docs.yml
+  push:
+    branches:
+      - main
+    paths:
+      - book/**
+      - examples/endpoints_reference.rs
+      - src/endpoints.rs
+      - src/config.rs
+      - CHANGELOG.md
+      - .github/workflows/docs.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build the site
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install the Rust toolchain
+        run: |
+          rustup toolchain install stable --profile minimal --no-self-update
+          rustup default stable
+
+      - uses: Swatinem/rust-cache@v2.9.2
+
+      - name: Write the reference of the endpoints from the catalog
+        run: cargo run --locked --example endpoints_reference > book/src/reference.md
+
+      # a prebuilt binary, whose checksum the action verifies
+      - uses: taiki-e/install-action@v2.87.29
+        with:
+          tool: mdbook@0.5.4
+
+      - run: mdbook build book
+
+      - name: Every link between the pages has a target
+        run: python3 book/check-links.py book/book
+
+      - uses: actions/upload-pages-artifact@v5.0.0
+        with:
+          path: book/book
+
+  deploy:
+    name: Publish to GitHub Pages
+    # only the main branch publishes
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5.0.1

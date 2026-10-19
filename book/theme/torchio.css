@@ -1,0 +1,50 @@
+/* The colours of the logo: navy, and the green, amber and red of the bars */
+:root {
+  --torchio-navy: #0f172a;
+  --torchio-green: #22c55e;
+  --torchio-amber: #f59e0b;
+  --torchio-red: #ef4444;
+  --torchio-slate: #94a3b8;
+}
+
+.light, .rust, .coal, .navy, .ayu {
+  --links: #15803d;
+}
+
+.navy {
+  --bg: var(--torchio-navy);
+  --links: var(--torchio-green);
+}
+
+.menu-title {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* the logo, before the title of the book */
+.menu-title::before {
+  content: "";
+  display: inline-block;
+  width: 1.1em;
+  height: 1.1em;
+  margin-right: 0.45em;
+  vertical-align: -0.15em;
+  background: url("../images/logo.svg") center / contain no-repeat;
+}
+
+/* the three bars of the logo under the title of the page */
+.content main > h1:first-of-type::after {
+  content: "";
+  display: block;
+  height: 4px;
+  width: 6rem;
+  margin-top: 0.4rem;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--torchio-green) 0 33%, var(--torchio-amber) 33% 66%, var(--torchio-red) 66% 100%);
+}
+
+/* wide tables scroll inside the page instead of being cut on a narrow screen */
+.content table {
+  display: block;
+  overflow-x: auto;
+}

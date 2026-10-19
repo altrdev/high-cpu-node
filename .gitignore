@@ -1,3 +1,5 @@
 /target
 .DS_Store
 /.idea
+/book/book
+/book/src/reference.md

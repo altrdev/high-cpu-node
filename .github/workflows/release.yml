@@ -112,19 +112,11 @@ jobs:
           fi
 
       - name: Prepare the Docker Hub README
-        # Docker Hub keeps 25000 bytes of the README and the whole one is longer, so it gets the
-        # sections that help to run the image, and a link to the rest on GitHub. It shows every badge
-        # on its own row, and it already has its own pull and size figures. The links to other
-        # sections and to files point at GitHub, where they are.
+        # The README is short and sends to the documentation for the rest. Docker Hub shows every badge
+        # on its own row, and it already has its own pull and size figures. It keeps 25000 bytes of the
+        # README, so the step fails if it grows past that.
         run: |
-          awk '
-            /^## / { seen = 1; keep = ($0 ~ /^## (Try it in 30 seconds|What you can test|Configuration|Logs|Docker|Examples)$/) }
-            !seen || keep
-          ' README.md \
-            | grep -v '^\[!\[' \
-            | sed -E 's|\]\(#|](https://github.com/altrdev/torchio#|g; s|\]\((deploy[^)]*)\)|](https://github.com/altrdev/torchio/tree/main/\1)|g' \
-            > dockerhub-readme.md
-          printf '\n## Documentation\n\nEvery endpoint, the command line, the control panel and the rest are in the [README on GitHub](https://github.com/altrdev/torchio#readme).\n' >> dockerhub-readme.md
+          grep -v '^\[!\[' README.md > dockerhub-readme.md
           SIZE=$(wc -c < dockerhub-readme.md)
           echo "Docker Hub README: $SIZE bytes"
           test "$SIZE" -lt 25000
