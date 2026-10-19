@@ -300,7 +300,7 @@ Writes `lines` lines (default 1000) to stdout at `rate` lines each second (defau
 
 Returns the request as this server sees it: method, URL, protocol, `hostname`, client address (`ip`, the `ips` chain and `remoteAddress`, the peer of the connection) and all the headers. Call it through an ingress controller, a proxy or a load balancer to see what they add, remove or rewrite (`Host`, `X-Forwarded-For`, `X-Forwarded-Proto`). `Authorization`, `Proxy-Authorization` and `Cookie` are shown as `[masked]`.
 
-By default the `X-Forwarded-*` headers are not trusted: `ip` is the peer and `protocol` is `http`. Set `TRUST_PROXY` to let them decide, as in Express (`true`, a number of proxies, or addresses such as `loopback` or `10.0.0.0/8`); `ip`, `ips`, `protocol`, `secure` and `hostname` then follow the proxy.
+By default the `X-Forwarded-*` headers are not trusted: `ip` is the peer and `protocol` is `http`. Set `TRUST_PROXY` to let them decide: `true` trusts every proxy, a number trusts that many hops from the server, and a list of addresses, subnets (`10.0.0.0/8`) and the names `loopback`, `linklocal` and `uniquelocal` trusts those. The client is then the first address, walking back from the connection through `X-Forwarded-For`, that is not a trusted proxy, and `ip`, `ips`, `protocol`, `secure` and `hostname` follow the proxy.
 
 ### `/info`
 
@@ -470,7 +470,7 @@ Environment variables:
 | `MAX_FD`           | `10000`         | Total descriptors `/fd` can hold at once          |
 | `MAX_LOG_LINES`    | `100000`        | Highest `lines` accepted by `/log`                |
 | `MAX_LOG_RATE`     | `10000`         | Highest `rate` accepted by `/log`                 |
-| `TRUST_PROXY`      | off             | Trusts `X-Forwarded-*` as Express does (`true`, a number or addresses), see `/echo` |
+| `TRUST_PROXY`      | off             | Trusts `X-Forwarded-*` (`true`, a number of hops, or addresses and subnets), see `/echo` |
 | `TOKEN`            | none            | Makes the endpoints that change the state need `Authorization: Bearer <token>` |
 | `MAX_HOLD_SECONDS` | `300`           | Highest `hold`, `seconds` and `after` accepted by the endpoints that take them |
 | `DISK_DIR`         | system temp dir | Directory where `/disk` writes its files          |
@@ -600,33 +600,56 @@ Lower or raise `number` to tune how long each request keeps a core busy.
 ```
 cargo run               # starts the server
 cargo run -- watch      # terminal view of a running server
-cargo test              # unit tests
-cargo build --release && TORCHIO_BIN=target/release/torchio node --test test/server.test.js   # integration tests
+cargo test              # every test: unit, router and integration
+cargo clippy --all-targets -- -D warnings
+cargo fmt
 ```
 
 ```
 src/
-  main.rs          starts the server, or runs one of the commands
-  app.rs           what the routes share, and the router
-  cli.rs           the watch and healthcheck commands
+  main.rs          the program: runs the server or one of the commands
+  lib.rs           the crate, with a line on each module
   config.rs        environment variables, validated
-  params.rs        reads and validates the query parameters
   endpoints.rs     the parameters and limits of every endpoint, shared by the routes and /help
-  budget.rs        the total that /memory, /disk and /fd share between requests
-  workers.rs       the pool of worker threads for /stress and /cpu
-  memory.rs        memory held straight from the OS
-  trust.rs         TRUST_PROXY, as Express and proxy-addr work it out
-  auth.rs          TOKEN
-  counters.rs      requests answered, for /metrics
+  app.rs           what the routes share, and the router
+  server.rs        listens, and ends the process
+  routes/          one file for each endpoint: reads the parameters, asks resources, writes the answer
+  resources/       what the server holds or does on purpose, without knowing about HTTP
+    budget.rs        the total that /memory, /disk and /fd share between requests
+    memory.rs        memory taken from the OS (/memory, /leak)
+    disk.rs          the files of /disk
+    fd.rs            the descriptors of /fd
+    workers.rs       the pool of worker threads for /stress and /cpu
+    ready.rs         the readiness switch
+    log.rs           the lines of /log
+    delay.rs         the requests of /delay still waiting
+  http/            what serves requests and is not specific to an endpoint
+    params.rs        the integer query parameters
+    auth.rs          TOKEN
+    trust.rs         TRUST_PROXY
+    accept.rs        JSON or text for /help
+    counters.rs      requests answered, for /metrics
+  cli/             the commands besides the server
+    watch.rs         torchio watch
+    view.rs          what watch draws
+    info.rs          what /info says, as watch reads it
+    http.rs          the small HTTP client of the commands
+    healthcheck.rs   torchio healthcheck
   snapshot.rs      the figures behind /info and /metrics
-  sys.rs           RSS, the memory limit of the container, free space
-  routes/          one file for each endpoint
-  ui.html          the control panel
-test/              the integration tests
+  system.rs        RSS, the memory limit of the container, free space, names of errors
+  units.rs         units of size
+assets/ui.html     the control panel, a single static page
+tests/             integration tests, by area
 Dockerfile         builds the binary for both platforms with cargo-zigbuild, into an image of one file
 ```
 
-The unit tests live next to the code. The integration tests start the real binary on free ports and call it over HTTP; they are written with `node:test`, which comes with Node.js 22 or later, so there is nothing to install, and `TORCHIO_BIN` says which build to run. Together they cover every endpoint and its limits, the budgets of `/memory`, `/disk` and `/fd`, `/cpu`, `/leak`, `START_DELAY_SECONDS`, the control panel, `/ready`, `/crash`, an unusable `DISK_DIR`, the cleanup of the files on startup and shutdown, `TRUST_PROXY`, `/metrics` and the `watch` command. CI also checks the format and `clippy`, builds the image for both platforms, runs it with a memory limit and validates `/metrics` with `promtool`.
+The tests come in three kinds, and `cargo test` runs them all:
+
+- **Unit tests** live in the module they test (`#[cfg(test)]`): the budgets, the parsing of parameters and `TRUST_PROXY`, the view of `watch`, the worker pool, the timers (with a paused clock).
+- **Router tests** (`tests/api.rs`) call the router without a socket: every endpoint of the catalog is routed and protected as it says, every parameter is rejected one step outside its range, CORS, methods, content negotiation, and the shape of `/info`, `/config` and `/metrics`.
+- **Integration tests** (`tests/*.rs`, with what they share in `tests/common`) start the real binary on a free port with small limits and call it over HTTP: `probes` (`/`, `/status`, `/ready`, `/delay`), `resources` (`/memory`, `/leak`, `/disk`, `/fd`), `load` (`/stress`, `/cpu`), `observability` (`/info`, `/metrics`, `/log`, `/echo`, `/help`, `/config`), `lifecycle` (configuration, start, signals, `/crash`), `auth` (`TOKEN`), `ui` and `cli` (`watch`, `healthcheck`).
+
+CI runs them on Linux and macOS with the format check, `clippy` and the documentation, builds the image for both platforms, runs it with a memory limit and a CPU limit, and validates `/metrics` with `promtool`.
 
 ## Changelog
 

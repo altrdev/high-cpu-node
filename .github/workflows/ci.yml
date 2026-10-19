@@ -8,8 +8,12 @@ on:
 
 jobs:
   rust:
-    name: Rust (format, clippy, unit tests)
-    runs-on: ubuntu-latest
+    name: Rust on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v7
 
@@ -18,89 +22,22 @@ jobs:
           rustup toolchain install stable --profile minimal --component clippy rustfmt --no-self-update
           rustup default stable
 
-      - run: cargo fmt --check
-
-      - run: cargo clippy --all-targets --locked -- -D warnings
-
-      - run: cargo test --locked
-
-  integration:
-    name: Integration tests against the binary
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Install the Rust toolchain
-        run: |
-          rustup toolchain install stable --profile minimal --no-self-update
-          rustup default stable
-
-      # the tests are still written for node:test, and run any build of the server
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-
       - name: Changelog has a section for this version
         run: |
           VERSION=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n 1)
           grep -q "^## $VERSION " CHANGELOG.md || { echo "CHANGELOG.md has no section for $VERSION"; exit 1; }
 
-      - run: cargo build --release --locked
+      - run: cargo fmt --check
 
-      - name: Tests
-        run: TORCHIO_BIN=target/release/torchio node --test test/server.test.js
+      - run: cargo clippy --all-targets --locked -- -D warnings
 
-      # How the memory shows up for the OS depends on the platform, so it is checked here on Linux
-      - name: Memory is returned to the OS
-        run: |
-          PORT=3100 WORKERS=1 target/release/torchio &
-          SERVER_PID=$!
-          sleep 2
-          BASE_RSS=$(ps -o rss= -p $SERVER_PID)
-          curl -sf "localhost:3100/memory?mb=200&hold=1" | grep -q "Allocated 200 MB"
-          HELD_RSS=$(ps -o rss= -p $SERVER_PID)
-          test $((HELD_RSS - BASE_RSS)) -gt 150000
-          sleep 3
-          test $(($(ps -o rss= -p $SERVER_PID) - BASE_RSS)) -lt 10000
-          kill $SERVER_PID
+      # unit tests, the tests of the router, and the integration tests that start the real binary
+      - run: cargo test --locked
 
-  test:
-    name: Tests of the Node version (Node ${{ matrix.node-version }})
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version: [22, 24, 26]
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: npm
-
-      - run: npm ci
-
-      - name: Changelog has a section for this version
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          grep -q "^## $VERSION " CHANGELOG.md || { echo "CHANGELOG.md has no section for $VERSION"; exit 1; }
-
-      - run: npm test
-
-      # How the memory shows up for the OS depends on the platform, so it is checked here on Linux
-      - name: Memory is returned to the OS
-        run: |
-          PORT=3100 WORKERS=1 node server.js &
-          SERVER_PID=$!
-          sleep 2
-          BASE_RSS=$(ps -o rss= -p $SERVER_PID)
-          curl -sf "localhost:3100/memory?mb=200&hold=1" | grep -q "Allocated 200 MB"
-          HELD_RSS=$(ps -o rss= -p $SERVER_PID)
-          test $((HELD_RSS - BASE_RSS)) -gt 150000
-          sleep 3
-          test $(($(ps -o rss= -p $SERVER_PID) - BASE_RSS)) -lt 100000
-          kill $SERVER_PID
+      - name: Documentation builds without warnings
+        run: cargo doc --no-deps --locked
+        env:
+          RUSTDOCFLAGS: -D warnings
 
   image:
     name: Docker image
@@ -139,6 +76,14 @@ jobs:
             sleep 1
           done
           test "$(docker inspect -f '{{.State.Health.Status}}' sn)" = healthy
+
+      - name: The memory limit kills the container
+        run: |
+          docker run -d --name oom -m 256m --memory-swap 256m -e MAX_MEMORY_MB=1024 -p 3202:3000 torchio
+          for i in $(seq 20); do curl -sf localhost:3202/ >/dev/null && break; sleep 1; done
+          curl -s -m 10 "localhost:3202/memory?mb=400" || true
+          sleep 2
+          test "$(docker inspect -f '{{.State.OOMKilled}}' oom)" = true
 
       - name: The CPUs of the container limit the workers
         run: |

@@ -5,20 +5,17 @@ All notable changes to this project are documented here. The GitHub release of e
 ## 4.0.0 - unreleased
 
 ### Changed
-- torchio is rewritten in Rust. The endpoints, parameters, limits, answers, environment variables and metrics are the same, and the integration tests of the Node version run unchanged against the new binary.
-- The Docker image is the static binary and an empty `/tmp`, about 1.4 MB, with no shell. It runs as the user `65532` instead of `node`, and its `HEALTHCHECK` runs `torchio healthcheck`. A directory used as `DISK_DIR` must be writable by that user.
-- The server itself needs a few MB of memory instead of about 50, and the memory of `/memory` and `/leak` goes back to the OS as soon as it is released.
-- The workers of `/stress` and `/cpu` are threads, not child processes, so there is no worker to crash and be restarted. `/stress` is about 1.7 times faster on the same machine: the same `number` keeps a core busy for less time.
+- torchio is rewritten in Rust and ships as a single static binary. The endpoints, parameters, limits, answers, environment variables and metrics are the same.
+- The Docker image is the binary and an empty `/tmp`, about 1.4 MB, with no shell. It runs as the user `65532`, and its `HEALTHCHECK` runs `torchio healthcheck`. A directory used as `DISK_DIR` must be writable by that user.
+- The server needs a few MB of memory instead of about 50, and the memory of `/memory` and `/leak` goes back to the OS as soon as it is released.
+- The workers of `/stress` and `/cpu` are threads, not processes. `/stress` is about 1.7 times faster on the same machine: the same `number` keeps a core busy for less time.
 - `WORKERS` defaults to the number of CPUs the process can use, which counts the CPU limit of a container (`--cpus 2` gives 2 workers). It used to be the number of cores of the machine.
-- `watch` is a command of the binary: `torchio watch` (`docker exec -it <container> torchio watch`) replaces `node cli.js watch`. It speaks plain HTTP only.
+- `watch` is a command of the binary: `torchio watch`, or `docker exec -it <container> torchio watch`. It speaks plain HTTP only.
 - The help text of `torchio_workers` says threads instead of processes.
 
 ### Added
 - `torchio healthcheck` exits with `0` when the server answers on `PORT`, for an image that has no `wget` or `curl`.
 - The binary alone for `linux/amd64` and `linux/arm64`, with its `SHA256SUMS`, is attached to each GitHub release.
-
-### Removed
-- `npm start`, `npm run watch` and `node cli.js`: the server is the `torchio` binary.
 
 ## 3.5.0 - 2026-10-19
 
