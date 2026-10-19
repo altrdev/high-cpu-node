@@ -1,0 +1,14 @@
+[book]
+title = "torchio"
+description = "Break your containers on purpose: burn CPU, hold memory, fill disk and more, on demand over HTTP."
+authors = ["altrdev"]
+language = "en"
+src = "src"
+
+[output.html]
+site-url = "/"
+git-repository-url = "https://github.com/altrdev/torchio"
+edit-url-template = "https://github.com/altrdev/torchio/edit/main/book/{path}"
+additional-css = ["theme/torchio.css"]
+default-theme = "light"
+preferred-dark-theme = "navy"
