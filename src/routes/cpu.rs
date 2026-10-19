@@ -1,3 +1,4 @@
+use crate::actions::{self, Outcome};
 use crate::app::AppState;
 use crate::endpoints::specs;
 use crate::http::params::{self, Rejection};
@@ -9,13 +10,7 @@ use std::sync::Arc;
 /// one worker for each CPU, `percent` is the load of the machine. `workers` loads only the first
 /// ones, for an uneven load; by default it is all of them. A new request replaces the previous
 /// one, and `percent=0` stops it.
-pub async fn handler(State(state): State<Arc<AppState>>, RawQuery(query): RawQuery) -> Result<String, Rejection> {
+pub async fn handler(State(state): State<Arc<AppState>>, RawQuery(query): RawQuery) -> Result<Outcome, Rejection> {
     let params = params::read(query.as_deref(), &specs(&state.config).cpu)?;
-    let (percent, hold, workers) = (params.get("percent"), params.get("hold"), params.get("workers") as usize);
-
-    state.pool.burn(percent, hold, workers);
-    if percent == 0 || hold == 0 {
-        return Ok("Stopped burning CPU".into());
-    }
-    Ok(format!("Burning {percent}% of {workers} workers for {hold} s"))
+    Ok(actions::cpu(&state, params.get("percent"), params.get("hold"), params.get("workers") as usize))
 }

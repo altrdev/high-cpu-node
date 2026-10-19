@@ -22,12 +22,3 @@ pub mod scenario;
 pub mod status;
 pub mod stress;
 pub mod ui;
-
-use crate::resources::budget::OverBudget;
-use axum::http::StatusCode;
-use axum::response::{IntoResponse, Response};
-
-/// The `429` of the endpoints that count in MB
-pub fn over_budget_mb(over: &OverBudget) -> Response {
-    (StatusCode::TOO_MANY_REQUESTS, format!("{} MB already held, limit is {} MB", over.held, over.limit)).into_response()
-}

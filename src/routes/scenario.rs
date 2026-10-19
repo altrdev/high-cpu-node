@@ -1,8 +1,6 @@
+use crate::actions::{self, Outcome};
 use crate::app::AppState;
-use crate::resources::disk::WriteError;
-use crate::resources::memory::HoldError;
 use crate::resources::scenario::{self, Action, Step};
-use crate::system::errno_name;
 use axum::Json;
 use axum::body::Bytes;
 use axum::extract::State;
@@ -62,7 +60,7 @@ async fn run_steps(state: Arc<AppState>, run: u64, steps: Vec<Step>) {
         state.scenario.begin_step(run, index);
         format.info(&format!("Scenario step {} of {total}: {}", index + 1, step.describe()));
         if let Err(message) = perform(&state, step).await {
-            let error = format!("step {}: {message}", index + 1);
+            let error = format!("step {} ({}): {message}", index + 1, step.action.name());
             format.warn(&format!("Scenario failed at {error}"));
             state.scenario.finish(run, Err(error));
             return;
@@ -76,43 +74,27 @@ async fn run_steps(state: Arc<AppState>, run: u64, steps: Vec<Step>) {
     state.scenario.finish(run, Ok(()));
 }
 
-/// Does what a step says, with the budgets the endpoints use. The error is why it could not.
+/// Does what a step says, through the same functions as the endpoints, so with their budgets and
+/// their words. The error is the refusal, as the endpoint would have answered it.
 async fn perform(state: &AppState, step: &Step) -> Result<(), String> {
-    let seconds = step.seconds;
-    match step.action {
-        Action::Cpu { percent, workers } => state.pool.burn(percent, seconds as i64, workers as usize),
-        Action::Memory { mb } => match state.memory.hold(mb, seconds).await {
-            Ok(()) => {}
-            Err(HoldError::OverBudget(over)) => return Err(format!("{} MB of memory already held, limit is {} MB", over.held, over.limit)),
-            Err(HoldError::Allocation(e)) => return Err(format!("could not allocate {mb} MB: {e}")),
-        },
-        Action::Disk { mb } => match state.disk.write(mb, seconds).await {
-            Ok(()) => {}
-            Err(WriteError::OverBudget(over)) => return Err(format!("{} MB of disk already held, limit is {} MB", over.held, over.limit)),
-            Err(WriteError::Write(e)) => return Err(format!("could not write {mb} MB: {}", errno_name(&e))),
-        },
-        Action::Fd { count } => match state.fd.hold(count, seconds) {
-            // opening fewer than asked is the situation being tested: the step goes on
-            Ok(opened) => warn_if_short(state, "descriptors", count, opened.opened, opened.failure),
-            Err(over) => return Err(format!("{} descriptors already held, limit is {}", over.held, over.limit)),
-        },
-        Action::Connections { count } => match state.connections.hold(count, seconds).await {
-            Ok(opened) => warn_if_short(state, "connections", count, opened.opened, opened.failure),
-            Err(over) => return Err(format!("{} connections already held, limit is {}", over.held, over.limit)),
-        },
-        Action::NotReady => state.ready.off(seconds),
-        Action::Block { ms } => {
-            if let Err(busy) = state.block.start(ms as u64, state.config.log_format) {
-                return Err(format!("already blocked for {} more ms", busy.ms_left));
-            }
+    let seconds = step.seconds as i64;
+    let outcome = match step.action {
+        Action::Cpu { percent, workers } => actions::cpu(state, percent, seconds, workers as usize),
+        Action::Memory { mb } => actions::memory(state, mb, seconds).await,
+        Action::Disk { mb } => actions::disk(state, mb, seconds).await,
+        Action::Fd { count } => actions::fd(state, count, seconds),
+        Action::Connections { count } => actions::connections(state, count, seconds).await,
+        Action::NotReady => actions::ready_off(state, seconds),
+        Action::Block { ms } => actions::block(state, ms),
+        Action::Pause => return Ok(()),
+    };
+    match outcome {
+        Outcome::Done(_) => Ok(()),
+        // opening fewer than asked is the situation being tested: the step goes on
+        Outcome::Partial(message) => {
+            state.config.log_format.warn(&format!("Scenario: {message}"));
+            Ok(())
         }
-        Action::Pause => {}
-    }
-    Ok(())
-}
-
-fn warn_if_short(state: &AppState, what: &str, asked: i64, opened: usize, failure: Option<String>) {
-    if let Some(code) = failure {
-        state.config.log_format.warn(&format!("Scenario opened {opened} of {asked} {what}, then {code}"));
+        Outcome::Refused(_, message) => Err(message),
     }
 }

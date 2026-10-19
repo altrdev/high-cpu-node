@@ -1,3 +1,4 @@
+use crate::actions::{self, Outcome};
 use crate::app::AppState;
 use crate::endpoints::specs;
 use crate::http::params::{self, Rejection};
@@ -20,11 +21,9 @@ pub async fn handler(State(state): State<Arc<AppState>>) -> Response {
 }
 
 /// Makes `/ready` answer `503` for `seconds`, or until `/ready/on` when it is 0
-pub async fn off(State(state): State<Arc<AppState>>, RawQuery(query): RawQuery) -> Result<String, Rejection> {
+pub async fn off(State(state): State<Arc<AppState>>, RawQuery(query): RawQuery) -> Result<Outcome, Rejection> {
     let seconds = params::read(query.as_deref(), &specs(&state.config).ready_off)?.get("seconds");
-
-    state.ready.off(seconds as u64);
-    Ok(if seconds > 0 { format!("Not ready for {seconds} s") } else { "Not ready until /ready/on".to_string() })
+    Ok(actions::ready_off(&state, seconds))
 }
 
 pub async fn on(State(state): State<Arc<AppState>>) -> &'static str {
