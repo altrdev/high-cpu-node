@@ -4,6 +4,7 @@
 
 # Use it
 
+- [Install](install.md)
 - [Try it in 30 seconds](getting-started.md)
 - [What you can test](what-you-can-test.md)
 - [Endpoints](endpoints.md)
