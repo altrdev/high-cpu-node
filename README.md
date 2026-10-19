@@ -27,7 +27,13 @@ brew install altrdev/tap/torchio
 torchio
 ```
 
-Other ways to get the `torchio` command: the binary of a [release](https://github.com/altrdev/torchio/releases) (macOS and Linux, `amd64` and `arm64`), or the source (Rust 1.88 or later):
+Other ways to get the `torchio` command. A script that downloads the binary of the latest release for your system (macOS or Linux, `amd64` or `arm64`), checks its checksum and installs it:
+
+```
+curl -fsSL https://raw.githubusercontent.com/altrdev/torchio/main/install.sh | sh
+```
+
+It installs in `/usr/local/bin` (with `sudo` if needed, or in `~/.local/bin` when there is none). `TORCHIO_VERSION=v4.0.0` picks a release and `TORCHIO_INSTALL_DIR` the folder, for example `curl -fsSL ... | TORCHIO_INSTALL_DIR=$HOME/bin sh`. Or take the binary by hand from the [releases](https://github.com/altrdev/torchio/releases), or build it from the source (Rust 1.88 or later):
 
 ```
 cargo install --git https://github.com/altrdev/torchio
