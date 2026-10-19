@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
-## Unreleased
+## 4.6.1 - 2026-10-19
 
 ### Added
 - `watch` and the control panel have a line for each `/memory`, `/leak`, `/disk`, `/fd` and `/connections` that is holding something, with what it holds and the seconds left (`/memory: 100 MB, 18 s left`), as `/cpu` already had. `/info` reports it as `secondsLeft` in `memory`, `disk`, `fd` and `connections` (`null` when nothing is held), the time until the last hold of that resource lets go.

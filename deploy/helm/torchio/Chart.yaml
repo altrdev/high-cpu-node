@@ -2,6 +2,6 @@ apiVersion: v2
 name: torchio
 description: A server that burns CPU, holds memory, fills disk and answers slowly or with any status, to test how a cluster behaves under pressure
 type: application
-version: 4.6.0
-appVersion: 4.6.0
+version: 4.6.1
+appVersion: 4.6.1
 home: https://github.com/altrdev/torchio
