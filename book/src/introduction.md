@@ -5,7 +5,7 @@
 
 *Torchio* is the Italian word for the press that squeezes wine and oil, as in *mettere sotto torchio*: to put under pressure. Put your containers under the press. It began in 2019 as `high-cpu-node`, when it could only burn CPU.
 
-![torchio watch: gradient bars and history of busy workers, held memory, process RSS and held disk, while keys start a memory test, a CPU burn and a leak](https://raw.githubusercontent.com/altrdev/torchio/refs/heads/main/docs/watch.svg)
+![torchio watch: gradient bars and history of busy workers, held memory, process RSS and held disk, while keys start a memory test, a CPU burn and a leak](images/watch.svg)
 
 This is the documentation of torchio {{#include version.md}}. The changes of each release are in the [changelog](changelog.md).
 
