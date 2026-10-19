@@ -134,7 +134,13 @@ impl Style {
 
     // red, yellow, green
     fn level(ratio: f64) -> u8 {
-        if ratio >= 0.85 { 31 } else if ratio >= 0.6 { 33 } else { 32 }
+        if ratio >= 0.85 {
+            31
+        } else if ratio >= 0.6 {
+            33
+        } else {
+            32
+        }
     }
 
     // `neutral` draws the bar in blue instead of the green/yellow/red of a real limit
@@ -145,8 +151,8 @@ impl Style {
         self.paint(code, &"█".repeat(filled)) + &"░".repeat(BAR_WIDTH - filled)
     }
 
-    fn row(&self, label: &str, value: i64, max: i64, text: &str, history: &[i64], spark_max: i64, neutral: bool) -> String {
-        format!("{label:<14}{}  {text:<26} {}", self.bar(value, max, neutral), self.paint(36, &spark(history, spark_max)))
+    fn row(&self, label: &str, value: i64, max: i64, text: &str, history: &[i64], neutral: bool) -> String {
+        format!("{label:<14}{}  {text:<26} {}", self.bar(value, max, neutral), self.paint(36, &spark(history, max)))
     }
 }
 
@@ -158,7 +164,13 @@ fn spark(history: &[i64], max: i64) -> String {
 
 fn duration(seconds: i64) -> String {
     let (h, m, s) = (seconds / 3600, seconds % 3600 / 60, seconds % 60);
-    if h > 0 { format!("{h}h{m}m{s}s") } else if m > 0 { format!("{m}m{s}s") } else { format!("{s}s") }
+    if h > 0 {
+        format!("{h}h{m}m{s}s")
+    } else if m > 0 {
+        format!("{m}m{s}s")
+    } else {
+        format!("{s}s")
+    }
 }
 
 // Keeps the end of a long path, which is the part that tells directories apart
@@ -191,13 +203,27 @@ fn render(style: &Style, url: &str, info: &Info, history: &History) -> String {
     let mut lines = vec![
         format!("{} {}  {url}  up {}", style.paint(1, &info.name), info.version, duration(info.uptime_seconds)),
         String::new(),
-        style.row("CPU workers", busy, workers, &format!("{busy} busy / {workers}"), &history.busy, workers, false),
-        style.row("Memory held", memory.held_mb, memory.limit_mb, &format!("{} / {} MB", memory.held_mb, memory.limit_mb), &history.held, memory.limit_mb, false),
-        style.row("Process RSS", memory.process_rss_mb, rss_max, &rss_text, &history.rss, rss_max, container.is_none()),
-        style.row("Disk held", info.disk.held_mb, info.disk.limit_mb, &format!("{} / {} MB", info.disk.held_mb, info.disk.limit_mb), &history.disk, info.disk.limit_mb, false),
+        style.row("CPU workers", busy, workers, &format!("{busy} busy / {workers}"), &history.busy, false),
+        style.row(
+            "Memory held",
+            memory.held_mb,
+            memory.limit_mb,
+            &format!("{} / {} MB", memory.held_mb, memory.limit_mb),
+            &history.held,
+            false,
+        ),
+        style.row("Process RSS", memory.process_rss_mb, rss_max, &rss_text, &history.rss, container.is_none()),
+        style.row(
+            "Disk held",
+            info.disk.held_mb,
+            info.disk.limit_mb,
+            &format!("{} / {} MB", info.disk.held_mb, info.disk.limit_mb),
+            &history.disk,
+            false,
+        ),
     ];
     if let Some(fd) = &info.fd {
-        lines.push(style.row("FDs held", fd.held, fd.limit, &format!("{} / {}", fd.held, fd.limit), &history.fd, fd.limit, false));
+        lines.push(style.row("FDs held", fd.held, fd.limit, &format!("{} / {}", fd.held, fd.limit), &history.fd, false));
     }
     lines.push(String::new());
     lines.push(format!("/stress in progress: {}   /delay waiting: {}", info.stress.in_flight, info.delay.in_flight));
@@ -311,7 +337,8 @@ pub fn watch(args: &[String]) -> ! {
         }
     }
 
-    let interval = Duration::from_secs_f64(options.interval.trim().parse::<f64>().ok().filter(|n| *n != 0.0 && n.is_finite()).unwrap_or(1.0).max(0.2));
+    let interval =
+        Duration::from_secs_f64(options.interval.trim().parse::<f64>().ok().filter(|n| *n != 0.0 && n.is_finite()).unwrap_or(1.0).max(0.2));
     let screen = stdout.is_terminal();
     if screen {
         print!("\x1b[?1049h\x1b[?25l"); // alternate screen, hide cursor

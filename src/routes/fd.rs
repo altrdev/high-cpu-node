@@ -27,7 +27,7 @@ impl Fd {
 pub async fn handler(State(state): State<Arc<AppState>>, RawQuery(query): RawQuery) -> Response {
     let params = match params::read(query.as_deref(), &specs(&state.config).fd) {
         Ok(params) => params,
-        Err(rejection) => return rejection,
+        Err(rejection) => return rejection.into_response(),
     };
     let (count, hold) = (params.get("count"), params.get("hold"));
     let budget = &state.fd.budget;
@@ -59,7 +59,8 @@ pub async fn handler(State(state): State<Arc<AppState>>, RawQuery(query): RawQue
     });
 
     match failure {
-        Some(code) => (StatusCode::SERVICE_UNAVAILABLE, format!("Opened {opened} of {count} descriptors, then {code}. Held for {hold} s")).into_response(),
+        Some(code) => (StatusCode::SERVICE_UNAVAILABLE, format!("Opened {opened} of {count} descriptors, then {code}. Held for {hold} s"))
+            .into_response(),
         None => (StatusCode::OK, format!("Opened {count} descriptors, held for {hold} s")).into_response(),
     }
 }

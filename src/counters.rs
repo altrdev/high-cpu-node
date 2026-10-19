@@ -34,7 +34,12 @@ impl Counters {
     }
 
     pub fn entries(&self) -> Vec<Sample> {
-        self.counts.lock().unwrap().iter().map(|((route, code), count)| Sample { route: route.clone(), code: *code, count: *count }).collect()
+        self.counts
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|((route, code), count)| Sample { route: route.clone(), code: *code, count: *count })
+            .collect()
     }
 }
 

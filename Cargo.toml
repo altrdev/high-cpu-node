@@ -2,6 +2,7 @@
 name = "torchio"
 version = "3.5.0"
 edition = "2024"
+rust-version = "1.88"
 description = "Break your containers on purpose: burn CPU, hold memory, fill disk and more, on demand over HTTP"
 license = "MIT"
 authors = ["altrdev"]

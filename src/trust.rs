@@ -47,12 +47,11 @@ fn parse_range(note: &str) -> Result<Range, String> {
         None => (note, None),
     };
     let mut ip: IpAddr = address.parse().map_err(|_| format!("invalid IP address: {address}"))?;
-    if mask.is_none() {
-        if let IpAddr::V6(v6) = ip {
-            if let Some(v4) = v6.to_ipv4_mapped() {
-                ip = IpAddr::V4(v4); // stored as IPv4
-            }
-        }
+    if mask.is_none()
+        && let IpAddr::V6(v6) = ip
+        && let Some(v4) = v6.to_ipv4_mapped()
+    {
+        ip = IpAddr::V4(v4); // stored as IPv4
     }
     let max = if ip.is_ipv6() { 128 } else { 32 };
     let prefix = match mask {
@@ -79,7 +78,9 @@ impl Range {
             // a native IPv6 address can't be in an IPv4-mapped subnet
             (IpAddr::V6(a), IpAddr::V6(b)) => !is_mapped(self.ip) && same_prefix(a.into(), b.into(), 128, self.prefix),
             // an IPv6 subnet spans IPv4 only when it is a mapped one that covers the ::ffff: marker
-            (IpAddr::V4(a), IpAddr::V6(b)) => is_mapped(self.ip) && self.prefix >= 96 && same_prefix(a.to_ipv6_mapped().into(), b.into(), 128, self.prefix),
+            (IpAddr::V4(a), IpAddr::V6(b)) => {
+                is_mapped(self.ip) && self.prefix >= 96 && same_prefix(a.to_ipv6_mapped().into(), b.into(), 128, self.prefix)
+            }
             (IpAddr::V6(_), IpAddr::V4(_)) => false,
         }
     }

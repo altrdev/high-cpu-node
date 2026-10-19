@@ -126,12 +126,12 @@ fn work(messages: Receiver<Message>) {
             Err(RecvTimeoutError::Timeout) => {}
             Err(RecvTimeoutError::Disconnected) => return,
         }
-        if let (Some(current), Some(at)) = (burn, next_slice) {
-            if Instant::now() >= at {
-                next_slice = slice(current);
-                if next_slice.is_none() {
-                    burn = None;
-                }
+        if let (Some(current), Some(at)) = (burn, next_slice)
+            && Instant::now() >= at
+        {
+            next_slice = slice(current);
+            if next_slice.is_none() {
+                burn = None;
             }
         }
     }

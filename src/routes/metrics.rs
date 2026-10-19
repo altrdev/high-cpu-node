@@ -47,7 +47,7 @@ pub async fn handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
 
     metric(&mut lines, "torchio_info", "gauge", "Version of the server.", vec![(vec![("version", VERSION.to_string())], 1.0)]);
     metric(&mut lines, "torchio_start_time_seconds", "gauge", "Start time of the server, in Unix time.", one(started));
-    metric(&mut lines, "torchio_workers", "gauge", "Worker processes for /stress.", one(s.stress.workers as f64));
+    metric(&mut lines, "torchio_workers", "gauge", "Worker threads for /stress.", one(s.stress.workers as f64));
     metric(&mut lines, "torchio_stress_requests_in_flight", "gauge", "/stress requests being calculated.", one(s.stress.in_flight as f64));
     metric(
         &mut lines,
@@ -65,15 +65,39 @@ pub async fn handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     );
     metric(&mut lines, "torchio_delay_requests_in_flight", "gauge", "/delay requests still waiting.", one(s.delay_in_flight as f64));
     metric(&mut lines, "torchio_memory_held_bytes", "gauge", "Memory held by /memory.", one(s.memory.held_mb as f64 * mb));
-    metric(&mut lines, "torchio_memory_limit_bytes", "gauge", "Total memory /memory may hold (MAX_MEMORY_MB).", one(s.memory.limit_mb as f64 * mb));
+    metric(
+        &mut lines,
+        "torchio_memory_limit_bytes",
+        "gauge",
+        "Total memory /memory may hold (MAX_MEMORY_MB).",
+        one(s.memory.limit_mb as f64 * mb),
+    );
     metric(&mut lines, "process_resident_memory_bytes", "gauge", "Resident memory of the server process.", one(s.memory.rss_bytes as f64));
-    metric(&mut lines, "torchio_container_memory_limit_bytes", "gauge", "Memory limit of the container, when there is one.", optional(s.memory.container_limit_bytes));
+    metric(
+        &mut lines,
+        "torchio_container_memory_limit_bytes",
+        "gauge",
+        "Memory limit of the container, when there is one.",
+        optional(s.memory.container_limit_bytes),
+    );
     metric(&mut lines, "torchio_disk_held_bytes", "gauge", "Disk space held by /disk.", one(s.disk.held_mb as f64 * mb));
-    metric(&mut lines, "torchio_disk_limit_bytes", "gauge", "Total disk space /disk may hold (MAX_DISK_MB).", one(s.disk.limit_mb as f64 * mb));
+    metric(
+        &mut lines,
+        "torchio_disk_limit_bytes",
+        "gauge",
+        "Total disk space /disk may hold (MAX_DISK_MB).",
+        one(s.disk.limit_mb as f64 * mb),
+    );
     metric(&mut lines, "torchio_disk_free_bytes", "gauge", "Free space in DISK_DIR.", optional(s.disk.free_bytes));
     metric(&mut lines, "torchio_fd_held", "gauge", "File descriptors held by /fd.", one(s.fd.held as f64));
     metric(&mut lines, "torchio_fd_limit", "gauge", "Total file descriptors /fd may hold (MAX_FD).", one(s.fd.limit as f64));
-    metric(&mut lines, "torchio_ready", "gauge", "1 when /ready answers 200, 0 while it answers 503.", one(if s.ready.ready { 1.0 } else { 0.0 }));
+    metric(
+        &mut lines,
+        "torchio_ready",
+        "gauge",
+        "1 when /ready answers 200, 0 while it answers 503.",
+        one(if s.ready.ready { 1.0 } else { 0.0 }),
+    );
     metric(
         &mut lines,
         "torchio_http_requests_total",

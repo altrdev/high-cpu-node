@@ -59,13 +59,7 @@ fn js_number(raw: &str) -> Option<f64> {
 
 // An integer from the environment, at least `min` (a positive one by default). A value that
 // is not one is reported and replaced by the default, instead of being silently ignored.
-fn positive_int(
-    get: &impl Fn(&str) -> Option<String>,
-    warn: &mut impl FnMut(String),
-    name: &str,
-    fallback: i64,
-    min: i64,
-) -> i64 {
+fn positive_int(get: &impl Fn(&str) -> Option<String>, warn: &mut impl FnMut(String), name: &str, fallback: i64, min: i64) -> i64 {
     let Some(raw) = get(name).filter(|raw| !raw.is_empty()) else {
         return fallback;
     };
@@ -176,7 +170,8 @@ mod tests {
 
     #[test]
     fn a_value_that_is_not_a_positive_integer_is_reported_and_replaced() {
-        let (config, warnings) = read(&[("MAX_NUMBER", "abc"), ("MAX_DELAY_MS", "0"), ("MAX_HOLD_SECONDS", "12"), ("START_DELAY_SECONDS", "-1")]);
+        let (config, warnings) =
+            read(&[("MAX_NUMBER", "abc"), ("MAX_DELAY_MS", "0"), ("MAX_HOLD_SECONDS", "12"), ("START_DELAY_SECONDS", "-1")]);
         assert_eq!(config.max_number, 50);
         assert_eq!(config.max_delay_ms, 60000);
         assert_eq!(config.max_hold_seconds, 12);

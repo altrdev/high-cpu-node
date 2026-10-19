@@ -70,7 +70,7 @@ async fn write_file(file: &Path, mb: i64) -> std::io::Result<()> {
 pub async fn handler(State(state): State<Arc<AppState>>, RawQuery(query): RawQuery) -> Response {
     let params = match params::read(query.as_deref(), &specs(&state.config).disk) {
         Ok(params) => params,
-        Err(rejection) => return rejection,
+        Err(rejection) => return rejection.into_response(),
     };
     let (mb, hold) = (params.get("mb"), params.get("hold"));
     let disk = &state.disk;

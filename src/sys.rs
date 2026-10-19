@@ -43,13 +43,18 @@ fn cgroup_limit() -> Option<u64> {
     let read = |path: String| std::fs::read_to_string(path).ok();
     // cgroup v2: the line "0::/path"
     let v2_path = cgroups.lines().find_map(|line| line.strip_prefix("0::")).unwrap_or("/");
-    let v2 = read(format!("/sys/fs/cgroup{}/memory.max", v2_path.trim_end_matches('/'))).or_else(|| read("/sys/fs/cgroup/memory.max".into()));
+    let v2 =
+        read(format!("/sys/fs/cgroup{}/memory.max", v2_path.trim_end_matches('/'))).or_else(|| read("/sys/fs/cgroup/memory.max".into()));
     if let Some(text) = v2 {
         return parse_limit(&text);
     }
     // cgroup v1: the line "N:memory:/path"
-    let v1_path = cgroups.lines().find_map(|line| line.split(':').nth(1).filter(|c| c.split(',').any(|c| c == "memory")).and(line.splitn(3, ':').nth(2))).unwrap_or("/");
-    let v1 = read(format!("/sys/fs/cgroup/memory{}/memory.limit_in_bytes", v1_path.trim_end_matches('/'))).or_else(|| read("/sys/fs/cgroup/memory/memory.limit_in_bytes".into()));
+    let v1_path = cgroups
+        .lines()
+        .find_map(|line| line.split(':').nth(1).filter(|c| c.split(',').any(|c| c == "memory")).and(line.splitn(3, ':').nth(2)))
+        .unwrap_or("/");
+    let v1 = read(format!("/sys/fs/cgroup/memory{}/memory.limit_in_bytes", v1_path.trim_end_matches('/')))
+        .or_else(|| read("/sys/fs/cgroup/memory/memory.limit_in_bytes".into()));
     v1.and_then(|text| parse_limit(&text))
 }
 

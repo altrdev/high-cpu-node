@@ -21,7 +21,7 @@ pub async fn handler(State(state): State<Arc<AppState>>) -> Response {
 pub async fn off(State(state): State<Arc<AppState>>, RawQuery(query): RawQuery) -> Response {
     let params = match params::read(query.as_deref(), &specs(&state.config).ready_off) {
         Ok(params) => params,
-        Err(rejection) => return rejection,
+        Err(rejection) => return rejection.into_response(),
     };
     let seconds = params.get("seconds");
 

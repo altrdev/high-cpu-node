@@ -30,9 +30,6 @@ jobs:
         with:
           images: altrdev/torchio
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
       
@@ -45,6 +42,15 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           platforms: ${{ env.TARGET_PLATFORMS }}
 
+      # The binary alone for each platform, built by the same Dockerfile
+      - name: Build the binaries
+        run: |
+          docker buildx build --target binary --platform "$TARGET_PLATFORMS" --output type=local,dest=dist .
+          mkdir release
+          cp dist/linux_amd64/torchio release/torchio-linux-amd64
+          cp dist/linux_arm64/torchio release/torchio-linux-arm64
+          (cd release && sha256sum torchio-linux-* > SHA256SUMS)
+
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -52,9 +58,9 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           awk -v v="$VERSION" '$0 ~ "^## " v " " {f=1; next} /^## / {f=0} f' CHANGELOG.md > notes.md
           if [ -s notes.md ]; then
-            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file notes.md
+            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file notes.md release/*
           else
-            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes
+            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes release/*
           fi
 
       - name: Prepare the Docker Hub README

@@ -13,10 +13,7 @@ fn parse(header: &str) -> Vec<Range<'_>> {
         .filter_map(|part| {
             let mut pieces = part.split(';');
             let (kind, subtype) = pieces.next()?.trim().split_once('/')?;
-            let quality = pieces
-                .filter_map(|p| p.trim().strip_prefix("q="))
-                .find_map(|q| q.trim().parse::<f64>().ok())
-                .unwrap_or(1.0);
+            let quality = pieces.filter_map(|p| p.trim().strip_prefix("q=")).find_map(|q| q.trim().parse::<f64>().ok()).unwrap_or(1.0);
             Some(Range { kind: kind.trim(), subtype: subtype.trim(), quality })
         })
         .collect()

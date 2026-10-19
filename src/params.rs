@@ -1,5 +1,4 @@
 use axum::http::StatusCode;
-use axum::response::{IntoResponse, Response};
 
 // A parameter with its default and limits. Without a default it is required.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -45,17 +44,17 @@ pub fn parse_int(text: &str) -> Option<i64> {
 }
 
 // Reads integer query parameters. A value that is not a number becomes the fallback, one
-// outside min..max is answered with a 400, so the caller only has to propagate the Err.
-pub fn read(query: Option<&str>, specs: &[(&'static str, Param)]) -> Result<Params, Response> {
+// outside min..max is an Err to answer with, so the caller only has to propagate it.
+pub fn read(query: Option<&str>, specs: &[(&'static str, Param)]) -> Result<Params, (StatusCode, String)> {
     let pairs: Vec<(String, String)> = serde_urlencoded::from_str(query.unwrap_or("")).unwrap_or_default();
     let mut values = Vec::with_capacity(specs.len());
     for (name, Param { fallback, min, max }) in specs {
         let parsed = pairs.iter().find(|(key, _)| key == name).and_then(|(_, value)| parse_int(value));
         let Some(value) = parsed.or(*fallback) else {
-            return Err((StatusCode::BAD_REQUEST, format!("{name} is required")).into_response());
+            return Err((StatusCode::BAD_REQUEST, format!("{name} is required")));
         };
         if value < *min || value > *max {
-            return Err((StatusCode::BAD_REQUEST, format!("{name} must be between {min} and {max}")).into_response());
+            return Err((StatusCode::BAD_REQUEST, format!("{name} must be between {min} and {max}")));
         }
         values.push((*name, value));
     }
@@ -93,8 +92,8 @@ mod tests {
     fn values_out_of_range_are_rejected() {
         let specs = [("ms", Param::new(1000, 0, 5000))];
         for query in ["ms=6000", "ms=-1"] {
-            let response = read(Some(query), &specs).err().expect("rejected");
-            assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+            let (status, _) = read(Some(query), &specs).err().expect("rejected");
+            assert_eq!(status, StatusCode::BAD_REQUEST);
         }
     }
 }

@@ -1,8 +1,8 @@
 use crate::app::AppState;
 use crate::trust::Trust;
+use axum::Json;
 use axum::extract::{ConnectInfo, OriginalUri, State};
 use axum::http::{HeaderMap, Method, Version};
-use axum::Json;
 use serde_json::{Map, Value, json};
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -124,7 +124,16 @@ mod tests {
 
     #[test]
     fn what_the_server_sees_by_default() {
-        let value = echo(&Trust::none(), &[("host", "127.0.0.1:3000"), ("authorization", "Bearer s3cret"), ("cookie", "sid=abc"), ("x-forwarded-for", "203.0.113.7"), ("x-custom", "yes")]);
+        let value = echo(
+            &Trust::none(),
+            &[
+                ("host", "127.0.0.1:3000"),
+                ("authorization", "Bearer s3cret"),
+                ("cookie", "sid=abc"),
+                ("x-forwarded-for", "203.0.113.7"),
+                ("x-custom", "yes"),
+            ],
+        );
         assert_eq!(value["method"], "GET");
         assert_eq!(value["url"], "/echo?a=1");
         assert_eq!(value["protocol"], "http");
@@ -141,7 +150,15 @@ mod tests {
     #[test]
     fn with_trust_the_forwarded_headers_decide() {
         let trust = Trust::from_setting(&TrustProxy::Bool(true)).unwrap();
-        let value = echo(&trust, &[("host", "10.0.0.5:8080"), ("x-forwarded-for", "203.0.113.7"), ("x-forwarded-proto", "https"), ("x-forwarded-host", "app.example.com")]);
+        let value = echo(
+            &trust,
+            &[
+                ("host", "10.0.0.5:8080"),
+                ("x-forwarded-for", "203.0.113.7"),
+                ("x-forwarded-proto", "https"),
+                ("x-forwarded-host", "app.example.com"),
+            ],
+        );
         assert_eq!(value["ip"], "203.0.113.7");
         assert_eq!(value["ips"], json!(["203.0.113.7"]));
         assert_eq!(value["protocol"], "https");

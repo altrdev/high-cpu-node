@@ -7,8 +7,65 @@ on:
       - main
 
 jobs:
+  rust:
+    name: Rust (format, clippy, unit tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install the Rust toolchain
+        run: |
+          rustup toolchain install stable --profile minimal --component clippy rustfmt --no-self-update
+          rustup default stable
+
+      - run: cargo fmt --check
+
+      - run: cargo clippy --all-targets --locked -- -D warnings
+
+      - run: cargo test --locked
+
+  integration:
+    name: Integration tests against the binary
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install the Rust toolchain
+        run: |
+          rustup toolchain install stable --profile minimal --no-self-update
+          rustup default stable
+
+      # the tests are still written for node:test, and run any build of the server
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Changelog has a section for this version
+        run: |
+          VERSION=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n 1)
+          grep -q "^## $VERSION " CHANGELOG.md || { echo "CHANGELOG.md has no section for $VERSION"; exit 1; }
+
+      - run: cargo build --release --locked
+
+      - name: Tests
+        run: TORCHIO_BIN=target/release/torchio node --test test/server.test.js
+
+      # How the memory shows up for the OS depends on the platform, so it is checked here on Linux
+      - name: Memory is returned to the OS
+        run: |
+          PORT=3100 WORKERS=1 target/release/torchio &
+          SERVER_PID=$!
+          sleep 2
+          BASE_RSS=$(ps -o rss= -p $SERVER_PID)
+          curl -sf "localhost:3100/memory?mb=200&hold=1" | grep -q "Allocated 200 MB"
+          HELD_RSS=$(ps -o rss= -p $SERVER_PID)
+          test $((HELD_RSS - BASE_RSS)) -gt 150000
+          sleep 3
+          test $(($(ps -o rss= -p $SERVER_PID) - BASE_RSS)) -lt 10000
+          kill $SERVER_PID
+
   test:
-    name: Tests (Node ${{ matrix.node-version }})
+    name: Tests of the Node version (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -51,8 +108,20 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Build Docker image
-        run: docker build -t torchio .
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Build the Docker image
+        run: docker buildx build --load -t torchio .
+
+      # the same Dockerfile compiles for both platforms on this one, without emulation
+      - name: Build the Docker image for both platforms
+        run: docker buildx build --platform linux/amd64,linux/arm64 .
+
+      - name: The image is a single small binary
+        run: |
+          SIZE=$(docker image inspect -f '{{.Size}}' torchio)
+          echo "image size: $SIZE bytes"
+          test "$SIZE" -lt 15000000
 
       - name: Test Docker image
         run: |
@@ -64,12 +133,18 @@ jobs:
           curl -sf "localhost:3200/disk?mb=20&hold=0" | grep -q "Wrote 20 MB"
           curl -sf localhost:3200/info | jq -e '.memory.containerLimitMb == 256'
           curl -sf localhost:3200/metrics | grep -q '^torchio_container_memory_limit_bytes 268435456$'
-          docker exec sn node cli.js watch --once | grep -q "(container)"
+          docker exec sn torchio watch --once | grep -q "(container)"
           for i in $(seq 60); do
             test "$(docker inspect -f '{{.State.Health.Status}}' sn)" = healthy && break
             sleep 1
           done
           test "$(docker inspect -f '{{.State.Health.Status}}' sn)" = healthy
+
+      - name: The CPUs of the container limit the workers
+        run: |
+          docker run -d --name cpus --cpus 2 -p 3201:3000 torchio
+          for i in $(seq 20); do curl -sf localhost:3201/ >/dev/null && break; sleep 1; done
+          curl -sf localhost:3201/info | jq -e '.stress.workers == 2'
 
       - name: Check /metrics with promtool
         run: curl -sf localhost:3200/metrics | docker run -i --rm --entrypoint promtool prom/prometheus:v3.5.0 check metrics

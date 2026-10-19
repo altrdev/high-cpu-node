@@ -43,7 +43,7 @@ impl Leak {
 pub async fn handler(State(state): State<Arc<AppState>>, RawQuery(query): RawQuery) -> Response {
     let params = match params::read(query.as_deref(), &specs(&state.config).leak) {
         Ok(params) => params,
-        Err(rejection) => return rejection,
+        Err(rejection) => return rejection.into_response(),
     };
     let (rate, mb, hold) = (params.get("rate"), params.get("mb"), params.get("hold"));
 

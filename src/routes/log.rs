@@ -98,7 +98,7 @@ async fn write_lines(lines: i64, rate: i64, sent: Arc<AtomicI64>) {
 pub async fn handler(State(state): State<Arc<AppState>>, RawQuery(query): RawQuery) -> Response {
     let params = match params::read(query.as_deref(), &specs(&state.config).log) {
         Ok(params) => params,
-        Err(rejection) => return rejection,
+        Err(rejection) => return rejection.into_response(),
     };
     let (lines, rate) = (params.get("lines"), params.get("rate"));
 

@@ -13,7 +13,7 @@ use std::sync::Arc;
 pub async fn handler(State(state): State<Arc<AppState>>, RawQuery(query): RawQuery) -> Response {
     let params = match params::read(query.as_deref(), &specs(&state.config).cpu) {
         Ok(params) => params,
-        Err(rejection) => return rejection,
+        Err(rejection) => return rejection.into_response(),
     };
     let (percent, hold) = (params.get("percent"), params.get("hold"));
 
