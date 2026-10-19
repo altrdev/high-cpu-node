@@ -24,8 +24,10 @@ Or on your local machine, with Homebrew (macOS and Linux):
 
 ```
 brew install altrdev/tap/torchio
-torchio
+torchio serve
 ```
+
+`torchio` with no command does the same as `torchio serve`: it is what the Docker image runs. The server stays in the foreground, so Ctrl+C stops it; use a second terminal tab for `torchio watch`.
 
 Other ways to get the `torchio` command. A script that downloads the binary of the latest release for your system (macOS or Linux, `amd64` or `arm64`), checks its checksum and installs it:
 
