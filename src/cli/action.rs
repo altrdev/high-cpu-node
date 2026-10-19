@@ -80,6 +80,18 @@ pub fn usage(name: &str) -> Option<String> {
     })
 }
 
+/// The command that does what an endpoint does, as it is written (`torchio cpu [percent] [hold]
+/// [workers]`), or `None` when the endpoint has none: it only answers to `curl` and the like.
+pub fn command_for(path: &str) -> Option<String> {
+    let name = match path {
+        // one command with a word for the two endpoints
+        "/ready/off" => return Some("torchio ready off [seconds]".to_string()),
+        "/ready/on" => return Some("torchio ready on".to_string()),
+        _ => ACTIONS.iter().find(|action| action.path.replace('{', ":").replace('}', "") == path)?.name,
+    };
+    usage(name).map(|usage| format!("torchio {usage}"))
+}
+
 pub fn is_action(name: &str) -> bool {
     ACTIONS.iter().any(|action| action.name == name)
 }
@@ -313,6 +325,35 @@ mod tests {
         assert_eq!(usage("status").as_deref(), Some("status <code>"));
         assert_eq!(usage("ready").as_deref(), Some("ready on | off [seconds]"));
         assert_eq!(usage("watch"), None);
+    }
+
+    #[test]
+    fn every_command_is_the_command_of_an_endpoint_of_the_catalog() {
+        let paths: Vec<&str> = crate::endpoints::catalog(&crate::config::Config::read(|_| None, |_| {})).iter().map(|e| e.path).collect();
+        for path in &paths {
+            // the other way round: what the commands start is what the endpoints are called
+            if let Some(command) = command_for(path) {
+                assert!(is_action(command.split_whitespace().nth(1).unwrap()), "{path}: {command}");
+            }
+        }
+        for name in names() {
+            let endpoints: Vec<&str> = if name == "ready" { vec!["/ready/off", "/ready/on"] } else { Vec::new() };
+            let found = if endpoints.is_empty() {
+                paths.iter().any(|path| command_for(path).is_some_and(|c| c.split_whitespace().nth(1) == Some(name)))
+            } else {
+                endpoints.iter().all(|path| paths.contains(path) && command_for(path).is_some())
+            };
+            assert!(found, "the command '{name}' calls no endpoint of the catalog");
+        }
+    }
+
+    #[test]
+    fn the_command_of_an_endpoint_is_written_as_it_is_typed() {
+        assert_eq!(command_for("/cpu").as_deref(), Some("torchio cpu [percent] [hold] [workers]"));
+        assert_eq!(command_for("/status/:code").as_deref(), Some("torchio status <code>"));
+        assert_eq!(command_for("/ready/off").as_deref(), Some("torchio ready off [seconds]"));
+        assert_eq!(command_for("/ready/on").as_deref(), Some("torchio ready on"));
+        assert_eq!(command_for("/info"), None);
     }
 
     #[test]

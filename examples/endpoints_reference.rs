@@ -1,5 +1,6 @@
 //! Prints the reference of the endpoints in Markdown, from the catalog that `/help` is built from, so
 //! the page of the documentation site is never out of date: `cargo run --example endpoints_reference`.
+use torchio::cli::command_for;
 use torchio::config::Config;
 use torchio::endpoints::catalog;
 
@@ -11,11 +12,20 @@ fn main() {
         "Every endpoint with its parameters, as `/help` lists them, with the defaults and limits of a server with no settings. The ones marked *token* need it when [`TOKEN`](token.md) is set. The page [Endpoints](endpoints.md) says what each one does.\n"
     );
 
-    println!("| Endpoint | Token | What it does |");
-    println!("|----------|-------|--------------|");
+    println!("| Endpoint | Token | Command | What it does |");
+    println!("|----------|-------|---------|--------------|");
     for endpoint in catalog(&config) {
         let token = if endpoint.auth { "yes" } else { "" };
-        println!("| [`{0}`](#{1}) | {2} | {3} |", endpoint.path, anchor(endpoint.path), token, endpoint.description);
+        // the word that follows `torchio`, which the section spells out
+        let command = command_for(endpoint.path).map(|text| format!("`{}`", text.split_whitespace().nth(1).unwrap_or_default()));
+        println!(
+            "| [`{0}`](#{1}) | {2} | {3} | {4} |",
+            endpoint.path,
+            anchor(endpoint.path),
+            token,
+            command.unwrap_or_default(),
+            endpoint.description
+        );
     }
     println!();
 
@@ -26,6 +36,9 @@ fn main() {
             println!("## `{}`\n", endpoint.path);
         }
         println!("{}.\n", endpoint.description.trim_end_matches('.'));
+        if let Some(command) = command_for(endpoint.path) {
+            println!("Command: `{command}`, see [Starting a test](starting-a-test.md).\n");
+        }
         if endpoint.params.is_empty() {
             println!("No parameters.\n");
             continue;
