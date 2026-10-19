@@ -97,6 +97,8 @@ fn bash_completes_the_commands() {
         "log",
         "crash",
         "block",
+        "scenario",
+        "payload",
         "ready",
     ] {
         assert!(all.contains(&name.to_string()), "{name} in {all:?}");

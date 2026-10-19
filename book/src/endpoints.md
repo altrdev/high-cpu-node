@@ -228,7 +228,7 @@ Use it only in a container with a memory limit. Without one it fills the memory 
 - **`GET`** streams the data a chunk at a time, so nothing is held in memory, and announces the length (`Content-Length`), so a client or a proxy can tell a body that was cut short. The bytes don't compress, so a proxy that compresses doesn't make the test smaller.
 - **`POST`** reads the body as it arrives, without keeping it, and answers with `{ "bytes", "seconds", "mbPerSecond" }`. It takes no parameter: a body over `MAX_PAYLOAD_MB` is answered with a `413`, which is also what a proxy with a limit on the size does. A connection that breaks halfway is a `400` that says how much had arrived.
 
-Both need the token when `TOKEN` is set, since they use the bandwidth of the instance.
+Both need the token when `TOKEN` is set, since they use the bandwidth of the instance. `torchio payload get` and `torchio payload post` do both from the command line and report the speed, see [Starting a test](starting-a-test.md#commands-that-send-or-read-a-body).
 
 ```
 curl -o /dev/null -w "%{size_download} bytes in %{time_total} s\n" "http://127.0.0.1:3000/payload?mb=100"

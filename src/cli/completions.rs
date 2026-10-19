@@ -49,6 +49,16 @@ fn entries() -> Vec<Entry> {
         let words = if command.name == "ready" { vec!["on", "off"] } else { vec![] };
         entries.push(Entry { name: command.name, about: command.about, options, words });
     }
+    for (name, about, words) in [
+        ("scenario", "Run a scenario from a file, or see or stop it", vec!["status", "stop"]),
+        ("payload", "Download or upload a large body and report the speed", vec!["get", "post"]),
+    ] {
+        let mut options = vec![opt("url", true), opt("token", true), opt("help", false)];
+        if name == "scenario" {
+            options.insert(0, opt("wait", false));
+        }
+        entries.push(Entry { name, about, options, words });
+    }
     entries.push(Entry { name: "healthcheck", about: "Exit with 0 when the server answers", options: vec![], words: vec![] });
     entries.push(Entry {
         name: "completions",

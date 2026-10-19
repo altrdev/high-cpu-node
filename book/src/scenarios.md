@@ -1,6 +1,6 @@
 # Scenarios
 
-A test is often more than one request: load the CPU for a minute, then fill the memory, then take the instance out of the Service. A scenario is that list written once, in JSON, and run by the server by itself, one step after the other. You can repeat it, keep it in the repository next to the manifests and run it from a pipeline, without a script that calls the endpoints in order.
+A test is often more than one request: load the CPU for a minute, then fill the memory, then take the instance out of the Service. A scenario is that list written once, in JSON, and run by the server by itself, one step after the other. You can repeat it, keep it in the repository next to the manifests and run it from a pipeline (`torchio scenario file.json --wait`), without a script that calls the endpoints in order.
 
 ```
 curl -X POST http://127.0.0.1:3000/scenario -d '[
@@ -155,6 +155,14 @@ Each step starts when the previous one ends, so the resources are not held toget
   {"cpu": 50, "seconds": 20}
 ]
 ```
+
+## From the command line
+
+```
+torchio scenario ramp.json --wait
+```
+
+starts the scenario in the file and stays until it ends, with the exit status `0` only if it finished: the line for a pipeline that loads an instance and then checks it. `torchio scenario status` and `torchio scenario stop` do the other two requests. See [Starting a test](starting-a-test.md#commands-that-send-or-read-a-body).
 
 ## Seeing it
 

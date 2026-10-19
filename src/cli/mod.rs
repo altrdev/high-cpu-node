@@ -7,6 +7,7 @@
 //! - `torchio completions <bash|zsh|fish>`: the script that completes the commands in a shell;
 //! - `torchio cpu 80`, `torchio memory 512`…: start a test on a running server.
 mod action;
+mod body;
 mod completions;
 mod healthcheck;
 mod http;
@@ -38,6 +39,12 @@ Start a test on a running server (--url, --token or $TOKEN, and --<parameter> <v
   torchio block [ms]
   torchio ready on | off [seconds]
 
+The two that send or read a body (--url and --token work on both):
+  torchio scenario <file|-> [--wait]   run a scenario from a file or stdin, and with --wait follow it
+  torchio scenario status | stop       where it is, or end it
+  torchio payload get [mb]             download mb MB, throw them away, report the speed
+  torchio payload post <file|->        upload a file or stdin, report what the server counted
+
 Other commands:
   torchio serve        start the server (the same as torchio with no command)
   torchio completions  print the completion script of a shell: bash, zsh or fish
@@ -50,6 +57,8 @@ pub fn run(args: &[String]) -> ExitCode {
         // the server takes its settings from the environment: `serve` has nothing to add
         Some("serve") if args.len() == 1 => crate::server::run(),
         Some("watch") => watch::run(&args[1..]),
+        Some("scenario") => body::scenario(&args[1..]),
+        Some("payload") => body::payload(&args[1..]),
         Some("healthcheck") => healthcheck::run(),
         Some("completions") => completions::run(&args[1..]),
         Some("help" | "--help" | "-h") => {
