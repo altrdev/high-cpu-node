@@ -71,6 +71,7 @@ impl Disk {
             let failed = result.is_err();
             let _ = written.send(result);
             if !failed {
+                let _ending = disk.budget.ends_in(seconds);
                 tokio::time::sleep(Duration::from_secs(seconds)).await;
             }
             disk.files.lock().unwrap().remove(&file);

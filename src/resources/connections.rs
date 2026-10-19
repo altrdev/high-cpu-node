@@ -48,8 +48,10 @@ impl Connections {
         reservation.shrink_to(streams.len() as i64);
         let opened = streams.len();
 
+        let ending = self.budget.ends_in(seconds);
         tokio::spawn(async move {
             tokio::time::sleep(Duration::from_secs(seconds)).await;
+            drop(ending);
             drop(streams);
             drop(reservation);
         });

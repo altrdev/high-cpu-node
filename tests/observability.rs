@@ -50,6 +50,24 @@ fn info_follows_what_the_server_holds() {
     assert_eq!(info["fd"]["held"], 20);
 }
 
+#[test]
+fn info_says_how_long_is_left_of_each_hold_and_nothing_when_nothing_is_held() {
+    let server = Server::start();
+    let idle = server.info();
+    for key in ["memory", "disk", "fd", "connections"] {
+        assert!(idle[key]["secondsLeft"].is_null(), "{key}: {}", idle[key]);
+    }
+    server.get("/memory?mb=10&hold=30");
+    server.get("/disk?mb=1&hold=20");
+    server.get("/fd?count=5&hold=10");
+    server.get("/connections?count=3&hold=8");
+    let info = server.info();
+    for (key, most) in [("memory", 30), ("disk", 20), ("fd", 10), ("connections", 8)] {
+        let left = info[key]["secondsLeft"].as_i64().unwrap_or_else(|| panic!("{key}: {}", info[key]));
+        assert!((most - 2..=most).contains(&left), "{key} has {left} s left of {most}");
+    }
+}
+
 // Every sample must come after the TYPE of its metric, and be a name and a number
 fn check_prometheus_text(body: &str) {
     assert!(body.ends_with('\n'));

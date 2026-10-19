@@ -4,6 +4,9 @@ All notable changes to this project are documented here. The GitHub release of e
 
 ## Unreleased
 
+### Added
+- `watch` and the control panel have a line for each `/memory`, `/leak`, `/disk`, `/fd` and `/connections` that is holding something, with what it holds and the seconds left (`/memory: 100 MB, 18 s left`), as `/cpu` already had. `/info` reports it as `secondsLeft` in `memory`, `disk`, `fd` and `connections` (`null` when nothing is held), the time until the last hold of that resource lets go.
+
 ### Changed
 - `/info` reports the limit of descriptors of the process (`fd.processLimit`, the soft `ulimit -n`), and the descriptors bar of `watch` and of the control panel compares with the lower of that and `MAX_FD`, so it is full when `EMFILE` comes and not at a quarter of a limit the process can't reach. `watch` marks it with `(ulimit)`.
 

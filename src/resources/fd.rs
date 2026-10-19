@@ -46,8 +46,10 @@ impl Fd {
         reservation.shrink_to(files.len() as i64);
         let opened = files.len();
 
+        let ending = self.budget.ends_in(seconds);
         tokio::spawn(async move {
             tokio::time::sleep(Duration::from_secs(seconds)).await;
+            drop(ending);
             drop(files);
             drop(reservation);
         });

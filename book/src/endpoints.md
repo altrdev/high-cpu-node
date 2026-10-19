@@ -301,7 +301,7 @@ Returns a JSON document with what the server is doing right now. It takes no par
   "delay": { "inFlight": 3 },
   "memory": { "heldMb": 200, "limitMb": 512, "processRssMb": 310, "containerLimitMb": 256 },
   "disk": { "heldMb": 100, "limitMb": 1024, "dir": "/tmp", "freeMb": 8120 },
-  "fd": { "held": 0, "limit": 10000, "processLimit": 1048576 },
+  "fd": { "held": 0, "limit": 10000, "processLimit": 1048576, "secondsLeft": null },
   "ready": { "ready": true, "secondsLeft": null },
   "log": null,
   "limits": { "maxNumber": 50, "maxDelayMs": 60000, "maxHoldSeconds": 300, "maxLogLines": 100000, "maxLogRate": 10000 }
@@ -316,6 +316,7 @@ Returns a JSON document with what the server is doing right now. It takes no par
 | `memory.heldMb`, `limitMb`    | Memory held by `/memory` and the total it may hold (`MAX_MEMORY_MB`); the difference is what a new request can still allocate |
 | `memory.processRssMb`         | Memory the whole process uses, the figure that counts for an OOM kill   |
 | `memory.containerLimitMb`     | Memory limit of the container, `null` when there is none                |
+| `memory.secondsLeft`, `disk.secondsLeft`, `fd.secondsLeft`, `connections.secondsLeft` | Seconds until the last hold of that resource lets go, `null` when nothing is held |
 | `disk.heldMb`, `limitMb`      | Same as for memory, for `/disk` (`MAX_DISK_MB`)                         |
 | `disk.freeMb`                 | Free space in `DISK_DIR`, `null` if the directory is not usable         |
 | `fd.held`, `limit`, `processLimit` | File descriptors held by `/fd`, the total it may hold (`MAX_FD`) and the limit of the process itself (`ulimit -n`, `null` when it has none) |

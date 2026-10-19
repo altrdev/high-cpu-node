@@ -267,6 +267,29 @@ fn rows(style: &Style, info: &Info, history: &History) -> Vec<String> {
     rows
 }
 
+/// What `/memory`, `/leak`, `/disk`, `/fd` and `/connections` hold right now and for how long more:
+/// the colour of its line, its command, and the text
+fn holds(info: &Info) -> Vec<(u8, &'static str, String)> {
+    let mut holds = Vec::new();
+    if let Some(left) = info.memory.seconds_left {
+        holds.push((114, "/memory", format!("{} MB, {left} s left", info.memory.held_mb)));
+    }
+    if let Some(left) = info.disk.seconds_left {
+        holds.push((180, "/disk", format!("{} MB, {left} s left", info.disk.held_mb)));
+    }
+    if let Some(fd) = &info.fd
+        && let Some(left) = fd.seconds_left
+    {
+        holds.push((141, "/fd", format!("{}, {left} s left", fd.held)));
+    }
+    if let Some(connections) = &info.connections
+        && let Some(left) = connections.seconds_left
+    {
+        holds.push((75, "/connections", format!("{}, {left} s left", connections.held)));
+    }
+    holds
+}
+
 /// The view of the last sample, with the history of the previous ones
 pub fn render(style: &Style, url: &str, info: &Info, history: &History) -> String {
     if style.color {
@@ -279,6 +302,9 @@ pub fn render(style: &Style, url: &str, info: &Info, history: &History) -> Strin
     lines.push(format!("/stress in progress: {}   /delay waiting: {}", info.stress.in_flight, info.delay.in_flight));
     if let Some(burn) = &info.stress.burn {
         lines.push(format!("/cpu: {}% on {}, {} s left", burn.percent, burned(info, burn), burn.seconds_left));
+    }
+    for (_, command, text) in holds(info) {
+        lines.push(format!("{command}: {text}"));
     }
     if let Some(log) = &info.log {
         lines.push(format!("/log: {} of {} lines, {} lines/s", log.sent, log.lines, log.rate));
@@ -333,6 +359,9 @@ fn render_color(style: &Style, url: &str, info: &Info, history: &History) -> Str
         }
         None => lines.push(activity(false, 209, "/cpu idle".into())),
     }
+    for (color, command, text) in holds(info) {
+        lines.push(activity(true, color, format!("{command} {text}")));
+    }
     if let Some(log) = &info.log {
         lines.push(activity(true, 177, format!("/log {} of {} lines, {} lines/s", log.sent, log.lines, log.rate)));
     }
@@ -385,6 +414,21 @@ mod tests {
         let none =
             INFO.replace("\"fd\": {\"held\": 40, \"limit\": 10000}", "\"fd\": {\"held\": 40, \"limit\": 10000, \"processLimit\": null}");
         assert!(plain(&none).contains("40 / 10000") && !plain(&none).contains("ulimit"), "no limit of the process changes nothing");
+    }
+
+    #[test]
+    fn every_hold_that_runs_has_a_line_with_the_seconds_left() {
+        let busy = INFO
+            .replace("\"containerLimitMb\": 256", "\"containerLimitMb\": 256, \"secondsLeft\": 18")
+            .replace("\"freeMb\": null", "\"freeMb\": null, \"secondsLeft\": 9")
+            .replace("\"fd\": {\"held\": 40, \"limit\": 10000}", "\"fd\": {\"held\": 40, \"limit\": 10000, \"secondsLeft\": 5}");
+        let view = plain(&busy);
+        assert!(view.contains("\n/memory: 150 MB, 18 s left\n"), "{view}");
+        assert!(view.contains("\n/disk: 0 MB, 9 s left\n"), "{view}");
+        assert!(view.contains("\n/fd: 40, 5 s left\n"), "{view}");
+        assert!(!view.contains("/connections:"), "what is not held has no line");
+        let idle = plain(INFO);
+        assert!(!idle.contains("/memory:") && !idle.contains("/disk:") && !idle.contains("/fd:"), "{idle}");
     }
 
     #[test]

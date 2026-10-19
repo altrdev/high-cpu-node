@@ -631,6 +631,13 @@ async function tick() {
             const n = info.stress.burn.workers ?? info.stress.workers;
             status.unshift(`/cpu: ${info.stress.burn.percent}% on ${n < info.stress.workers ? `${n} of ${info.stress.workers} workers` : 'every worker'}, ${info.stress.burn.secondsLeft} s left`);
         }
+        const holds = [
+            ['/memory', info.memory.secondsLeft, `${info.memory.heldMb} MB`],
+            ['/disk', info.disk.secondsLeft, `${info.disk.heldMb} MB`],
+            ['/fd', info.fd && info.fd.secondsLeft, info.fd && info.fd.held],
+            ['/connections', info.connections && info.connections.secondsLeft, info.connections && info.connections.held],
+        ];
+        for (const [path, left, held] of holds.reverse()) if (left != null) status.unshift(`${path}: ${held}, ${left} s left`);
         if (info.scenario && info.scenario.state === 'running') status.unshift(`/scenario: step ${info.scenario.step} of ${info.scenario.steps}, ${info.scenario.remainingSeconds} s left`);
         if ($('scenario-now')) $('scenario-now').textContent = scenarioText(info.scenario);
         if (info.log) status.unshift(`/log: ${info.log.sent} of ${info.log.lines} lines, ${info.log.rate} lines/s`);
