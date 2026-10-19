@@ -57,25 +57,15 @@ jobs:
 
       - uses: docker/setup-buildx-action@v4
 
-      # The layers of the dependencies are kept between runs, so only torchio itself is compiled again.
-      # Only the build for both platforms writes the cache: one that wrote only the amd64 layers
-      # would replace the arm64 ones, and the second build finds the amd64 layers of the first.
+      # The layers of the dependencies are kept between runs, so only torchio itself is compiled again
       - name: Build the Docker image
         uses: docker/build-push-action@v7
         with:
           context: .
           load: true
           tags: torchio
-          cache-from: type=gha
-
-      # the same Dockerfile compiles for both platforms on this one, without emulation
-      - name: Build the Docker image for both platforms
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          platforms: linux/amd64,linux/arm64
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=amd64
+          cache-to: type=gha,scope=amd64,mode=max
 
       - name: The image is a single small binary
         run: |
@@ -127,3 +117,21 @@ jobs:
       - name: Container logs
         if: failure()
         run: docker logs sn
+
+  # The same Dockerfile compiles for arm64 on the same runner, without emulation. A job of its own,
+  # so that it runs at the same time as the one that builds and tests the amd64 image.
+  image-arm64:
+    name: Docker image for arm64
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Build the Docker image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/arm64
+          cache-from: type=gha,scope=arm64
+          cache-to: type=gha,scope=arm64,mode=max
