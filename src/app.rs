@@ -2,6 +2,7 @@
 use crate::config::Config;
 use crate::http::counters::{self, Counters};
 use crate::http::{auth, trust::Trust};
+use crate::logging;
 use crate::resources::delay::Delay;
 use crate::resources::disk::Disk;
 use crate::resources::fd::Fd;
@@ -45,9 +46,9 @@ impl AppState {
             ready: Arc::new(Ready::default()),
             delay: Delay::default(),
             memory: Memory::new(config.max_memory_mb),
-            disk: Arc::new(Disk::new(&config.disk_dir, config.max_disk_mb)),
+            disk: Arc::new(Disk::new(&config.disk_dir, config.max_disk_mb, config.log_format)),
             fd: Fd::new(config.max_fd),
-            log: Arc::default(),
+            log: Arc::new(Log::new(config.log_format)),
             pool: WorkerPool::new(config.workers as usize),
             config,
         })
@@ -91,6 +92,7 @@ pub fn router(state: Arc<AppState>) -> Router {
     open.merge(guarded)
         .route_layer(axum::middleware::from_fn(counters::mark))
         .layer(from_fn_with_state(state.clone(), counters::count))
+        .layer(from_fn_with_state(state.clone(), logging::access))
         .layer(CorsLayer::permissive())
         .with_state(state)
 }

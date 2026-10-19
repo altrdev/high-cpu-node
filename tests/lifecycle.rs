@@ -28,6 +28,69 @@ fn a_value_that_is_not_a_positive_integer_is_reported_and_replaced_by_the_defaul
     assert!(!output.contains("MAX_HOLD_SECONDS"), "a valid value is not reported");
 }
 
+// What the server wrote as JSON objects, one for each line
+fn json_lines(server: &Server) -> Vec<serde_json::Value> {
+    server.output().lines().map(|line| serde_json::from_str(line).unwrap_or_else(|_| panic!("not JSON: {line}"))).collect()
+}
+
+#[test]
+fn with_json_every_line_is_an_object_with_the_time_the_level_and_the_message() {
+    let server = Server::with(&[("LOG_FORMAT", "json"), ("MAX_NUMBER", "abc")]);
+    wait_for("the start line", 5000, || server.output().contains("running on"));
+    let lines = json_lines(&server);
+    let warning = lines.iter().find(|l| l["message"].as_str().is_some_and(|m| m.starts_with("MAX_NUMBER=abc"))).unwrap();
+    assert_eq!(warning["level"], "warn");
+    let started = lines.iter().find(|l| l["message"].as_str().is_some_and(|m| m.contains("running on"))).unwrap();
+    assert_eq!(started["level"], "info");
+    let timestamp = started["timestamp"].as_str().unwrap();
+    assert!(timestamp.len() == 24 && timestamp.ends_with('Z'), "{timestamp}");
+    assert!(server.text("/config").contains("\"logFormat\":\"json\""));
+}
+
+#[test]
+fn with_json_each_request_has_a_line_with_method_path_status_and_duration() {
+    let server = Server::with(&[("LOG_FORMAT", "json")]);
+    server.get("/status/418?token=secret");
+    server.get("/nowhere");
+    wait_for("the access lines", 5000, || server.output().contains("/nowhere"));
+    let lines = json_lines(&server);
+    let teapot = lines.iter().find(|l| l["path"] == "/status/418").unwrap();
+    assert_eq!(teapot["message"], "GET /status/418 418");
+    assert_eq!((teapot["method"].as_str(), teapot["status"].as_u64()), (Some("GET"), Some(418)));
+    assert!(teapot["duration_ms"].as_f64().unwrap() >= 0.0);
+    assert!(!server.output().contains("secret"), "the query is not logged");
+    assert_eq!(lines.iter().find(|l| l["path"] == "/nowhere").unwrap()["status"], 404);
+}
+
+#[test]
+fn with_json_the_lines_of_log_are_objects_too() {
+    let server = Server::with(&[("LOG_FORMAT", "json")]);
+    server.get("/log?lines=3&rate=100");
+    wait_for("the lines", 5000, || logged(&server).len() >= 3);
+    let line: serde_json::Value = serde_json::from_str(&logged(&server)[2]).unwrap();
+    assert_eq!(line["message"], "torchio-log line 3 of 3");
+    assert_eq!(line["level"], "info");
+}
+
+#[test]
+fn the_default_is_plain_text_without_access_lines() {
+    let server = Server::start();
+    server.get("/status/418");
+    server.get("/");
+    let output = server.output();
+    assert!(output.starts_with("torchio running on"), "{output}");
+    assert!(!output.contains("/status/418"), "{output}");
+    assert!(!output.contains('{'), "{output}");
+}
+
+#[test]
+fn a_log_format_that_is_not_text_or_json_is_reported_and_text_is_used() {
+    let server = Server::with(&[("LOG_FORMAT", "xml")]);
+    assert!(server.output().contains("LOG_FORMAT=xml is not text or json, using text"), "{}", server.output());
+    server.get("/");
+    assert!(!server.output().contains("GET /"));
+}
+
 #[test]
 fn the_start_can_be_delayed() {
     let started = Instant::now();

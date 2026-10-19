@@ -558,12 +558,25 @@ Environment variables:
 | `TOKEN`            | none            | Makes the endpoints that change the state need `Authorization: Bearer <token>` |
 | `MAX_HOLD_SECONDS` | `300`           | Highest `hold`, `seconds` and `after` accepted by the endpoints that take them |
 | `DISK_DIR`         | system temp dir | Directory where `/disk` writes its files          |
+| `LOG_FORMAT`       | `text`          | `json` writes one JSON object a line instead of plain text, see [Logs](#logs) |
 
 A number must be a positive integer. A value that is not one is reported at startup and replaced by the default.
 
 ```
 docker run -p 3000:3000 -e WORKERS=2 -e MAX_MEMORY_MB=2048 altrdev/torchio:latest
 ```
+
+## Logs
+
+By default the server writes plain text: what it is doing at the start, the settings it replaced and the errors, plus the lines of [`/log`](#log). It writes no line for each request.
+
+`LOG_FORMAT=json` writes one JSON object a line, for a log aggregator that would otherwise have to parse the text. Every line has `timestamp` (ISO 8601, UTC), `level` (`info`, `warn` or `error`) and `message`; warnings and errors go to stderr, the rest to stdout. The lines of `/log` have the same fields. In this format every request also has a line, with `method`, `path`, `status` and `duration_ms` (the query is left out, because it can hold a token):
+
+```json
+{"timestamp":"2026-10-19T12:34:56.789Z","level":"info","message":"GET /status/418 418","method":"GET","path":"/status/418","status":418,"duration_ms":0.215}
+```
+
+The effective format is `logFormat` in [`/config`](#config).
 
 ## Docker
 
@@ -721,6 +734,7 @@ src/
     info.rs          what /info says, as watch reads it
     http.rs          the small HTTP client of the commands
     healthcheck.rs   torchio healthcheck
+  logging.rs       LOG_FORMAT: the text and the JSON lines, and the access log
   snapshot.rs      the figures behind /info and /metrics
   system.rs        RSS, the memory limit of the container, free space, names of errors
   units.rs         units of size

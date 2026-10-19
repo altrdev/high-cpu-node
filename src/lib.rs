@@ -15,6 +15,7 @@ pub mod cli;
 pub mod config;
 pub mod endpoints;
 pub mod http;
+pub mod logging;
 pub mod resources;
 pub mod routes;
 pub mod server;

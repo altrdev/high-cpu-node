@@ -236,6 +236,7 @@ async fn the_configuration_has_these_keys() {
             "defaultNumber",
             "diskDir",
             "host",
+            "logFormat",
             "maxDelayMs",
             "maxDiskMb",
             "maxFd",
