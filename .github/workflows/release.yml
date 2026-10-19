@@ -81,7 +81,7 @@ jobs:
           cp dist/linux_arm64/torchio release/torchio-linux-arm64
 
       - name: Collect the macOS binaries
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: torchio-macos-*
           path: release
