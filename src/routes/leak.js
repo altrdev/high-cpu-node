@@ -1,5 +1,6 @@
 const {MB} = require('../units');
 const {readParams} = require('../params');
+const {specs} = require('../endpoints');
 
 // Memory that grows by itself, `rate` MB each second up to `mb` MB, and is released after
 // `hold` seconds: a leak you can watch from the outside before it ends in an OOM kill. It
@@ -8,11 +9,7 @@ module.exports = function createLeak(config, memory) {
     const leaks = new Set();
 
     const handler = (req, res) => {
-        const params = readParams(req, res, {
-            rate: {fallback: config.defaultLeakRateMb, min: 1, max: config.maxMemoryMb},
-            mb: {fallback: config.defaultMemoryMb, min: 1, max: config.maxMemoryMb},
-            hold: {fallback: config.defaultHoldSeconds, min: 0, max: config.maxHoldSeconds},
-        });
+        const params = readParams(req, res, specs(config).leak);
         if (!params) return;
         const {rate, mb, hold} = params;
 

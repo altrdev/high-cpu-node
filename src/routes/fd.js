@@ -2,6 +2,7 @@ const fs = require('fs');
 const os = require('os');
 const {Budget} = require('../budget');
 const {readParams} = require('../params');
+const {specs} = require('../endpoints');
 
 // Opens `count` file descriptors and holds them for `hold` seconds, to test what happens when a
 // process runs out of them (EMFILE). MAX_FD is the total that can be held at the same time.
@@ -21,10 +22,7 @@ module.exports = function createFd(config) {
     };
 
     const handler = (req, res) => {
-        const params = readParams(req, res, {
-            count: {fallback: config.defaultFd, min: 1, max: config.maxFd},
-            hold: {fallback: config.defaultHoldSeconds, min: 0, max: config.maxHoldSeconds},
-        });
+        const params = readParams(req, res, specs(config).fd);
         if (!params) return;
         const {count, hold} = params;
 

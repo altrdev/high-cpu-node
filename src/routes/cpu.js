@@ -1,4 +1,5 @@
 const {readParams} = require('../params');
+const {specs} = require('../endpoints');
 
 // Keeps the CPU at a level instead of running a calculation: each worker is busy for `percent`
 // of the time during `hold` seconds, which is what a CPU based autoscaler reacts to. With
@@ -6,10 +7,7 @@ const {readParams} = require('../params');
 // the previous one, and percent=0 stops it.
 module.exports = function createCpu(config, pool) {
     return (req, res) => {
-        const params = readParams(req, res, {
-            percent: {fallback: config.defaultCpuPercent, min: 0, max: 100},
-            hold: {fallback: config.defaultHoldSeconds, min: 0, max: config.maxHoldSeconds},
-        });
+        const params = readParams(req, res, specs(config).cpu);
         if (!params) return;
         const {percent, hold} = params;
 
