@@ -36,6 +36,14 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2.9.2
 
+      # the version of the commit that is built: of the tag for a release, of main for a run by hand
+      - name: Write the version in the site
+        run: |
+          VERSION=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n 1)
+          printf '%s' "$VERSION" > book/src/version.md
+          sed -i "s/^title = \"torchio\"/title = \"torchio $VERSION\"/" book/book.toml
+          grep -q "^title = \"torchio $VERSION\"" book/book.toml
+
       - name: Write the reference of the endpoints from the catalog
         run: cargo run --locked --example endpoints_reference > book/src/reference.md
 
