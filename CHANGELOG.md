@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
+## Unreleased
+
+### Added
+- `/flaky?rate=&code=&ms=` fails `rate` percent of the requests with `code` (`503` by default) and answers `200` to the rest, to test retries, circuit breakers and outlier detection. `ms` makes a failing answer wait first, like `/delay`. `torchio flaky [rate] [code] [ms]` calls it.
+
 ## 4.2.0 - 2026-10-19
 
 ### Added

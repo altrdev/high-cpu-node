@@ -6,6 +6,7 @@ pub mod delay;
 pub mod disk;
 pub mod echo;
 pub mod fd;
+pub mod flaky;
 pub mod help;
 pub mod info;
 pub mod leak;

@@ -5,6 +5,7 @@ pub mod budget;
 pub mod delay;
 pub mod disk;
 pub mod fd;
+pub mod flaky;
 pub mod log;
 pub mod memory;
 pub mod ready;

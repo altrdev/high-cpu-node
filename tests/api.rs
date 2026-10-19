@@ -153,6 +153,38 @@ async fn status_answers_every_code_it_promises() {
 }
 
 #[tokio::test]
+async fn flaky_never_fails_at_rate_0_and_always_does_at_rate_100() {
+    let app = app(&[]);
+    for _ in 0..50 {
+        let answer = get(&app, "/flaky?rate=0").await;
+        assert_eq!((answer.status, answer.body.as_str()), (StatusCode::OK, "Status: OK"));
+        let answer = get(&app, "/flaky?rate=100").await;
+        assert_eq!((answer.status, answer.body.as_str()), (StatusCode::SERVICE_UNAVAILABLE, "Status: 503"), "503 is the default");
+    }
+    assert_eq!(get(&app, "/flaky?rate=100&code=429").await.status, StatusCode::TOO_MANY_REQUESTS);
+    assert_eq!(get(&app, "/flaky?rate=100&code=599").await.status.as_u16(), 599);
+}
+
+#[tokio::test]
+async fn flaky_fails_about_half_of_the_requests_by_default() {
+    let app = app(&[]);
+    let mut failed = 0;
+    for _ in 0..400 {
+        failed += i32::from(get(&app, "/flaky").await.status != StatusCode::OK);
+    }
+    assert!((120..=280).contains(&failed), "{failed} of 400 failed with the default rate of 50");
+}
+
+#[tokio::test]
+async fn flaky_only_takes_a_code_that_is_a_failure() {
+    let app = app(&[]);
+    assert_eq!(get(&app, "/flaky?code=399").await.body, "code must be between 400 and 599");
+    assert_eq!(get(&app, "/flaky?code=600").await.status, StatusCode::BAD_REQUEST);
+    assert_eq!(get(&app, "/flaky?rate=101").await.body, "rate must be between 0 and 100");
+    assert_eq!(get(&app, "/flaky?ms=60001").await.status, StatusCode::BAD_REQUEST, "the limit of /delay");
+}
+
+#[tokio::test]
 async fn head_answers_like_get_without_a_body() {
     let app = app(&[]);
     let answer = request(&app, "HEAD", "/", &[]).await;

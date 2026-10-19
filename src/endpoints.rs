@@ -7,14 +7,18 @@ use serde_json::{Map, Value, json};
 
 pub const STATUS_MIN: i64 = 200;
 pub const STATUS_MAX: i64 = 599;
+/// The lowest status that `/flaky` fails with: a failure is a 4xx or a 5xx
+pub const FAILURE_MIN: i64 = 400;
 
 type Specs1 = [(&'static str, Param); 1];
 type Specs2 = [(&'static str, Param); 2];
+type Specs3 = [(&'static str, Param); 3];
 
 pub struct Specs {
     pub stress: Specs1,
     pub cpu: Specs2,
     pub delay: Specs1,
+    pub flaky: Specs3,
     pub memory: Specs2,
     pub leak: [(&'static str, Param); 3],
     pub disk: Specs2,
@@ -30,6 +34,11 @@ pub fn specs(config: &Config) -> Specs {
         stress: [("number", Param::new(config.default_number, 0, config.max_number))],
         cpu: [("percent", Param::new(config.default_cpu_percent, 0, 100)), hold],
         delay: [("ms", Param::new(config.default_delay_ms, 0, config.max_delay_ms))],
+        flaky: [
+            ("rate", Param::new(50, 0, 100)),
+            ("code", Param::new(503, FAILURE_MIN, STATUS_MAX)),
+            ("ms", Param::new(0, 0, config.max_delay_ms)),
+        ],
         memory: [("mb", Param::new(config.default_memory_mb, 1, config.max_memory_mb)), hold],
         leak: [
             ("rate", Param::new(config.default_leak_rate_mb, 1, config.max_memory_mb)),
@@ -74,6 +83,7 @@ pub fn catalog(config: &Config) -> Vec<Endpoint> {
             location: Some("path"),
             description: "Answers with the given HTTP status",
         },
+        endpoint("/flaky", false, &s.flaky, "Fails rate percent of the requests with code, and answers 200 to the rest"),
         endpoint("/memory", true, &s.memory, "Allocates memory (MB) and holds it"),
         endpoint("/leak", true, &s.leak, "Memory that grows by itself, rate MB each second up to mb MB"),
         endpoint("/disk", true, &s.disk, "Writes a file (MB) in DISK_DIR and keeps it"),

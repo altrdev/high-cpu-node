@@ -21,6 +21,7 @@ const ACTIONS: &[Action] = &[
     Action { name: "cpu", about: "Keep every worker busy for a share of the time", path: "/cpu", params: &["percent", "hold"] },
     Action { name: "delay", about: "Make the server answer after a delay", path: "/delay", params: &["ms"] },
     Action { name: "status", about: "Make the server answer with an HTTP status", path: "/status/{code}", params: &["code"] },
+    Action { name: "flaky", about: "Make the server fail a share of the requests", path: "/flaky", params: &["rate", "code", "ms"] },
     Action { name: "memory", about: "Allocate memory and hold it", path: "/memory", params: &["mb", "hold"] },
     Action { name: "leak", about: "Grow memory by itself up to a ceiling", path: "/leak", params: &["rate", "mb", "hold"] },
     Action { name: "disk", about: "Write a file and keep it", path: "/disk", params: &["mb", "hold"] },
@@ -158,7 +159,7 @@ fn target(action: &Action, values: &[(&'static str, String)]) -> Result<String, 
 /// How long to wait for the answer: `/stress` and `/delay` answer when they are done
 fn timeout(action: &Action) -> Duration {
     match action.name {
-        "stress" | "delay" => Duration::from_secs(600),
+        "stress" | "delay" | "flaky" => Duration::from_secs(600),
         _ => Duration::from_secs(30),
     }
 }
@@ -248,6 +249,12 @@ mod tests {
     fn a_parameter_may_be_given_by_name() {
         assert_eq!(url_of("memory", &["--hold", "5", "--mb=100"]).unwrap(), "/memory?hold=5&mb=100");
         assert_eq!(url_of("leak", &["1", "--hold", "9"]).unwrap(), "/leak?rate=1&hold=9");
+    }
+
+    #[test]
+    fn flaky_takes_the_rate_the_code_and_the_delay() {
+        assert_eq!(url_of("flaky", &["30", "502"]).unwrap(), "/flaky?rate=30&code=502");
+        assert_eq!(usage("flaky").unwrap(), "flaky [rate] [code] [ms]");
     }
 
     #[test]

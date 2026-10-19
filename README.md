@@ -93,9 +93,10 @@ More about it in [Load testing](#load-testing).
 ```
 curl -i http://127.0.0.1:3000/status/503
 curl --max-time 2 "http://127.0.0.1:3000/delay?ms=5000"
+curl -i "http://127.0.0.1:3000/flaky?rate=30"
 ```
 
-`/status/:code` answers with any status from `200` to `599`, and `/delay` waits without blocking the server, so the rest keeps being served while a slow request is pending.
+`/status/:code` answers with any status from `200` to `599`, and `/delay` waits without blocking the server, so the rest keeps being served while a slow request is pending. `/flaky` fails only some of the requests, to see how retries, circuit breakers and outlier detection behave.
 
 ### Disk and volumes
 
@@ -140,6 +141,7 @@ The server listens on port 3000.
 | `/cpu`          | `percent`, `hold`  | Keeps the workers busy for a share of the time, to test CPU based autoscaling |
 | `/delay`        | `ms`               | Answers after a delay, to test timeouts and slow backends   |
 | `/status/:code` | `code` (in the path) | Answers with the given HTTP status, to test probes and retries |
+| `/flaky`        | `rate`, `code`, `ms` | Fails a share of the requests, to test retries and circuit breakers |
 | `/memory`       | `mb`, `hold`       | Allocates memory and holds it, to test memory limits and OOM kills |
 | `/leak`         | `rate`, `mb`, `hold` | Memory that grows by itself up to a ceiling, to test alerts and leaks |
 | `/disk`         | `mb`, `hold`       | Writes a file and keeps it, to test disk limits and volumes |
@@ -208,6 +210,23 @@ Answers with the HTTP status you ask for. Codes must be integers from `200` to `
 ```
 curl -i http://127.0.0.1:3000/status/503
 ```
+
+### `/flaky`
+
+Answers with `code` for `rate` percent of the requests and with `200` for the rest, to test retries, circuit breakers and outlier detection. Each request is decided on its own, so the share is only exact over many requests; `rate=0` never fails and `rate=100` always does. A failing answer waits `ms` milliseconds first, like [`/delay`](#delay), and a request that succeeds never waits.
+
+| Parameter | Default | Allowed range     |
+|-----------|---------|-------------------|
+| `rate`    | `50`    | `0..100`          |
+| `code`    | `503`   | `400..599`        |
+| `ms`      | `0`     | `0..MAX_DELAY_MS` |
+
+```
+curl -i "http://127.0.0.1:3000/flaky?rate=30"
+curl -i "http://127.0.0.1:3000/flaky?rate=100&code=429&ms=500"
+```
+
+The answers are counted in [`/metrics`](#metrics) by status as usual, so `torchio_http_requests_total{route="/flaky",code="503"}` is the number of failures. Like `/status/:code` and `/delay`, it changes nothing in the server, so [`TOKEN`](#token) does not protect it.
 
 ### `/memory`
 
@@ -439,6 +458,7 @@ torchio crash 137 --after 5
 | `torchio cpu [percent] [hold]`   | [`/cpu`](#cpu)           |
 | `torchio delay [ms]`             | [`/delay`](#delay)       |
 | `torchio status <code>`          | [`/status/:code`](#statuscode) |
+| `torchio flaky [rate] [code] [ms]` | [`/flaky`](#flaky)     |
 | `torchio memory [mb] [hold]`     | [`/memory`](#memory)     |
 | `torchio leak [rate] [mb] [hold]`| [`/leak`](#leak)         |
 | `torchio disk [mb] [hold]`       | [`/disk`](#disk)         |
@@ -447,7 +467,7 @@ torchio crash 137 --after 5
 | `torchio crash [code] [after]`   | [`/crash`](#crash)       |
 | `torchio ready on \| off [seconds]` | [`/ready`](#ready)   |
 
-The values after the name are the parameters of the endpoint, in the order of the table; any of them can also be given by name, as `--hold 60` or `--hold=60`. The limits are the ones of the server: a value it refuses is printed with its `400` and the command exits with `1`. With [`TOKEN`](#token), pass `--token <token>` or set `TOKEN`. `/stress` and `/delay` answer when they finish, so the command waits for them. Like `watch`, it speaks plain HTTP only.
+The values after the name are the parameters of the endpoint, in the order of the table; any of them can also be given by name, as `--hold 60` or `--hold=60`. The limits are the ones of the server: a value it refuses is printed with its `400` and the command exits with `1`. With [`TOKEN`](#token), pass `--token <token>` or set `TOKEN`. `/stress`, `/delay` and `/flaky` with `ms` answer when they finish, so the command waits for them. Like `watch`, it speaks plain HTTP only.
 
 ## Shell completion
 
@@ -535,7 +555,7 @@ docker run -p 3000:3000 -e TOKEN=secret altrdev/torchio:latest
 curl -H "Authorization: Bearer secret" localhost:3000/crash
 ```
 
-Without the header, or with a wrong token, they answer `401`. `/`, `/ready`, `/info`, `/metrics`, `/help`, `/config`, `/echo`, `/delay` and `/status/:code` stay open, so probes, Prometheus and `watch` work as before. [`/info`](#info) tells whether a token is needed (`auth`). The control panel asks for it the first time a server answers `401` and keeps it for that tab. Without `TOKEN` nothing is checked.
+Without the header, or with a wrong token, they answer `401`. `/`, `/ready`, `/info`, `/metrics`, `/help`, `/config`, `/echo`, `/delay`, `/status/:code` and `/flaky` stay open, so probes, Prometheus and `watch` work as before. [`/info`](#info) tells whether a token is needed (`auth`). The control panel asks for it the first time a server answers `401` and keeps it for that tab. Without `TOKEN` nothing is checked.
 
 It is a shared password, not a login: without HTTPS it travels in clear, so on the internet put a proxy with TLS in front.
 
@@ -696,6 +716,7 @@ src/
     ready.rs         the readiness switch
     log.rs           the lines of /log
     delay.rs         the requests of /delay still waiting
+    flaky.rs         the coin of /flaky: which requests fail
   http/            what serves requests and is not specific to an endpoint
     params.rs        the integer query parameters
     auth.rs          TOKEN

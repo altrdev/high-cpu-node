@@ -6,6 +6,7 @@ use crate::logging;
 use crate::resources::delay::Delay;
 use crate::resources::disk::Disk;
 use crate::resources::fd::Fd;
+use crate::resources::flaky::Flaky;
 use crate::resources::log::Log;
 use crate::resources::memory::Memory;
 use crate::resources::ready::Ready;
@@ -32,6 +33,7 @@ pub struct AppState {
     pub memory: Memory,
     pub disk: Arc<Disk>,
     pub fd: Fd,
+    pub flaky: Flaky,
     pub log: Arc<Log>,
     pub pool: WorkerPool,
 }
@@ -48,6 +50,7 @@ impl AppState {
             memory: Memory::new(config.max_memory_mb),
             disk: Arc::new(Disk::new(&config.disk_dir, config.max_disk_mb, config.log_format)),
             fd: Fd::new(config.max_fd),
+            flaky: Flaky::default(),
             log: Arc::new(Log::new(config.log_format)),
             pool: WorkerPool::new(config.workers as usize),
             config,
@@ -79,6 +82,7 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/", get(|| async { "Status: OK" }))
         .route("/delay", get(routes::delay::handler))
         .route("/status/{code}", get(routes::status::handler))
+        .route("/flaky", get(routes::flaky::handler))
         .route("/ready", get(routes::ready::handler))
         .route("/echo", get(routes::echo::handler))
         .route("/info", get(routes::info::handler))
