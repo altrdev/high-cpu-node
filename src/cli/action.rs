@@ -197,7 +197,7 @@ pub fn perform(line: &str, url: &str, token: Option<&str>) -> Result<String, Str
 }
 
 /// What the server answered as a message: its body, or what went wrong
-fn answer(result: Result<(u16, String), String>, url: &str) -> Result<String, String> {
+pub(super) fn answer(result: Result<(u16, String), String>, url: &str) -> Result<String, String> {
     match result {
         Ok((status, body)) if status < 400 => Ok(body.trim_end().to_string()),
         Ok((401, _)) => Err("The server asks for a token: use --token <token> or TOKEN".into()),
