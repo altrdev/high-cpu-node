@@ -4,7 +4,7 @@ const {toMb} = require('../units');
 // without having to hit a 429 or a 507
 module.exports = function createInfo({config, version, startedAt, snapshot}) {
     return async (req, res) => {
-        const {stress, delayInFlight, memory, disk, fd, ready} = await snapshot();
+        const {stress, delayInFlight, memory, disk, fd, ready, log} = await snapshot();
 
         res.json({
             name: config.name,
@@ -27,10 +27,13 @@ module.exports = function createInfo({config, version, startedAt, snapshot}) {
             },
             fd: {held: fd.held, limit: fd.limit},
             ready,
+            log,
             limits: {
                 maxNumber: config.maxNumber,
                 maxDelayMs: config.maxDelayMs,
                 maxHoldSeconds: config.maxHoldSeconds,
+                maxLogLines: config.maxLogLines,
+                maxLogRate: config.maxLogRate,
             },
         });
     };

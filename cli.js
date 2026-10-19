@@ -69,6 +69,7 @@ function render(url, info, history) {
         '',
         `/stress in progress: ${info.stress.inFlight}   /delay waiting: ${info.delay.inFlight}`,
         ...(info.stress.burn ? [`/cpu: ${info.stress.burn.percent}% on every worker, ${info.stress.burn.secondsLeft} s left`] : []),
+        ...(info.log ? [`/log: ${info.log.sent} of ${info.log.lines} lines, ${info.log.rate} lines/s`] : []),
         ...(info.ready ? [readiness(info.ready)] : []),
         `disk dir: ${shorten(info.disk.dir, 40)}   ${free}`,
     ].join('\n');

@@ -2,7 +2,7 @@ const fs = require('fs');
 const os = require('os');
 
 // What the server is doing right now, in raw units, shared by /info (MB) and /metrics (bytes)
-module.exports = function createSnapshot({config, pool, delay, memory, disk, fd, ready}) {
+module.exports = function createSnapshot({config, pool, delay, memory, disk, fd, ready, log}) {
     return async () => {
         // 0 or a huge value when the process has no memory limit
         const constrained = process.constrainedMemory();
@@ -32,6 +32,7 @@ module.exports = function createSnapshot({config, pool, delay, memory, disk, fd,
             },
             fd: {held: fd.budget.held, limit: fd.budget.limit},
             ready: ready.state(),
+            log: log.state(),
         };
     };
 };

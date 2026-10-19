@@ -5,6 +5,8 @@ All notable changes to this project are documented here. The GitHub release of e
 ## Unreleased
 
 ### Added
+- `GET /log?lines=&rate=` writes lines to stdout at a given rate, then stops (`MAX_LOG_LINES`, `MAX_LOG_RATE`). It needs the token with `TOKEN`. `/info` has `log` while it writes, and `watch` and the control panel show it.
+- `GET /echo` returns the request as the server sees it (headers, client address, protocol), with `Authorization`, `Proxy-Authorization` and `Cookie` masked. `TRUST_PROXY` makes it follow `X-Forwarded-*`.
 - `GET /help` lists every endpoint with its parameters, defaults and limits, as JSON or as plain text for a browser. `GET /config` shows the effective configuration, without the token. Both are open, and `/help` is built from the same definitions the endpoints read their parameters from (`src/endpoints.js`).
 
 ## 3.4.0 - 2026-10-18

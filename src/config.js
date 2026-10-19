@@ -13,6 +13,14 @@ function positiveInt(name, fallback, min = 1) {
     return value;
 }
 
+// TRUST_PROXY as Express reads it: true, a number of hops, or addresses/names (loopback, 10.0.0.0/8)
+function trustProxy() {
+    const raw = process.env.TRUST_PROXY;
+    if (raw === undefined || raw === '' || raw === 'false') return false;
+    if (raw === 'true') return true;
+    return /^\d+$/.test(raw) ? Number(raw) : raw;
+}
+
 module.exports = {
     name: 'torchio',
     port: positiveInt('PORT', 3000),
@@ -36,5 +44,10 @@ module.exports = {
     defaultFd: 100,
     maxFd: positiveInt('MAX_FD', 10000),
     defaultNotReadySeconds: 30,
+    defaultLogLines: 1000,
+    maxLogLines: positiveInt('MAX_LOG_LINES', 100000),
+    defaultLogRate: 100,
+    maxLogRate: positiveInt('MAX_LOG_RATE', 10000),
+    trustProxy: trustProxy(),
     diskDir: process.env.DISK_DIR || os.tmpdir(),
 };
