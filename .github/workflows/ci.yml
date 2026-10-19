@@ -82,8 +82,12 @@ jobs:
           docker run -d --name oom -m 256m --memory-swap 256m -e MAX_MEMORY_MB=1024 -p 3202:3000 torchio
           for i in $(seq 20); do curl -sf localhost:3202/ >/dev/null && break; sleep 1; done
           curl -s -m 10 "localhost:3202/memory?mb=400" || true
-          sleep 2
-          test "$(docker inspect -f '{{.State.OOMKilled}}' oom)" = true
+          for i in $(seq 15); do
+            [ "$(docker inspect -f '{{.State.OOMKilled}}' oom)" = true ] && exit 0
+            sleep 1
+          done
+          docker inspect -f 'status={{.State.Status}} exit={{.State.ExitCode}} oom={{.State.OOMKilled}}' oom
+          exit 1
 
       - name: The CPUs of the container limit the workers
         run: |
