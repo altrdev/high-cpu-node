@@ -1,13 +1,13 @@
-<!-- what a link to the site looks like when it is shared: Open Graph (most sites and chats) and the card of X -->
+<!-- what a link to the site looks like when it is shared: Open Graph (most sites and chats) and the card of X; the home has its own title, the other pages their own -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="torchio">
-<meta property="og:title" content="{{ title }}">
+<meta property="og:title" content="{{#if (or (eq path "introduction.md") (eq path "index.md"))}}Torchio 🔥 Put your containers under the press{{else}}{{ title }}{{/if}}">
 <meta property="og:description" content="Break your containers on purpose: burn CPU, hold memory, fill disk and more, on demand over HTTP.">
 <meta property="og:image" content="https://torchio.altr.dev/images/social-preview.png">
 <meta property="og:image:width" content="1280">
 <meta property="og:image:height" content="640">
 <meta property="og:image:alt" content="torchio: break your containers on purpose">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="{{ title }}">
+<meta name="twitter:title" content="{{#if (or (eq path "introduction.md") (eq path "index.md"))}}Torchio 🔥 Put your containers under the press{{else}}{{ title }}{{/if}}">
 <meta name="twitter:description" content="Break your containers on purpose: burn CPU, hold memory, fill disk and more, on demand over HTTP.">
 <meta name="twitter:image" content="https://torchio.altr.dev/images/social-preview.png">
