@@ -1,4 +1,4 @@
-node_modules
+target
 .git
 .github
 .idea
@@ -6,4 +6,5 @@ node_modules
 Dockerfile
 docker-compose.yml
 docs
-test
+tests
+*.md

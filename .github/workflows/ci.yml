@@ -7,43 +7,37 @@ on:
       - main
 
 jobs:
-  test:
-    name: Tests (Node ${{ matrix.node-version }})
-    runs-on: ubuntu-latest
+  rust:
+    name: Rust on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        node-version: [22, 24, 26]
+        os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v7
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: npm
-
-      - run: npm ci
+      - name: Install the Rust toolchain
+        run: |
+          rustup toolchain install stable --profile minimal --component clippy,rustfmt --no-self-update
+          rustup default stable
 
       - name: Changelog has a section for this version
         run: |
-          VERSION=$(node -p "require('./package.json').version")
+          VERSION=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n 1)
           grep -q "^## $VERSION " CHANGELOG.md || { echo "CHANGELOG.md has no section for $VERSION"; exit 1; }
 
-      - run: npm test
+      - run: cargo fmt --check
 
-      # How the memory shows up for the OS depends on the platform, so it is checked here on Linux
-      - name: Memory is returned to the OS
-        run: |
-          PORT=3100 WORKERS=1 node server.js &
-          SERVER_PID=$!
-          sleep 2
-          BASE_RSS=$(ps -o rss= -p $SERVER_PID)
-          curl -sf "localhost:3100/memory?mb=200&hold=1" | grep -q "Allocated 200 MB"
-          HELD_RSS=$(ps -o rss= -p $SERVER_PID)
-          test $((HELD_RSS - BASE_RSS)) -gt 150000
-          sleep 3
-          test $(($(ps -o rss= -p $SERVER_PID) - BASE_RSS)) -lt 100000
-          kill $SERVER_PID
+      - run: cargo clippy --all-targets --locked -- -D warnings
+
+      # unit tests, the tests of the router, and the integration tests that start the real binary
+      - run: cargo test --locked
+
+      - name: Documentation builds without warnings
+        run: cargo doc --no-deps --locked
+        env:
+          RUSTDOCFLAGS: -D warnings
 
   image:
     name: Docker image
@@ -51,8 +45,20 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Build Docker image
-        run: docker build -t torchio .
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Build the Docker image
+        run: docker buildx build --load -t torchio .
+
+      # the same Dockerfile compiles for both platforms on this one, without emulation
+      - name: Build the Docker image for both platforms
+        run: docker buildx build --platform linux/amd64,linux/arm64 .
+
+      - name: The image is a single small binary
+        run: |
+          SIZE=$(docker image inspect -f '{{.Size}}' torchio)
+          echo "image size: $SIZE bytes"
+          test "$SIZE" -lt 15000000
 
       - name: Test Docker image
         run: |
@@ -64,12 +70,30 @@ jobs:
           curl -sf "localhost:3200/disk?mb=20&hold=0" | grep -q "Wrote 20 MB"
           curl -sf localhost:3200/info | jq -e '.memory.containerLimitMb == 256'
           curl -sf localhost:3200/metrics | grep -q '^torchio_container_memory_limit_bytes 268435456$'
-          docker exec sn node cli.js watch --once | grep -q "(container)"
+          docker exec sn torchio watch --once | grep -q "(container)"
           for i in $(seq 60); do
             test "$(docker inspect -f '{{.State.Health.Status}}' sn)" = healthy && break
             sleep 1
           done
           test "$(docker inspect -f '{{.State.Health.Status}}' sn)" = healthy
+
+      - name: The memory limit kills the container
+        run: |
+          docker run -d --name oom -m 256m --memory-swap 256m -e MAX_MEMORY_MB=1024 -p 3202:3000 torchio
+          for i in $(seq 20); do curl -sf localhost:3202/ >/dev/null && break; sleep 1; done
+          curl -s -m 10 "localhost:3202/memory?mb=400" || true
+          for i in $(seq 15); do
+            [ "$(docker inspect -f '{{.State.OOMKilled}}' oom)" = true ] && exit 0
+            sleep 1
+          done
+          docker inspect -f 'status={{.State.Status}} exit={{.State.ExitCode}} oom={{.State.OOMKilled}}' oom
+          exit 1
+
+      - name: The CPUs of the container limit the workers
+        run: |
+          docker run -d --name cpus --cpus 2 -p 3201:3000 torchio
+          for i in $(seq 20); do curl -sf localhost:3201/ >/dev/null && break; sleep 1; done
+          curl -sf localhost:3201/info | jq -e '.stress.workers == 2'
 
       - name: Check /metrics with promtool
         run: curl -sf localhost:3200/metrics | docker run -i --rm --entrypoint promtool prom/prometheus:v3.5.0 check metrics

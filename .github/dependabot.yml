@@ -1,11 +1,11 @@
 version: 2
 updates:
-  - package-ecosystem: npm
+  - package-ecosystem: cargo
     directory: /
     schedule:
       interval: weekly
     groups:
-      npm-minor-patch:
+      cargo-minor-patch:
         update-types:
           - minor
           - patch

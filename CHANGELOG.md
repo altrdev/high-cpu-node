@@ -2,6 +2,26 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
+## 4.0.0 - 2026-10-19
+
+### Changed
+- torchio is rewritten in Rust and ships as a single static binary. The endpoints, parameters, limits, answers, environment variables and metrics are the same.
+- The Docker image is the binary and an empty `/tmp`, about 1.4 MB, with no shell. It runs as the user `65532`, and its `HEALTHCHECK` runs `torchio healthcheck`. A directory used as `DISK_DIR` must be writable by that user.
+- The server needs a few MB of memory instead of about 50, and the memory of `/memory` and `/leak` goes back to the OS as soon as it is released.
+- The workers of `/stress` and `/cpu` are threads, not processes. `/stress` is about 1.7 times faster on the same machine: the same `number` keeps a core busy for less time.
+- `WORKERS` defaults to the number of CPUs the process can use, which counts the CPU limit of a container (`--cpus 2` gives 2 workers). It used to be the number of cores of the machine.
+- `watch` is a command of the binary: `torchio watch`, or `docker exec -it <container> torchio watch`. It speaks plain HTTP only.
+- The help text of `torchio_workers` says threads instead of processes.
+
+### Added
+- `torchio healthcheck` exits with `0` when the server answers on `PORT`, for an image that has no `wget` or `curl`.
+- `torchio cpu 80`, `torchio memory 512 --hold 60`, `torchio ready off 30`…: a command for each endpoint that changes the state of a server, so a test starts without `curl`. It takes `--url` and `--token` (or `TOKEN`).
+- `torchio watch` has a new look on a terminal: smooth bars with a gradient, a header, a readiness badge, lit-up activity and the keys as chips. The plain text of `--once`, pipes and `NO_COLOR` is unchanged.
+- On a terminal, `torchio watch` takes keys that start the tests (`c` cpu, `m` memory, `x` crash…), and `:` for any command. `--read-only` turns them off, `--token` sets the token, and `--once` or a pipe never take keys.
+- The binary alone for `linux/amd64`, `linux/arm64`, `macos/amd64` and `macos/arm64`, with its `SHA256SUMS`, is attached to each GitHub release.
+- `install.sh` installs the binary of the latest release for the system (Linux or macOS, `amd64` or `arm64`) after checking its checksum: `curl -fsSL https://raw.githubusercontent.com/altrdev/torchio/main/install.sh | sh`.
+- `brew install altrdev/tap/torchio`: the release updates the formula of the Homebrew tap.
+
 ## 3.5.0 - 2026-10-19
 
 ### Added

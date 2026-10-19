@@ -2,11 +2,11 @@
 
 [![CI](https://github.com/altrdev/torchio/actions/workflows/ci.yml/badge.svg)](https://github.com/altrdev/torchio/actions/workflows/ci.yml) [![Docker image](https://img.shields.io/docker/v/altrdev/torchio.svg?sort=semver&label=docker%20image)](https://hub.docker.com/r/altrdev/torchio) [![Docker pulls](https://img.shields.io/docker/pulls/altrdev/torchio.svg)](https://hub.docker.com/r/altrdev/torchio) [![License](https://img.shields.io/github/license/altrdev/torchio)](https://github.com/altrdev/torchio/blob/main/LICENSE)
 
-**Break your containers on purpose.** torchio is a small Node.js server that burns CPU, holds memory, fills disk, answers slowly or returns any HTTP status, all on demand over HTTP. Use it to see how your setup behaves under pressure: autoscaling, resource limits, OOM kills, probes, timeouts and retries.
+**Break your containers on purpose.** torchio is a small server, a single static binary written in Rust, that burns CPU, holds memory, fills disk, answers slowly or returns any HTTP status, all on demand over HTTP. Use it to see how your setup behaves under pressure: autoscaling, resource limits, OOM kills, probes, timeouts and retries.
 
 *Torchio* is the Italian word for the press that squeezes wine and oil, as in *mettere sotto torchio*: to put under pressure. Put your containers under the press. It began in 2019 as `high-cpu-node`, when it could only burn CPU.
 
-![torchio watch: bars and history of busy workers, held memory, process RSS and held disk, while a load runs](https://raw.githubusercontent.com/altrdev/torchio/refs/heads/main/docs/watch.svg)
+![torchio watch: gradient bars and history of busy workers, held memory, process RSS and held disk, while keys start a memory test, a CPU burn and a leak](https://raw.githubusercontent.com/altrdev/torchio/refs/heads/main/docs/watch.svg)
 
 Source code and issues: https://github.com/altrdev/torchio
 
@@ -20,29 +20,41 @@ Start the server with Docker:
 docker run --name torchio -p 3000:3000 altrdev/torchio
 ```
 
-Or on your local machine (Node.js 22 or later):
+Or on your local machine, with Homebrew (macOS and Linux):
 
 ```
-git clone https://github.com/altrdev/torchio.git
-cd torchio
-npm install
-npm start
+brew install altrdev/tap/torchio
+torchio
+```
+
+Other ways to get the `torchio` command. A script that downloads the binary of the latest release for your system (macOS or Linux, `amd64` or `arm64`), checks its checksum and installs it:
+
+```
+curl -fsSL https://raw.githubusercontent.com/altrdev/torchio/main/install.sh | sh
+```
+
+It installs in `/usr/local/bin` (with `sudo` if needed, or in `~/.local/bin` when there is none). `TORCHIO_VERSION=v4.0.0` picks a release and `TORCHIO_INSTALL_DIR` the folder, for example `curl -fsSL ... | TORCHIO_INSTALL_DIR=$HOME/bin sh`. Or take the binary by hand from the [releases](https://github.com/altrdev/torchio/releases), or build it from the source (Rust 1.88 or later):
+
+```
+cargo install --git https://github.com/altrdev/torchio
 ```
 
 In a second terminal, watch what it does:
 
 ```
-docker exec -it torchio node cli.js watch    # with Docker
-npm run watch                               # on your local machine
+docker exec -it torchio torchio watch    # with Docker
+torchio watch                            # on your local machine, press m to start a memory test
 ```
 
 In a third one, put it under load, and see the bars move:
 
 ```
-curl "http://127.0.0.1:3000/memory?mb=200&hold=20"
-curl "http://127.0.0.1:3000/disk?mb=100&hold=20"
-for i in 1 2; do curl -s "http://127.0.0.1:3000/stress?number=44" & done; wait
+torchio memory 200 --hold 20
+torchio disk 100 --hold 20
+torchio stress 44
 ```
+
+The same thing with `curl`: `curl "http://127.0.0.1:3000/memory?mb=200&hold=20"`. See [Starting a test](#starting-a-test).
 
 ## What you can test
 
@@ -51,16 +63,16 @@ for i in 1 2; do curl -s "http://127.0.0.1:3000/stress?number=44" & done; wait
 Give the container a memory limit and ask for more than that:
 
 ```
-docker run -d --name oom -m 256m -e MAX_MEMORY_MB=1024 -p 3000:3000 altrdev/torchio
+docker run -d --name oom -m 256m --memory-swap 256m -e MAX_MEMORY_MB=1024 -p 3000:3000 altrdev/torchio
 curl "http://127.0.0.1:3000/memory?mb=400"
 docker inspect -f '{{.State.OOMKilled}}' oom
 ```
 
-The container should be killed, and the last command prints `true`. `MAX_MEMORY_MB` is raised above the limit on purpose: its default (`512`) is a safety cap, so with it you can't exhaust a larger container.
+The container should be killed, and the last command prints `true`. `MAX_MEMORY_MB` is raised above the limit on purpose: its default (`512`) is a safety cap, so with it you can't exhaust a larger container. `--memory-swap` has the same value as `-m` so the container can't spill into swap, which on a host that has some (Docker Desktop does) would delay the kill or avoid it.
 
 ### Autoscaling
 
-A core stays busy only while a request is running, so send at least as many concurrent requests as workers (one per core by default):
+A core stays busy only while a request is running, so send at least as many concurrent requests as workers (one per CPU by default):
 
 ```
 hey -z 60s -c 8 "http://127.0.0.1:3000/stress?number=40"
@@ -95,7 +107,7 @@ If the write fails (disk full, read-only filesystem, directory not writable) the
 
 ```
 curl "http://127.0.0.1:3000/leak?rate=10&mb=400&hold=60"
-START_DELAY_SECONDS=30 npm start
+docker run -p 3000:3000 -e START_DELAY_SECONDS=30 altrdev/torchio
 ```
 
 `/leak` grows the memory by itself, a few MB each second, so you can watch a memory alert or an autoscaler react before the OOM kill. `START_DELAY_SECONDS` keeps the port closed for a while after the start, to test startup probes, rollouts and `depends_on`.
@@ -146,7 +158,7 @@ Every query parameter is optional. A value that is not a number falls back to it
 
 ### `/stress`
 
-Runs a recursive Fibonacci calculation in a worker process, so it keeps one core busy for the whole request.
+Runs a recursive Fibonacci calculation in a worker thread, so it keeps one core busy for the whole request.
 
 | Parameter | Default | Allowed range      |
 |-----------|---------|--------------------|
@@ -162,14 +174,14 @@ curl "http://127.0.0.1:3000/stress?number=40"
 
 Use [`/stress`](#stress) when the load must come from requests, so that response times show the pressure and concurrent requests queue up; use `/cpu` when you only need the CPU held at a level, as a percentage, for a while.
 
-Keeps every worker busy for `percent` of the time during `hold` seconds, instead of running one calculation. With one worker for each core (the default), `percent` is the load of the machine, which is what a CPU based autoscaler looks at. A new request replaces the previous one, and `percent=0` stops it.
+Keeps every worker busy for `percent` of the time during `hold` seconds, instead of running one calculation. With one worker for each CPU (the default), `percent` is the load of the machine, which is what a CPU based autoscaler looks at. A new request replaces the previous one, and `percent=0` stops it.
 
 | Parameter | Default | Allowed range         |
 |-----------|---------|-----------------------|
 | `percent` | `50`    | `0..100`              |
 | `hold`    | `10`    | `0..MAX_HOLD_SECONDS` |
 
-The answer comes right away. `/stress` keeps working while `/cpu` runs, and what is left is in `/info` (`stress.burn`) and in `/metrics` (`torchio_cpu_burn_percent`). In a container with a CPU limit the workers compete for it, so set `WORKERS` in line with the limit.
+The answer comes right away. `/stress` keeps working while `/cpu` runs, and what is left is in `/info` (`stress.burn`) and in `/metrics` (`torchio_cpu_burn_percent`). The default number of workers is the number of CPUs the process can use, so a CPU limit of the container counts (a limit of 2 CPUs gives 2 workers); set `WORKERS` to choose another.
 
 ```
 curl "http://127.0.0.1:3000/cpu?percent=70&hold=120"
@@ -206,7 +218,7 @@ Allocates `mb` megabytes and holds them for `hold` seconds, then releases them. 
 
 `MAX_MEMORY_MB` is also the total that can be held at the same time: a request that would exceed it together with the memory already held gets a `429`. `hold=0` releases the memory right away.
 
-The memory is filled synchronously, so a very large allocation pauses the server for a moment. The server process itself uses some memory on top of what you allocate.
+Every page is written, so the memory counts as used (RSS) as soon as the request is answered, and it goes back to the OS when it is released. The server itself needs only a few MB on top of what you allocate.
 
 To test an OOM kill, raise `MAX_MEMORY_MB` above the memory limit of your container. With the default (`512`) you can't exhaust a larger one.
 
@@ -301,7 +313,7 @@ Writes `lines` lines (default 1000) to stdout at `rate` lines each second (defau
 
 Returns the request as this server sees it: method, URL, protocol, `hostname`, client address (`ip`, the `ips` chain and `remoteAddress`, the peer of the connection) and all the headers. Call it through an ingress controller, a proxy or a load balancer to see what they add, remove or rewrite (`Host`, `X-Forwarded-For`, `X-Forwarded-Proto`). `Authorization`, `Proxy-Authorization` and `Cookie` are shown as `[masked]`.
 
-By default the `X-Forwarded-*` headers are not trusted: `ip` is the peer and `protocol` is `http`. Set `TRUST_PROXY` to let them decide, as in Express (`true`, a number of proxies, or addresses such as `loopback` or `10.0.0.0/8`); `ip`, `ips`, `protocol`, `secure` and `hostname` then follow the proxy.
+By default the `X-Forwarded-*` headers are not trusted: `ip` is the peer and `protocol` is `http`. Set `TRUST_PROXY` to let them decide: `true` trusts every proxy, a number trusts that many hops from the server, and a list of addresses, subnets (`10.0.0.0/8`) and the names `loopback`, `linklocal` and `uniquelocal` trusts those. The client is then the first address, walking back from the connection through `X-Forwarded-For`, that is not a trusted proxy, and `ip`, `ips`, `protocol`, `secure` and `hostname` follow the proxy.
 
 ### `/info`
 
@@ -310,7 +322,7 @@ Returns a JSON document with what the server is doing right now. It takes no par
 ```json
 {
   "name": "torchio",
-  "version": "3.5.0",
+  "version": "4.0.0",
   "uptimeSeconds": 321,
   "auth": false,
   "stress": { "workers": 4, "inFlight": 2, "perWorker": [1, 1, 0, 0], "burn": null },
@@ -346,7 +358,7 @@ The figures of [`/info`](#info) in the Prometheus text format, plus a counter of
 |---------------------------------------------|---------|-------------------------------------------------------------|
 | `torchio_info{version}`                 | gauge   | Always `1`, the version is in the label                     |
 | `torchio_start_time_seconds`            | gauge   | Start time, in Unix time                                    |
-| `torchio_workers`                       | gauge   | Worker processes for `/stress`                              |
+| `torchio_workers`                       | gauge   | Worker threads for `/stress`                                |
 | `torchio_stress_requests_in_flight`     | gauge   | `/stress` requests being calculated                         |
 | `torchio_worker_requests_in_flight{worker}` | gauge | The same, for each worker                                 |
 | `torchio_cpu_burn_percent`              | gauge   | Share of the time each worker is kept busy by `/cpu`, `0` when it is not running |
@@ -398,34 +410,81 @@ curl -s localhost:3000/help | jq '.endpoints[] | select(.path == "/cpu")'
 }
 ```
 
-The limits are the ones of this instance (`MAX_*`). The list is built from the same definitions the endpoints read their parameters from (`src/endpoints.js`), so it can't go out of date. `/ui` is listed only with `UI=1`.
+The limits are the ones of this instance (`MAX_*`). The list is built from the same definitions the endpoints read their parameters from (`src/endpoints.rs`), so it can't go out of date. `/ui` is listed only with `UI=1`.
 
 ### `/config`
 
 Returns the effective configuration as JSON: port, number of workers, defaults and limits, `DISK_DIR`, `UI`, `START_DELAY_SECONDS`. The token is never shown, only whether there is one (`auth`). Like `/info`, it is always open.
 
-## Watching a server
+## Starting a test
 
-`cli.js` shows what a server is doing in the terminal, refreshing every second with bars and a short history of the last samples (workers, memory, process memory, disk and file descriptors), plus whether `/ready` is answering `200` or `503`. It reads [`/info`](#info), needs no extra dependency and works against any running instance:
+Every endpoint that changes the state of the server is also a command, so you don't need `curl`. It calls a running server (`--url`, by default `http://127.0.0.1:$PORT` or port `3000`) and prints its answer:
 
 ```
-npm run watch
-npm run watch -- --url http://my-host:3000 --interval 2
+torchio cpu 80 --hold 60          # 80% of every worker for a minute
+torchio memory 512                # hold 512 MB for the default time
+torchio leak --rate 5 --mb 1000
+torchio ready off 30              # not ready for 30 seconds
+torchio status 503
+torchio crash 137 --after 5
+```
+
+| Command                          | Endpoint                 |
+|----------------------------------|--------------------------|
+| `torchio stress [number]`        | [`/stress`](#stress)     |
+| `torchio cpu [percent] [hold]`   | [`/cpu`](#cpu)           |
+| `torchio delay [ms]`             | [`/delay`](#delay)       |
+| `torchio status <code>`          | [`/status/:code`](#statuscode) |
+| `torchio memory [mb] [hold]`     | [`/memory`](#memory)     |
+| `torchio leak [rate] [mb] [hold]`| [`/leak`](#leak)         |
+| `torchio disk [mb] [hold]`       | [`/disk`](#disk)         |
+| `torchio fd [count] [hold]`      | [`/fd`](#fd)             |
+| `torchio log [lines] [rate]`     | [`/log`](#log)           |
+| `torchio crash [code] [after]`   | [`/crash`](#crash)       |
+| `torchio ready on \| off [seconds]` | [`/ready`](#ready)   |
+
+The values after the name are the parameters of the endpoint, in the order of the table; any of them can also be given by name, as `--hold 60` or `--hold=60`. The limits are the ones of the server: a value it refuses is printed with its `400` and the command exits with `1`. With [`TOKEN`](#token), pass `--token <token>` or set `TOKEN`. `/stress` and `/delay` answer when they finish, so the command waits for them. Like `watch`, it speaks plain HTTP only.
+
+## Watching a server
+
+`torchio watch` shows what a server is doing in the terminal, refreshing every second with bars and a short history of the last samples (workers, memory, process memory, disk and file descriptors), plus whether `/ready` is answering `200` or `503`. It is a command of the same binary, reads [`/info`](#info) and works against any running instance:
+
+```
+torchio watch
+torchio watch --url http://my-host:3000 --interval 2
 ```
 
 Inside a container, where the server is on `localhost`:
 
 ```
-docker exec -it <container> node cli.js watch
+docker exec -it <container> torchio watch
 ```
 
-| Option       | Default                    | Description                                              |
-|--------------|----------------------------|----------------------------------------------------------|
-| `--url`      | `http://127.0.0.1:$PORT` or port `3000` | Server to watch                              |
-| `--interval` | `1`                        | Seconds between samples                                  |
-| `--once`     |                            | Print one sample and exit; the status is `1` if the server can't be reached |
+| Option        | Default                    | Description                                              |
+|---------------|----------------------------|----------------------------------------------------------|
+| `--url`       | `http://127.0.0.1:$PORT` or port `3000` | Server to watch                              |
+| `--interval`  | `1`                        | Seconds between samples                                  |
+| `--token`     | `$TOKEN`                   | Token for the commands that need it                      |
+| `--read-only` |                            | Only look: no keys, even on a terminal                   |
+| `--once`      |                            | Print one sample and exit; the status is `1` if the server can't be reached |
 
-A server older than 3.1 doesn't report descriptors and readiness, so those two lines are left out. The history only covers the time the command has been running. The colour of a bar goes from green to red as it gets close to its limit; set `NO_COLOR=1` to turn colours off.
+### Keys
+
+On a terminal, `watch` also starts the tests, so you can load a server and see the bars move in the same window. A key opens a command line with the command already written, you add the values and press Enter:
+
+| Key | Command | Key | Command |
+|-----|---------|-----|---------|
+| `c` | `cpu`   | `g` | `log`   |
+| `m` | `memory`| `s` | `stress`|
+| `l` | `leak`  | `r` | `ready` |
+| `d` | `disk`  | `x` | `crash` |
+| `f` | `fd`    | `:` | any command, like `status 503` |
+
+The line shows the parameters of the command while you type (`cpu [percent] [hold]`), Enter with only the name uses the defaults, Esc cancels and `q` or Ctrl+C quits. The answer of the server, or its error, stays under the keys. The request runs in the background, so the view keeps refreshing while `/stress` or `/delay` wait. The commands are the ones of [Starting a test](#starting-a-test).
+
+The keys are on only when both the input and the output are a terminal. `--read-only` turns them off, which is the way to watch a shared instance without a key that can [`/crash`](#crash) it. With `--once`, or with the output in a pipe or a file, `watch` never takes keys.
+
+It speaks plain HTTP: to watch a server behind HTTPS, reach it with a port-forward. A server older than 3.1 doesn't report descriptors and readiness, so those two lines are left out. The history only covers the time the command has been running. On a terminal the bars are smooth and shift from green to red as they get close to their limit (blue where there is no limit to compare with), the history is brighter when it is higher, and what is happening (`/stress`, `/cpu`, `/log`) lights up while the rest stays dim. Readiness is a badge, green or red. Set `NO_COLOR=1` for plain text, which is also what you get when the output is not a terminal.
 
 ## Control panel
 
@@ -461,7 +520,7 @@ Environment variables:
 | Variable           | Default         | Description                                       |
 |--------------------|-----------------|---------------------------------------------------|
 | `PORT`             | `3000`          | Port the server listens on                        |
-| `WORKERS`          | number of cores | Number of worker processes for `/stress`          |
+| `WORKERS`          | CPUs of the process | Number of worker threads for `/stress` and `/cpu` |
 | `MAX_NUMBER`       | `50`            | Highest `number` accepted by `/stress`            |
 | `MAX_DELAY_MS`     | `60000`         | Highest `ms` accepted by `/delay`                 |
 | `MAX_MEMORY_MB`    | `512`           | Total memory `/memory` can hold at once           |
@@ -471,7 +530,7 @@ Environment variables:
 | `MAX_FD`           | `10000`         | Total descriptors `/fd` can hold at once          |
 | `MAX_LOG_LINES`    | `100000`        | Highest `lines` accepted by `/log`                |
 | `MAX_LOG_RATE`     | `10000`         | Highest `rate` accepted by `/log`                 |
-| `TRUST_PROXY`      | off             | Trusts `X-Forwarded-*` as Express does (`true`, a number or addresses), see `/echo` |
+| `TRUST_PROXY`      | off             | Trusts `X-Forwarded-*` (`true`, a number of hops, or addresses and subnets), see `/echo` |
 | `TOKEN`            | none            | Makes the endpoints that change the state need `Authorization: Bearer <token>` |
 | `MAX_HOLD_SECONDS` | `300`           | Highest `hold`, `seconds` and `after` accepted by the endpoints that take them |
 | `DISK_DIR`         | system temp dir | Directory where `/disk` writes its files          |
@@ -484,7 +543,9 @@ docker run -p 3000:3000 -e WORKERS=2 -e MAX_MEMORY_MB=2048 altrdev/torchio:lates
 
 ## Docker
 
-The image is built for `linux/amd64` and `linux/arm64`, runs as the non-root `node` user and has a `HEALTHCHECK` on `/`. With `START_DELAY_SECONDS` the container is unhealthy until the port opens, so give the healthcheck a longer `--start-period`. Because of the non-root user, a directory you use as `DISK_DIR` (for example a mounted volume) must be writable by it.
+The image is built for `linux/amd64` and `linux/arm64`. It holds the static binary and an empty `/tmp`, about 1.4 MB in all, and nothing else: no shell and no package manager, so `docker exec` runs `torchio` itself (`torchio watch`) rather than a shell. It runs as the non-root user `65532` and has a `HEALTHCHECK` on `/`, which runs `torchio healthcheck`. With `START_DELAY_SECONDS` the container is unhealthy until the port opens, so give the healthcheck a longer `--start-period`. Because of the non-root user, a directory you use as `DISK_DIR` (for example a mounted volume) must be writable by it.
+
+The binary alone, for Linux and macOS on `amd64` and `arm64`, is attached to each [release](https://github.com/altrdev/torchio/releases) with its `SHA256SUMS`.
 
 ## Examples
 
@@ -562,7 +623,7 @@ Some things to try, after `kubectl port-forward deploy/torchio 3000:3000`:
 
 ## How it works
 
-`/stress` requests are spread round-robin over a pool of worker processes (one per core by default), so concurrent requests can saturate multiple cores. A worker that crashes is restarted automatically, and the request it was serving gets a `500`. The other endpoints run in the main process.
+`/stress` requests are spread round-robin over a pool of worker threads (one for each CPU by default), so concurrent requests can saturate multiple cores. The other endpoints run on an async runtime (tokio), so a slow request never blocks the rest. The memory of `/memory` and `/leak` comes straight from the OS and goes back as soon as it is released.
 
 ## Load testing
 
@@ -597,29 +658,58 @@ Lower or raise `number` to tune how long each request keeps a core busy.
 ## Development
 
 ```
-npm run dev     # restarts the server when a file changes
-npm run watch   # terminal view of a running server
-npm test        # starts real servers on free ports and checks them
+cargo run               # starts the server
+cargo run -- watch      # terminal view of a running server
+cargo test              # every test: unit, router and integration
+cargo clippy --all-targets -- -D warnings
+cargo fmt
 ```
 
 ```
-server.js          starts the server (what npm start and the Docker image run)
-cli.js             the watch command
 src/
-  app.js           builds the Express app and wires the routes
-  config.js        environment variables, validated
-  params.js        reads and validates the query parameters
-  budget.js        the total that /memory and /disk share between requests
-  workers.js       the pool of worker processes for /stress
-  fibonacci.js     what a worker runs
-  snapshot.js      the figures behind /info and /metrics
-  counters.js      requests answered, for /metrics
-  endpoints.js     the parameters and limits of every endpoint, shared by the routes and /help
-  routes/          one file for each endpoint
-test/              the tests
+  main.rs          the program: runs the server or one of the commands
+  lib.rs           the crate, with a line on each module
+  config.rs        environment variables, validated
+  endpoints.rs     the parameters and limits of every endpoint, shared by the routes and /help
+  app.rs           what the routes share, and the router
+  server.rs        listens, and ends the process
+  routes/          one file for each endpoint: reads the parameters, asks resources, writes the answer
+  resources/       what the server holds or does on purpose, without knowing about HTTP
+    budget.rs        the total that /memory, /disk and /fd share between requests
+    memory.rs        memory taken from the OS (/memory, /leak)
+    disk.rs          the files of /disk
+    fd.rs            the descriptors of /fd
+    workers.rs       the pool of worker threads for /stress and /cpu
+    ready.rs         the readiness switch
+    log.rs           the lines of /log
+    delay.rs         the requests of /delay still waiting
+  http/            what serves requests and is not specific to an endpoint
+    params.rs        the integer query parameters
+    auth.rs          TOKEN
+    trust.rs         TRUST_PROXY
+    accept.rs        JSON or text for /help
+    counters.rs      requests answered, for /metrics
+  cli/             the commands besides the server
+    watch.rs         torchio watch
+    view.rs          what watch draws
+    info.rs          what /info says, as watch reads it
+    http.rs          the small HTTP client of the commands
+    healthcheck.rs   torchio healthcheck
+  snapshot.rs      the figures behind /info and /metrics
+  system.rs        RSS, the memory limit of the container, free space, names of errors
+  units.rs         units of size
+assets/ui.html     the control panel, a single static page
+tests/             integration tests, by area
+Dockerfile         builds the binary for both platforms with cargo-zigbuild, into an image of one file
 ```
 
-The tests use `node:test`, which comes with Node.js, so there is nothing to install. They cover every endpoint and its limits, the budgets of `/memory`, `/disk` and `/fd`, `/cpu`, `/leak`, `START_DELAY_SECONDS`, the control panel, `/ready`, `/crash`, a worker that crashes, an unusable `DISK_DIR`, the cleanup of the files on startup and shutdown, `/metrics` and the `watch` command. CI also runs them on Node 22, 24 and 26, checks the Docker image and validates `/metrics` with `promtool`.
+The tests come in three kinds, and `cargo test` runs them all:
+
+- **Unit tests** live in the module they test (`#[cfg(test)]`): the budgets, the parsing of parameters and `TRUST_PROXY`, the view of `watch`, the worker pool, the timers (with a paused clock).
+- **Router tests** (`tests/api.rs`) call the router without a socket: every endpoint of the catalog is routed and protected as it says, every parameter is rejected one step outside its range, CORS, methods, content negotiation, and the shape of `/info`, `/config` and `/metrics`.
+- **Integration tests** (`tests/*.rs`, with what they share in `tests/common`) start the real binary on a free port with small limits and call it over HTTP: `probes` (`/`, `/status`, `/ready`, `/delay`), `resources` (`/memory`, `/leak`, `/disk`, `/fd`), `load` (`/stress`, `/cpu`), `observability` (`/info`, `/metrics`, `/log`, `/echo`, `/help`, `/config`), `lifecycle` (configuration, start, signals, `/crash`), `auth` (`TOKEN`), `ui` and `cli` (`watch`, `healthcheck`).
+
+CI runs them on Linux and macOS with the format check, `clippy` and the documentation, builds the image for both platforms, runs it with a memory limit and a CPU limit, and validates `/metrics` with `promtool`.
 
 ## Changelog
 
