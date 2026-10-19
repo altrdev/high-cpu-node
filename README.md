@@ -150,6 +150,7 @@ The server listens on port 3000.
 | `/ready/on`     |                    | Makes `/ready` answer `200` again                           |
 | `/crash`        | `code`, `after`    | Ends the process, to test restarts and backoff              |
 | `/fd`           | `count`, `hold`    | Opens file descriptors and holds them, to test `EMFILE`     |
+| `/connections`  | `count`, `hold`    | Opens TCP connections to the server and holds them, to test connection limits |
 | `/log`          | `lines`, `rate`    | Writes lines to stdout at a rate, to test log collection and rotation |
 | `/echo`         |                    | The request as the server sees it, to see what proxies add or remove |
 | `/ui`           |                    | Control panel in the browser, only with `UI=1`              |
@@ -328,6 +329,21 @@ Opens `count` file descriptors and closes them after `hold` seconds.
 curl "http://127.0.0.1:3000/fd?count=2000&hold=30"
 ```
 
+### `/connections`
+
+Opens `count` TCP connections to the server itself and closes them after `hold` seconds. It is the same shape as [`/fd`](#fd), for what a load balancer, a proxy or a connection limit sees: a server with many open connections, which stay idle. The connections are also closed when the process ends, so a shutdown with open sockets is easy to try.
+
+| Parameter | Default | Allowed range         |
+|-----------|---------|-----------------------|
+| `count`   | `10`    | `1..MAX_CONNECTIONS`  |
+| `hold`    | `10`    | `0..MAX_HOLD_SECONDS` |
+
+`MAX_CONNECTIONS` is the total that can be held at the same time, with the same `400` and `429` rules as `/fd`. Each connection takes a descriptor on the side that opens it and another on the side that accepts it, both in this process, so the limit of the process (`ulimit -n`) is reached at half of it: the answer is then a `503` that says how many could be opened, and those stay open until `hold` ends. The answer comes when the connections are open.
+
+```
+curl "http://127.0.0.1:3000/connections?count=200&hold=60"
+```
+
 ### `/log`
 
 Writes `lines` lines (default 1000) to stdout at `rate` lines each second (default 100), then stops, to test log collection pipelines, rotation and how fast the logs of a container fill a disk. Each line has a timestamp and its number: `2026-10-18T14:00:00.000Z torchio-log line 7 of 1000`. A new request replaces the one still running; the lines already written stay. `MAX_LOG_LINES` and `MAX_LOG_RATE` set the limits. While it writes, [`/info`](#info) has `log` (`{ "sent", "lines", "rate" }`, `null` otherwise), and `watch` and the control panel show it.
@@ -370,6 +386,7 @@ Returns a JSON document with what the server is doing right now. It takes no par
 | `disk.heldMb`, `limitMb`      | Same as for memory, for `/disk` (`MAX_DISK_MB`)                         |
 | `disk.freeMb`                 | Free space in `DISK_DIR`, `null` if the directory is not usable         |
 | `fd.held`, `limit`            | File descriptors held by `/fd` and the total it may hold (`MAX_FD`)     |
+| `connections.held`, `limit`   | Connections held by `/connections` and the total it may hold (`MAX_CONNECTIONS`) |
 | `log`                         | What `/log` is writing, `{ "sent", "lines", "rate" }`, or `null` when it is not running |
 | `ready.ready`, `secondsLeft`  | What `/ready` answers, and the seconds left before it is ready again (`null` if nothing is counting down) |
 
@@ -396,6 +413,8 @@ The figures of [`/info`](#info) in the Prometheus text format, plus a counter of
 | `torchio_disk_free_bytes`               | gauge   | Free space in `DISK_DIR`, only present when it is usable    |
 | `torchio_fd_held`                       | gauge   | File descriptors held by `/fd`                              |
 | `torchio_fd_limit`                      | gauge   | Total descriptors `/fd` may hold (`MAX_FD`)                 |
+| `torchio_connections_held`              | gauge   | TCP connections held by `/connections`                      |
+| `torchio_connections_limit`             | gauge   | Total connections `/connections` may hold (`MAX_CONNECTIONS`) |
 | `torchio_ready`                         | gauge   | `1` while `/ready` answers `200`, `0` while it answers `503` |
 | `torchio_http_requests_total{route,code}` | counter | Requests answered, by route pattern (such as `/status/:code`) and status code. A request the client abandons before the answer is not counted |
 | `torchio_http_request_duration_seconds{route,code}` | histogram | Time taken to answer, in seconds, with the same labels (`_bucket{le}`, `_sum`, `_count`). Buckets go from 5 ms to 60 s, which is the default `MAX_DELAY_MS`. It includes the time of `/delay`, and the requests to `/metrics` and `/info` themselves |
@@ -466,6 +485,7 @@ torchio crash 137 --after 5
 | `torchio leak [rate] [mb] [hold]`| [`/leak`](#leak)         |
 | `torchio disk [mb] [hold]`       | [`/disk`](#disk)         |
 | `torchio fd [count] [hold]`      | [`/fd`](#fd)             |
+| `torchio connections [count] [hold]` | [`/connections`](#connections) |
 | `torchio log [lines] [rate]`     | [`/log`](#log)           |
 | `torchio crash [code] [after]`   | [`/crash`](#crash)       |
 | `torchio ready on \| off [seconds]` | [`/ready`](#ready)   |
@@ -551,7 +571,7 @@ The page makes [`/crash`](#crash) a button, which is why it is off by default (a
 
 ## Token
 
-Anyone who can reach the port can call `/crash` or `/disk`. Set `TOKEN` to ask for a password on the endpoints that change the state of the instance (`/stress`, `/cpu`, `/memory`, `/leak`, `/disk`, `/fd`, `/log`, `/ready/off`, `/ready/on` and `/crash`):
+Anyone who can reach the port can call `/crash` or `/disk`. Set `TOKEN` to ask for a password on the endpoints that change the state of the instance (`/stress`, `/cpu`, `/memory`, `/leak`, `/disk`, `/fd`, `/connections`, `/log`, `/ready/off`, `/ready/on` and `/crash`):
 
 ```
 docker run -p 3000:3000 -e TOKEN=secret altrdev/torchio:latest
@@ -577,6 +597,7 @@ Environment variables:
 | `UI`               | off             | `1` turns on the control panel at `/ui`           |
 | `START_DELAY_SECONDS` | `0`         | Seconds the port stays closed after the start     |
 | `MAX_FD`           | `10000`         | Total descriptors `/fd` can hold at once          |
+| `MAX_CONNECTIONS`  | `500`           | Total connections `/connections` can hold at once |
 | `MAX_LOG_LINES`    | `100000`        | Highest `lines` accepted by `/log`                |
 | `MAX_LOG_RATE`     | `10000`         | Highest `rate` accepted by `/log`                 |
 | `TRUST_PROXY`      | off             | Trusts `X-Forwarded-*` (`true`, a number of hops, or addresses and subnets), see `/echo` |
@@ -715,6 +736,7 @@ src/
     memory.rs        memory taken from the OS (/memory, /leak)
     disk.rs          the files of /disk
     fd.rs            the descriptors of /fd
+    connections.rs   the connections of /connections
     workers.rs       the pool of worker threads for /stress and /cpu
     ready.rs         the readiness switch
     log.rs           the lines of /log

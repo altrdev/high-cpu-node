@@ -98,6 +98,14 @@ pub async fn handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     );
     metric(&mut lines, "torchio_disk_free_bytes", "gauge", "Free space in DISK_DIR.", optional(s.disk.free_bytes));
     metric(&mut lines, "torchio_fd_held", "gauge", "File descriptors held by /fd.", one(s.fd.held as f64));
+    metric(&mut lines, "torchio_connections_held", "gauge", "TCP connections held by /connections.", one(s.connections.held as f64));
+    metric(
+        &mut lines,
+        "torchio_connections_limit",
+        "gauge",
+        "Total connections /connections may hold (MAX_CONNECTIONS).",
+        one(s.connections.limit as f64),
+    );
     metric(&mut lines, "torchio_fd_limit", "gauge", "Total file descriptors /fd may hold (MAX_FD).", one(s.fd.limit as f64));
     metric(
         &mut lines,

@@ -283,6 +283,7 @@ function buildControls(info) {
         {title: 'Memory', path: '/memory', params: [{name: 'mb', label: 'mb', min: 1, max: info.memory.limitMb, value: 100, unit: ' MB'}, secs('hold', 20)], actions: [{label: 'Allocate'}]},
         {title: 'Memory leak', path: '/leak', params: [{name: 'rate', label: 'rate', min: 1, max: info.memory.limitMb, value: 10, unit: ' MB/s'}, {name: 'mb', label: 'up to', min: 1, max: info.memory.limitMb, value: 200, unit: ' MB'}, secs('hold', 20)], actions: [{label: 'Start'}]},
         {title: 'Disk', path: '/disk', params: [{name: 'mb', label: 'mb', min: 1, max: info.disk.limitMb, value: 100, unit: ' MB'}, secs('hold', 20)], actions: [{label: 'Write'}]},
+        ...(info.connections ? [{title: 'Connections', path: '/connections', params: [{name: 'count', label: 'count', min: 1, max: info.connections.limit, value: 50}, secs('hold', 20)], actions: [{label: 'Open'}]}] : []),
         {title: 'File descriptors', path: '/fd', params: [{name: 'count', label: 'count', min: 1, max: info.fd ? info.fd.limit : 10000, value: 500}, secs('hold', 20)], actions: [{label: 'Open'}]},
         {title: 'Readiness', path: '/ready/off', params: [{name: 'seconds', label: 'seconds', min: 0, max: hold, value: 60, unit: ' s'}], actions: [{label: 'Make not ready'}, {label: 'Ready again', path: '/ready/on'}]},
         {title: 'Delay', path: '/delay', params: [{name: 'ms', label: 'ms', min: 0, max: info.limits.maxDelayMs, value: 3000, step: 100}], actions: [{label: 'Wait'}]},
@@ -319,6 +320,7 @@ async function tick() {
             built = true;
             gauges.forEach((g) => buildGauge(g.key, g.label));
             buildGauge('fd', 'File descriptors held');
+            if (info.connections) buildGauge('connections', 'Connections held');
             buildGauge('req', 'Requests by status');
             buildControls(info);
         }
@@ -342,6 +344,7 @@ async function tick() {
         $('status').replaceChildren(...status.map((text) => el('span', '', text)));
 
         gauges.forEach((g) => draw(g.key, g.get(info)));
+        if (info.connections) draw('connections', {v: info.connections.held, max: info.connections.limit, text: `${info.connections.held} / ${info.connections.limit}`, cap: 'held by /connections'});
         if (info.fd) draw('fd', {v: info.fd.held, max: info.fd.limit, text: `${info.fd.held} / ${info.fd.limit}`, cap: 'held by /fd'});
         requests(metrics);
     } catch (e) {

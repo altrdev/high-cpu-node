@@ -13,6 +13,7 @@ pub struct History {
     rss: Vec<i64>,
     disk: Vec<i64>,
     fd: Vec<i64>,
+    connections: Vec<i64>,
 }
 
 impl History {
@@ -23,6 +24,7 @@ impl History {
             (&mut self.rss, info.memory.process_rss_mb),
             (&mut self.disk, info.disk.held_mb),
             (&mut self.fd, info.fd.as_ref().map_or(0, |fd| fd.held)),
+            (&mut self.connections, info.connections.as_ref().map_or(0, |c| c.held)),
         ];
         for (values, sample) in samples {
             values.push(sample);
@@ -241,6 +243,9 @@ fn rows(style: &Style, info: &Info, history: &History) -> Vec<String> {
     if let Some(fd) = &info.fd {
         rows.push(style.row("FDs held", fd.held, fd.limit, &format!("{} / {}", fd.held, fd.limit), &history.fd, false));
     }
+    if let Some(c) = &info.connections {
+        rows.push(style.row("Connections", c.held, c.limit, &format!("{} / {}", c.held, c.limit), &history.connections, false));
+    }
     rows
 }
 
@@ -387,6 +392,22 @@ mod tests {
         assert!(view(&idle).contains("CPU workers   ░░░░░░░░░░░░░░░░░░░░  0 busy / 4"));
         assert!(view(&burning).contains("CPU workers   ████████████████░░░░  80% load, 0 busy / 4"));
         assert!(view(&both).contains("85% load, 1 busy / 4"));
+    }
+
+    #[test]
+    fn connections_have_a_row_when_the_server_reports_them() {
+        let view = |json: &str| {
+            let info: Info = serde_json::from_str(json).unwrap();
+            let mut history = History::default();
+            history.record(&info);
+            render(&Style::new(false), "u", &info, &history)
+        };
+        let with = INFO.replace(
+            r#""fd": {"held": 40, "limit": 10000},"#,
+            r#""fd": {"held": 40, "limit": 10000}, "connections": {"held": 25, "limit": 500},"#,
+        );
+        assert!(view(&with).contains("25 / 500"));
+        assert!(!view(INFO).contains("Connections"), "a server that does not report them has no row");
     }
 
     #[test]

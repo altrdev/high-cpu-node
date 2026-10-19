@@ -23,6 +23,7 @@ pub struct Specs {
     pub leak: [(&'static str, Param); 3],
     pub disk: Specs2,
     pub fd: Specs2,
+    pub connections: Specs2,
     pub ready_off: Specs1,
     pub log: Specs2,
     pub crash: Specs2,
@@ -51,6 +52,7 @@ pub fn specs(config: &Config) -> Specs {
         ],
         disk: [("mb", Param::new(config.default_disk_mb, 1, config.max_disk_mb)), hold],
         fd: [("count", Param::new(config.default_fd, 1, config.max_fd)), hold],
+        connections: [("count", Param::new(config.default_connections, 1, config.max_connections)), hold],
         ready_off: [("seconds", Param::new(config.default_not_ready_seconds, 0, config.max_hold_seconds))],
         log: [
             ("lines", Param::new(config.default_log_lines, 1, config.max_log_lines)),
@@ -97,6 +99,7 @@ pub fn catalog(config: &Config) -> Vec<Endpoint> {
         endpoint("/leak", true, &s.leak, "Memory that grows by itself, rate MB each second up to mb MB"),
         endpoint("/disk", true, &s.disk, "Writes a file (MB) in DISK_DIR and keeps it"),
         endpoint("/fd", true, &s.fd, "Opens file descriptors and holds them"),
+        endpoint("/connections", true, &s.connections, "Opens TCP connections to the server itself and holds them"),
         endpoint("/ready", false, &[], "Readiness check: 200, or 503 after /ready/off"),
         endpoint("/ready/off", true, &s.ready_off, "Makes /ready answer 503 for seconds (0 until /ready/on)"),
         endpoint("/ready/on", true, &[], "Makes /ready answer 200 again"),
@@ -205,7 +208,10 @@ mod tests {
     #[test]
     fn the_endpoints_that_change_the_state_are_the_protected_ones() {
         let protected: Vec<&str> = catalog(&config(false)).iter().filter(|e| e.auth).map(|e| e.path).collect();
-        assert_eq!(protected, ["/stress", "/cpu", "/memory", "/leak", "/disk", "/fd", "/ready/off", "/ready/on", "/crash", "/log"]);
+        assert_eq!(
+            protected,
+            ["/stress", "/cpu", "/memory", "/leak", "/disk", "/fd", "/connections", "/ready/off", "/ready/on", "/crash", "/log"]
+        );
     }
 
     #[test]

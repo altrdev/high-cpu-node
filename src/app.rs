@@ -3,6 +3,7 @@ use crate::config::Config;
 use crate::http::counters::{self, Counters};
 use crate::http::{auth, trust::Trust};
 use crate::logging;
+use crate::resources::connections::Connections;
 use crate::resources::delay::Delay;
 use crate::resources::disk::Disk;
 use crate::resources::fd::Fd;
@@ -33,6 +34,7 @@ pub struct AppState {
     pub memory: Memory,
     pub disk: Arc<Disk>,
     pub fd: Fd,
+    pub connections: Connections,
     pub flaky: Flaky,
     pub log: Arc<Log>,
     pub pool: WorkerPool,
@@ -50,6 +52,8 @@ impl AppState {
             memory: Memory::new(config.max_memory_mb),
             disk: Arc::new(Disk::new(&config.disk_dir, config.max_disk_mb, config.log_format)),
             fd: Fd::new(config.max_fd),
+            // port is checked when the server starts, and a value out of range connects nowhere
+            connections: Connections::new(config.max_connections, u16::try_from(config.port).unwrap_or(0)),
             flaky: Flaky::default(),
             log: Arc::new(Log::new(config.log_format)),
             pool: WorkerPool::new(config.workers as usize),
@@ -74,6 +78,7 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/leak", get(routes::leak::handler))
         .route("/disk", get(routes::disk::handler))
         .route("/fd", get(routes::fd::handler))
+        .route("/connections", get(routes::connections::handler))
         .route("/log", get(routes::log::handler))
         .route("/crash", get(routes::crash::handler))
         .route_layer(from_fn_with_state(state.clone(), auth::guard));

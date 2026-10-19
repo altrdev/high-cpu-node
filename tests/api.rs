@@ -256,6 +256,7 @@ async fn the_configuration_has_these_keys() {
         keys,
         [
             "auth",
+            "defaultConnections",
             "defaultCpuPercent",
             "defaultDelayMs",
             "defaultDiskMb",
@@ -270,6 +271,7 @@ async fn the_configuration_has_these_keys() {
             "diskDir",
             "host",
             "logFormat",
+            "maxConnections",
             "maxDelayMs",
             "maxDiskMb",
             "maxFd",
@@ -301,7 +303,7 @@ async fn info_has_these_fields() {
     };
     assert_eq!(
         keys(&info),
-        ["auth", "delay", "disk", "fd", "limits", "log", "memory", "name", "ready", "stress", "uptimeSeconds", "version"]
+        ["auth", "connections", "delay", "disk", "fd", "limits", "log", "memory", "name", "ready", "stress", "uptimeSeconds", "version"]
     );
     assert_eq!(keys(&info["stress"]), ["burn", "inFlight", "perWorker", "workers"]);
     assert_eq!(keys(&info["memory"]), ["containerLimitMb", "heldMb", "limitMb", "processRssMb"]);
@@ -318,6 +320,8 @@ async fn metrics_have_these_names() {
     names.sort_unstable();
     let expected = [
         "process_resident_memory_bytes",
+        "torchio_connections_held",
+        "torchio_connections_limit",
         "torchio_cpu_burn_percent",
         "torchio_cpu_burn_workers",
         "torchio_delay_requests_in_flight",

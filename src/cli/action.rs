@@ -26,6 +26,12 @@ const ACTIONS: &[Action] = &[
     Action { name: "leak", about: "Grow memory by itself up to a ceiling", path: "/leak", params: &["rate", "mb", "hold"] },
     Action { name: "disk", about: "Write a file and keep it", path: "/disk", params: &["mb", "hold"] },
     Action { name: "fd", about: "Open file descriptors and hold them", path: "/fd", params: &["count", "hold"] },
+    Action {
+        name: "connections",
+        about: "Open TCP connections to the server and hold them",
+        path: "/connections",
+        params: &["count", "hold"],
+    },
     Action { name: "log", about: "Write lines to the log at a rate", path: "/log", params: &["lines", "rate"] },
     Action { name: "crash", about: "End the server process", path: "/crash", params: &["code", "after"] },
     // `ready on` and `ready off [seconds]`: the word picks the endpoint
