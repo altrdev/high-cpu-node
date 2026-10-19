@@ -1,6 +1,6 @@
 [package]
 name = "torchio"
-version = "4.1.1"
+version = "4.1.2"
 edition = "2024"
 rust-version = "1.88"
 description = "Break your containers on purpose: burn CPU, hold memory, fill disk and more, on demand over HTTP"

@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
-## Unreleased
+## 4.1.2 - 2026-10-19
 
 ### Added
 - The Docker image is tagged with the version without the `v` (`X.Y.Z`), with the minor (`X.Y`) and with the major (`X`), as well as `vX.Y.Z` and `latest`.

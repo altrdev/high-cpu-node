@@ -59,8 +59,8 @@ jobs:
         uses: docker/metadata-action@v6
         with:
           images: altrdev/torchio
-          # 4.1.2, 4.1 and 4 (without the v, as Docker tags are written) and latest, which a
-          # pre-release does not move; and the tag as it was pushed, v4.1.2, kept for who pins it
+          # X.Y.Z, X.Y and X (without the v, as Docker tags are written) and latest, which a
+          # pre-release does not move; and the tag as it was pushed, vX.Y.Z, kept for who pins it
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
