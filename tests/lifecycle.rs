@@ -138,6 +138,17 @@ fn exchange(stream: &mut TcpStream, path: &str) -> String {
     String::from_utf8(body).unwrap()
 }
 
+// Waits until the server counts at least this many requests and connections as open. The count is
+// of what the server has accepted, and a client that has connected is not that yet, so a signal sent
+// right after would find nothing open and end the drain at once. The request that asks counts as
+// one of each, which is why the callers add it.
+fn wait_open(server: &Server, requests: i64, connections: i64) {
+    wait_for("the server to count what is open", 5000, || {
+        let open = server.info()["shutdown"].clone();
+        open["openRequests"].as_i64() >= Some(requests) && open["openConnections"].as_i64() >= Some(connections)
+    });
+}
+
 #[test]
 fn the_signal_is_logged_when_it_ends_it_right_away() {
     let mut server = Server::start();
@@ -150,7 +161,7 @@ fn with_a_grace_period_it_serves_the_request_in_progress_and_refuses_new_connect
     let mut server = Server::with(&[("SHUTDOWN_GRACE_SECONDS", "10")]);
     let url = server.url();
     let waiting = std::thread::spawn(move || try_get(&format!("{url}/delay?ms=1500"), &[]));
-    sleep(300);
+    wait_open(&server, 2, 2);
 
     server.signal(libc::SIGTERM);
     sleep(300);
@@ -169,7 +180,7 @@ fn the_grace_period_ends_the_drain_even_if_a_request_is_still_open() {
     let mut server = Server::with(&[("SHUTDOWN_GRACE_SECONDS", "1")]);
     let url = server.url();
     let waiting = std::thread::spawn(move || try_get(&format!("{url}/delay?ms=4000"), &[]));
-    sleep(300);
+    wait_open(&server, 2, 2);
 
     let started = Instant::now();
     server.signal(libc::SIGTERM);
@@ -213,6 +224,7 @@ fn while_draining_info_and_metrics_say_so_on_a_connection_that_was_open() {
 fn a_second_signal_ends_the_drain_at_once() {
     let mut server = Server::with(&[("SHUTDOWN_GRACE_SECONDS", "60")]);
     let _stream = TcpStream::connect(("127.0.0.1", server.port)).unwrap();
+    wait_open(&server, 1, 2);
     server.signal(libc::SIGTERM);
     sleep(300);
     assert!(server.exited().is_none());
@@ -228,6 +240,7 @@ fn a_second_signal_ends_the_drain_at_once() {
 fn held_connections_keep_the_drain_open_until_the_grace_period_is_over() {
     let mut server = Server::with(&[("SHUTDOWN_GRACE_SECONDS", "2")]);
     assert!(server.text("/connections?count=3&hold=30").starts_with("Opened 3 connections"));
+    wait_open(&server, 1, 4);
     server.signal(libc::SIGTERM);
     assert!(server.wait_exit(8000).success());
     let output = server.output();
