@@ -72,7 +72,7 @@ mdbook serve book --open
 python3 book/check-links.py book/book     # after mdbook build book
 ```
 
-The version in the title and on the first page is written by the workflow from `Cargo.toml`; on your machine the first page says it is the development version. The `Documentation` workflow builds the site for a pull request, to catch a mistake before the merge. It publishes to GitHub Pages when a release is tagged, so the site describes the version that can be installed, and when it is run by hand (*Actions*, *Documentation*, *Run workflow*) to publish a correction of the pages in between.
+The version, in a small label next to the title and on the first page, is written by the workflow from `Cargo.toml`; on your machine they say it is the development version. The `Documentation` workflow builds the site for a pull request, to catch a mistake before the merge. It publishes to GitHub Pages when a release is tagged, so the site describes the version that can be installed, and when it is run by hand (*Actions*, *Documentation*, *Run workflow*) to publish a correction of the pages in between.
 
 ## Releasing
 
