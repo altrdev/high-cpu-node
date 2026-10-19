@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
+## Unreleased
+
+### Documentation
+- The reference of the endpoints names the command that does the same (`torchio cpu [percent] [hold] [workers]`), in a column of the table and in the section of each endpoint. It comes from the list of commands the program itself uses, and a test checks that every command calls an endpoint of the catalog.
+
 ## 4.4.0 - 2026-10-19
 
 ### Added

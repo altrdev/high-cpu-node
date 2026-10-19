@@ -15,6 +15,7 @@ mod interactive;
 mod view;
 mod watch;
 
+pub use action::command_for;
 use std::process::ExitCode;
 
 pub const USAGE: &str = "Usage: torchio watch [--url <url>] [--interval <seconds>] [--token <token>] [--once] [--read-only]

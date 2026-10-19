@@ -2,6 +2,8 @@
 
 The server listens on port 3000.
 
+Most of the endpoints that start a test are also a command, so you can skip `curl`: the [Reference](reference.md) names the command of each one, and [Starting a test](starting-a-test.md) has them all.
+
 | Endpoint        | Parameters         | Description                                                 |
 |-----------------|--------------------|-------------------------------------------------------------|
 | `/`             |                    | Health check, returns `Status: OK`                          |
