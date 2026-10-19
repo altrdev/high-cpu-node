@@ -41,8 +41,9 @@ jobs:
         run: |
           VERSION=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n 1)
           printf '%s' "$VERSION" > book/src/version.md
-          sed -i "s/^title = \"torchio\"/title = \"torchio $VERSION\"/" book/book.toml
-          grep -q "^title = \"torchio $VERSION\"" book/book.toml
+          # the small label next to the title: the stylesheet says "dev", and this rule, which comes last, the version
+          printf '\n.menu-title::after { content: "v%s"; }\n' "$VERSION" >> book/theme/torchio.css
+          grep -q "content: \"v$VERSION\"" book/theme/torchio.css
 
       - name: Write the reference of the endpoints from the catalog
         run: cargo run --locked --example endpoints_reference > book/src/reference.md
