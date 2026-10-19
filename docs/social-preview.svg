@@ -3,10 +3,13 @@
 <rect width="1280" height="640" fill="url(#bg)"/>
 <g transform="translate(96 128) scale(1.5)">
 <rect width="256" height="256" rx="56" fill="#1e293b"/>
-<rect x="52" y="124" width="40" height="84" rx="10" fill="#22c55e"/>
-<rect x="108" y="84" width="40" height="124" rx="10" fill="#f59e0b"/>
-<rect x="164" y="44" width="40" height="164" rx="10" fill="#ef4444"/>
-<rect x="40" y="214" width="176" height="8" rx="4" fill="#94a3b8"/>
+<rect x="82" y="24" width="92" height="18" rx="9" fill="#e2e8f0"/>
+<rect x="118" y="42" width="20" height="30" fill="#94a3b8"/>
+<rect x="34" y="72" width="188" height="24" rx="10" fill="#e2e8f0"/>
+<rect x="50" y="124" width="44" height="88" rx="9" fill="#22c55e"/>
+<rect x="106" y="110" width="44" height="102" rx="9" fill="#f59e0b"/>
+<rect x="162" y="100" width="44" height="112" rx="9" fill="#ef4444"/>
+<rect x="38" y="218" width="180" height="12" rx="6" fill="#94a3b8"/>
 </g>
 <text x="540" y="212" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="104" font-weight="700" fill="#f8fafc">torchio</text>
 <text x="544" y="282" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="30" fill="#cbd5e1">Stress CPU, memory, disk and latency on demand.</text>
