@@ -14,6 +14,14 @@ impl Param {
     pub const fn new(fallback: i64, min: i64, max: i64) -> Param {
         Param { fallback: Some(fallback), min, max }
     }
+
+    /// `value` if it is inside the range, and what to say if it is not
+    pub fn check(&self, name: &str, value: i64) -> Result<i64, String> {
+        if value < self.min || value > self.max {
+            return Err(format!("{name} must be between {} and {}", self.min, self.max));
+        }
+        Ok(value)
+    }
 }
 
 /// The integer values of a request, in the order of its specs
@@ -60,15 +68,12 @@ pub fn parse_int(text: &str) -> Option<i64> {
 pub fn read(query: Option<&str>, specs: &[(&'static str, Param)]) -> Result<Params, Rejection> {
     let pairs: Vec<(String, String)> = serde_urlencoded::from_str(query.unwrap_or("")).unwrap_or_default();
     let mut values = Vec::with_capacity(specs.len());
-    for (name, Param { fallback, min, max }) in specs {
+    for (name, param) in specs {
         let parsed = pairs.iter().find(|(key, _)| key == name).and_then(|(_, value)| parse_int(value));
-        let Some(value) = parsed.or(*fallback) else {
+        let Some(value) = parsed.or(param.fallback) else {
             return Err(Rejection(format!("{name} is required")));
         };
-        if value < *min || value > *max {
-            return Err(Rejection(format!("{name} must be between {min} and {max}")));
-        }
-        values.push((*name, value));
+        values.push((*name, param.check(name, value).map_err(Rejection)?));
     }
     Ok(Params(values))
 }

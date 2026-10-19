@@ -15,6 +15,7 @@ src/
   config.rs        environment variables, validated
   endpoints.rs     the parameters and limits of every endpoint, shared by the routes and /help
   app.rs           what the routes share, and the router
+  actions.rs       what the endpoints that change the state do and say, shared by the routes and the scenarios
   server.rs        listens, and ends the process
   routes/          one file for each endpoint: reads the parameters, asks resources, writes the answer
   resources/       what the server holds or does on purpose, without knowing about HTTP

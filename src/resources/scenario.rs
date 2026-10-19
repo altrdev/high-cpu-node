@@ -29,6 +29,22 @@ pub struct Step {
     pub seconds: u64,
 }
 
+impl Action {
+    /// The key that names it in a scenario
+    pub fn name(&self) -> &'static str {
+        match self {
+            Action::Cpu { .. } => "cpu",
+            Action::Memory { .. } => "memory",
+            Action::Disk { .. } => "disk",
+            Action::Fd { .. } => "fd",
+            Action::Connections { .. } => "connections",
+            Action::NotReady => "ready",
+            Action::Block { .. } => "block",
+            Action::Pause => "pause",
+        }
+    }
+}
+
 impl Step {
     /// The step as it is written in a scenario
     pub fn to_json(&self) -> Value {
@@ -83,10 +99,7 @@ pub const ACTIONS: [&str; 7] = ["cpu", "memory", "disk", "fd", "connections", "r
 
 fn integer(step: usize, name: &str, value: &Value, param: &Param) -> Result<i64, String> {
     let number = value.as_i64().ok_or_else(|| format!("step {step}: {name} must be an integer"))?;
-    if number < param.min || number > param.max {
-        return Err(format!("step {step}: {name} must be between {} and {}", param.min, param.max));
-    }
-    Ok(number)
+    param.check(name, number).map_err(|message| format!("step {step}: {message}"))
 }
 
 fn parse_step(number: usize, value: &Value, config: &Config) -> Result<Step, String> {

@@ -107,7 +107,10 @@ fn a_step_that_does_not_fit_stops_the_scenario_and_says_why() {
     wait_for("the failure", 3000, || state(&server)["state"] == "failed");
     let failed = state(&server);
     assert_eq!(failed["step"], 1);
-    assert!(failed["error"].as_str().unwrap().starts_with("step 1: 300 MB of memory already held"), "{failed}");
+    // the reason is what the endpoint answers to the same request, with the step in front
+    let endpoint = server.get("/memory?mb=100&hold=1");
+    assert_eq!(endpoint.status, 429);
+    assert_eq!(failed["error"], format!("step 1 (memory): {}", endpoint.body), "{failed}");
     assert_eq!(failed["plan"][1]["state"], "pending");
 }
 

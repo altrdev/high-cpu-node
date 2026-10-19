@@ -100,7 +100,7 @@ Scenario step 2 of 3: memory 500 MB for 30 s
 
 ### When a step can't run
 
-The limits are checked at the start, but the budgets are shared with everyone else: if another request holds the memory when a step asks for it, the step can't have it. The scenario then stops there with the state `failed` and the reason in `error` (`step 2: 300 MB of memory already held, limit is 512 MB`), and the steps after it don't run. Opening fewer descriptors or connections than asked, because the process hit its own limit, is not a failure: it is what `/fd` and `/connections` are for, and the step goes on (the log says how many were opened).
+The limits are checked at the start, but the budgets are shared with everyone else: if another request holds the memory when a step asks for it, the step can't have it. The scenario then stops there with the state `failed` and the reason in `error` (`step 2 (memory): 300 MB already held, limit is 512 MB`, the same words the endpoint answers with a `429`), and the steps after it don't run. Opening fewer descriptors or connections than asked, because the process hit its own limit, is not a failure: it is what `/fd` and `/connections` are for, and the step goes on (the log says how many were opened).
 
 ### Stopping
 
