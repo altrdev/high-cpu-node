@@ -81,6 +81,9 @@ async function startServer(env = {}, prepare = () => {}) {
     throw new Error('the server did not start');
 }
 
+// The command line view: `node cli.js` for the Node server, a subcommand of the binary for the Rust one
+const cli = (args) => (process.env.TORCHIO_BIN ? [path.resolve(ROOT, process.env.TORCHIO_BIN), args] : [process.execPath, ['cli.js', ...args]]);
+
 async function waitFor(check, timeoutMs = 5000, what = 'the condition') {
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
@@ -547,7 +550,7 @@ describe('cli watch', () => {
         const server = await startServer();
         try {
             await server.get('/memory?mb=100&hold=5');
-            const output = execFileSync(process.execPath, ['cli.js', 'watch', '--once', '--url', server.url], {cwd: ROOT}).toString();
+            const output = execFileSync(...cli(['watch', '--once', '--url', server.url]), {cwd: ROOT}).toString();
             assert.match(output, new RegExp(`torchio ${version.replace(/\./g, '\\.')}`));
             assert.match(output, /CPU workers .* 0 busy \/ 2/);
             assert.match(output, /Memory held .* 100 \/ 300 MB/);
@@ -564,7 +567,7 @@ describe('cli watch', () => {
         try {
             await server.get('/ready/off?seconds=20');
             await server.get('/fd?count=40&hold=5');
-            const output = execFileSync(process.execPath, ['cli.js', 'watch', '--once', '--url', server.url], {cwd: ROOT}).toString();
+            const output = execFileSync(...cli(['watch', '--once', '--url', server.url]), {cwd: ROOT}).toString();
             assert.match(output, /FDs held .* 40 \/ 10000/);
             assert.match(output, /readiness: NOT READY \(ready again in \d+ s\)/);
         } finally {
@@ -576,7 +579,7 @@ describe('cli watch', () => {
         const server = await startServer();
         try {
             await server.get('/cpu?percent=30&hold=20');
-            const output = execFileSync(process.execPath, ['cli.js', 'watch', '--once', '--url', server.url], {cwd: ROOT}).toString();
+            const output = execFileSync(...cli(['watch', '--once', '--url', server.url]), {cwd: ROOT}).toString();
             assert.match(output, /\/cpu: 30% on every worker, \d+ s left/);
         } finally {
             await server.stop();
@@ -585,15 +588,31 @@ describe('cli watch', () => {
 
     test('--once exits with 1 when the server can not be reached', async () => {
         const port = await freePort();
-        const result = spawnSync(process.execPath, ['cli.js', 'watch', '--once', '--url', `http://127.0.0.1:${port}`], {cwd: ROOT});
+        const result = spawnSync(...cli(['watch', '--once', '--url', `http://127.0.0.1:${port}`]), {cwd: ROOT});
         assert.equal(result.status, 1);
         assert.match(result.stderr.toString(), /Cannot reach/);
     });
 
     test('an unknown command prints the usage and exits with 1', () => {
-        const result = spawnSync(process.execPath, ['cli.js', 'nope'], {cwd: ROOT});
+        const result = spawnSync(...cli(['nope']), {cwd: ROOT});
         assert.equal(result.status, 1);
-        assert.match(result.stdout.toString(), /^Usage: node cli\.js watch/);
+        assert.match(result.stdout.toString(), /^Usage: (node cli\.js|torchio) watch/);
+    });
+
+    // only the binary has it: an image without wget or curl needs it for its HEALTHCHECK
+    test('healthcheck exits with 0 when the server answers and 1 when it does not', {skip: !process.env.TORCHIO_BIN && 'only the binary has it'}, async () => {
+        const server = await startServer();
+        try {
+            const [command, args] = cli(['healthcheck']);
+            assert.equal(spawnSync(command, args, {cwd: ROOT, env: {...process.env, PORT: String(server.port)}}).status, 0);
+            await server.get('/crash?code=0');
+            await server.exited;
+            const down = spawnSync(command, args, {cwd: ROOT, env: {...process.env, PORT: String(server.port)}});
+            assert.equal(down.status, 1);
+            assert.match(down.stderr.toString(), /unhealthy/);
+        } finally {
+            await server.stop();
+        }
     });
 });
 
@@ -764,7 +783,7 @@ describe('/log', () => {
         const server = await startServer();
         try {
             await server.get('/log?lines=1000&rate=10');
-            const output = execFileSync(process.execPath, ['cli.js', 'watch', '--once', '--url', server.url], {cwd: ROOT}).toString();
+            const output = execFileSync(...cli(['watch', '--once', '--url', server.url]), {cwd: ROOT}).toString();
             assert.match(output, /\/log: \d+ of 1000 lines, 10 lines\/s/);
         } finally {
             await server.stop();

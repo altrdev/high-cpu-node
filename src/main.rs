@@ -2,6 +2,7 @@ mod accept;
 mod app;
 mod auth;
 mod budget;
+mod cli;
 mod config;
 mod counters;
 mod endpoints;
@@ -25,8 +26,21 @@ use std::time::Duration;
 use tokio::net::TcpListener;
 use tokio::signal::unix::{SignalKind, signal};
 
-#[tokio::main]
-async fn main() {
+fn main() {
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    match args.first().map(String::as_str) {
+        None => tokio::runtime::Builder::new_multi_thread().enable_all().build().expect("a runtime").block_on(serve()),
+        Some("watch") => cli::watch(&args[1..]),
+        Some("healthcheck") => cli::healthcheck(),
+        Some("help" | "--help" | "-h") => println!("{}", cli::USAGE),
+        Some(_) => {
+            println!("{}", cli::USAGE);
+            exit(1);
+        }
+    }
+}
+
+async fn serve() {
     let config = Config::from_env();
     let state = Arc::new(AppState::new(config.clone()).unwrap_or_else(|e| fail(format!("TypeError: {e}"))));
     let app = app::router(state.clone());
