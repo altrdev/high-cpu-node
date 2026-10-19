@@ -233,9 +233,8 @@ fn an_action_command_exits_with_1_when_the_server_cannot_be_reached() {
 }
 
 #[test]
-fn tui_needs_a_terminal() {
-    let output = run(&["tui"], &[]);
-    assert_eq!(output.status.code(), Some(1));
-    assert_eq!(String::from_utf8_lossy(&output.stderr).trim(), "torchio tui needs a terminal");
-    assert!(output.stdout.is_empty());
+fn watch_without_a_terminal_only_looks_even_if_it_is_not_asked_to() {
+    let server = Server::start();
+    let output = run(&["watch", "--once", "--token", "t", "--read-only", "--url", &server.url()], &[]);
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
 }

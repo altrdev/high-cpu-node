@@ -1,5 +1,7 @@
-//! `torchio watch`: what a server is doing, in the terminal.
+//! `torchio watch`: what a server is doing, in the terminal. On a terminal it also takes keys that
+//! start tests (see `interactive`), unless `--read-only` says it must only look.
 use super::info::{self, Info};
+use super::interactive;
 use super::view::{History, Style, render};
 use super::{USAGE, http};
 use std::io::{IsTerminal, Write};
@@ -9,12 +11,21 @@ use std::time::{Duration, Instant};
 struct Options {
     url: String,
     interval: String,
+    token: Option<String>,
     once: bool,
+    read_only: bool,
     help: bool,
 }
 
-fn parse_options(args: &[String]) -> Result<Options, String> {
-    let mut options = Options { url: format!("http://127.0.0.1:{}", http::port()), interval: "1".into(), once: false, help: false };
+fn parse_options(args: &[String], env_token: Option<String>) -> Result<Options, String> {
+    let mut options = Options {
+        url: format!("http://127.0.0.1:{}", http::port()),
+        interval: "1".into(),
+        token: env_token,
+        once: false,
+        read_only: false,
+        help: false,
+    };
     let mut args = args.iter();
     while let Some(arg) = args.next() {
         let (name, inline) = match arg.split_once('=') {
@@ -25,7 +36,9 @@ fn parse_options(args: &[String]) -> Result<Options, String> {
         match name {
             "--url" => options.url = value("--url <url>")?,
             "--interval" => options.interval = value("--interval <seconds>")?,
+            "--token" => options.token = Some(value("--token <token>")?),
             "--once" => options.once = true,
+            "--read-only" => options.read_only = true,
             "--help" | "-h" => options.help = true,
             other => return Err(format!("Unknown option '{other}'")),
         }
@@ -57,7 +70,7 @@ fn frame(style: &Style, url: &str, history: &mut History) -> Result<String, Stri
 }
 
 pub fn run(args: &[String]) -> ExitCode {
-    let options = match parse_options(args) {
+    let options = match parse_options(args, std::env::var("TOKEN").ok().filter(|token| !token.is_empty())) {
         Ok(options) => options,
         Err(message) => {
             eprintln!("{message}");
@@ -88,6 +101,9 @@ pub fn run(args: &[String]) -> ExitCode {
     }
 
     let screen = stdout.is_terminal();
+    if screen && !options.read_only && std::io::stdin().is_terminal() {
+        return interactive::run(&options.url, options.token.as_deref(), interval(&options.interval));
+    }
     if screen {
         print!("\x1b[?1049h\x1b[?25l"); // alternate screen, hide cursor
         // SAFETY: the handler only calls async-signal-safe functions
@@ -121,23 +137,31 @@ mod tests {
 
     #[test]
     fn options_may_be_given_with_a_space_or_an_equals() {
-        let options = parse_options(&args(&["--url", "http://a:1", "--interval=2", "--once"])).unwrap();
+        let options = parse_options(&args(&["--url", "http://a:1", "--interval=2", "--once"]), None).unwrap();
         assert_eq!((options.url.as_str(), options.interval.as_str(), options.once, options.help), ("http://a:1", "2", true, false));
-        let options = parse_options(&args(&["--url=http://b:2"])).unwrap();
+        let options = parse_options(&args(&["--url=http://b:2"]), None).unwrap();
         assert_eq!(options.url, "http://b:2");
     }
 
     #[test]
+    fn the_token_comes_from_an_option_or_the_environment_and_read_only_is_a_flag() {
+        let options = parse_options(&args(&["--token=t", "--read-only"]), Some("env".into())).unwrap();
+        assert_eq!((options.token.as_deref(), options.read_only), (Some("t"), true));
+        let options = parse_options(&[], Some("env".into())).unwrap();
+        assert_eq!((options.token.as_deref(), options.read_only), (Some("env"), false));
+    }
+
+    #[test]
     fn help_can_be_asked_in_two_ways() {
-        assert!(parse_options(&args(&["-h"])).unwrap().help);
-        assert!(parse_options(&args(&["--help"])).unwrap().help);
+        assert!(parse_options(&args(&["-h"]), None).unwrap().help);
+        assert!(parse_options(&args(&["--help"]), None).unwrap().help);
     }
 
     #[test]
     fn what_is_not_an_option_is_an_error() {
-        assert_eq!(parse_options(&args(&["--nope"])).err().as_deref(), Some("Unknown option '--nope'"));
-        assert!(parse_options(&args(&["--url"])).is_err());
-        assert!(parse_options(&args(&["--interval"])).is_err());
+        assert_eq!(parse_options(&args(&["--nope"]), None).err().as_deref(), Some("Unknown option '--nope'"));
+        assert!(parse_options(&args(&["--url"]), None).is_err());
+        assert!(parse_options(&args(&["--interval"]), None).is_err());
     }
 
     #[test]

@@ -37,7 +37,7 @@ In a second terminal, watch what it does:
 
 ```
 docker exec -it torchio torchio watch    # with Docker
-torchio watch                            # on your local machine
+torchio watch                            # on your local machine, press m to start a memory test
 ```
 
 In a third one, put it under load, and see the bars move:
@@ -439,27 +439,6 @@ torchio crash 137 --after 5
 
 The values after the name are the parameters of the endpoint, in the order of the table; any of them can also be given by name, as `--hold 60` or `--hold=60`. The limits are the ones of the server: a value it refuses is printed with its `400` and the command exits with `1`. With [`TOKEN`](#token), pass `--token <token>` or set `TOKEN`. `/stress` and `/delay` answer when they finish, so the command waits for them. Like `watch`, it speaks plain HTTP only.
 
-## Interactive view
-
-`torchio tui` is `watch` with keys that start the tests, so you can load a server and see the bars move in the same window:
-
-```
-torchio tui
-torchio tui --url http://my-host:3000 --token secret
-```
-
-A key opens a command line with the command already written, you add the values and press Enter:
-
-| Key | Command | Key | Command |
-|-----|---------|-----|---------|
-| `c` | `cpu`   | `g` | `log`   |
-| `m` | `memory`| `s` | `stress`|
-| `l` | `leak`  | `r` | `ready` |
-| `d` | `disk`  | `x` | `crash` |
-| `f` | `fd`    | `:` | any command, like `status 503` |
-
-The line shows the parameters of the command while you type (`cpu [percent] [hold]`), Enter with only the name uses the defaults, Esc cancels and `q` quits. The answer of the server, or its error, stays under the keys. The request runs in the background, so the view keeps refreshing while `/stress` or `/delay` wait. The commands are the ones of [Starting a test](#starting-a-test), and the options (`--url`, `--token` or `TOKEN`, `--interval`) are the same as `watch`. It needs a terminal and speaks plain HTTP only.
-
 ## Watching a server
 
 `torchio watch` shows what a server is doing in the terminal, refreshing every second with bars and a short history of the last samples (workers, memory, process memory, disk and file descriptors), plus whether `/ready` is answering `200` or `503`. It is a command of the same binary, reads [`/info`](#info) and works against any running instance:
@@ -475,11 +454,29 @@ Inside a container, where the server is on `localhost`:
 docker exec -it <container> torchio watch
 ```
 
-| Option       | Default                    | Description                                              |
-|--------------|----------------------------|----------------------------------------------------------|
-| `--url`      | `http://127.0.0.1:$PORT` or port `3000` | Server to watch                              |
-| `--interval` | `1`                        | Seconds between samples                                  |
-| `--once`     |                            | Print one sample and exit; the status is `1` if the server can't be reached |
+| Option        | Default                    | Description                                              |
+|---------------|----------------------------|----------------------------------------------------------|
+| `--url`       | `http://127.0.0.1:$PORT` or port `3000` | Server to watch                              |
+| `--interval`  | `1`                        | Seconds between samples                                  |
+| `--token`     | `$TOKEN`                   | Token for the commands that need it                      |
+| `--read-only` |                            | Only look: no keys, even on a terminal                   |
+| `--once`      |                            | Print one sample and exit; the status is `1` if the server can't be reached |
+
+### Keys
+
+On a terminal, `watch` also starts the tests, so you can load a server and see the bars move in the same window. A key opens a command line with the command already written, you add the values and press Enter:
+
+| Key | Command | Key | Command |
+|-----|---------|-----|---------|
+| `c` | `cpu`   | `g` | `log`   |
+| `m` | `memory`| `s` | `stress`|
+| `l` | `leak`  | `r` | `ready` |
+| `d` | `disk`  | `x` | `crash` |
+| `f` | `fd`    | `:` | any command, like `status 503` |
+
+The line shows the parameters of the command while you type (`cpu [percent] [hold]`), Enter with only the name uses the defaults, Esc cancels and `q` or Ctrl+C quits. The answer of the server, or its error, stays under the keys. The request runs in the background, so the view keeps refreshing while `/stress` or `/delay` wait. The commands are the ones of [Starting a test](#starting-a-test).
+
+The keys are on only when both the input and the output are a terminal. `--read-only` turns them off, which is the way to watch a shared instance without a key that can [`/crash`](#crash) it. With `--once`, or with the output in a pipe or a file, `watch` never takes keys.
 
 It speaks plain HTTP: to watch a server behind HTTPS, reach it with a port-forward. A server older than 3.1 doesn't report descriptors and readiness, so those two lines are left out. The history only covers the time the command has been running. The colour of a bar goes from green to red as it gets close to its limit; set `NO_COLOR=1` to turn colours off.
 

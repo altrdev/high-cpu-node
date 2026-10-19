@@ -1,11 +1,11 @@
-//! `torchio tui`: the view of `watch` with keys that start the tests, in the terminal.
+//! The view of `torchio watch` on a terminal, with keys that start the tests.
 //!
 //! A key opens a command line with the name of a command already written (`c` writes `cpu `), you
 //! add the values and press Enter. `:` opens an empty one, for any command. The request runs in a
 //! thread, so the view keeps refreshing while `/stress` or `/delay` wait for their answer.
+use super::action;
 use super::info::{self, Info};
 use super::view::{History, Style, render};
-use super::{USAGE, action, http};
 use std::io::Write;
 use std::process::ExitCode;
 use std::sync::OnceLock;
@@ -148,37 +148,6 @@ extern "C" fn restore_and_exit(_: libc::c_int) {
     unsafe { libc::_exit(0) }
 }
 
-struct Options {
-    url: String,
-    token: Option<String>,
-    interval: Duration,
-    help: bool,
-}
-
-fn parse_options(args: &[String], env_token: Option<String>) -> Result<Options, String> {
-    let mut options =
-        Options { url: format!("http://127.0.0.1:{}", http::port()), token: env_token, interval: Duration::from_secs(1), help: false };
-    let mut args = args.iter();
-    while let Some(arg) = args.next() {
-        let (name, inline) = match arg.split_once('=') {
-            Some((name, value)) if name.starts_with("--") => (name, Some(value.to_string())),
-            _ => (arg.as_str(), None),
-        };
-        let mut value = |what: &str| inline.clone().or_else(|| args.next().cloned()).ok_or(format!("Option '{what}' argument missing"));
-        match name {
-            "--url" => options.url = value("--url <url>")?,
-            "--token" => options.token = Some(value("--token <token>")?),
-            "--interval" => {
-                let seconds = value("--interval <seconds>")?.trim().parse::<f64>().ok().filter(|n| *n != 0.0 && n.is_finite());
-                options.interval = Duration::from_secs_f64(seconds.unwrap_or(1.0).max(0.2));
-            }
-            "--help" | "-h" => options.help = true,
-            other => return Err(format!("Unknown option '{other}'")),
-        }
-    }
-    Ok(options)
-}
-
 /// The text of the bottom of the screen: the keys, then the command line or the last answer
 fn footer(input: &Input, message: &str) -> String {
     let keys: Vec<String> = KEYS.iter().map(|(key, name)| format!("{} {name}", *key as char)).collect();
@@ -231,21 +200,10 @@ fn view(style: &Style, url: &str, info: &Info, history: &mut History) -> String 
     render(style, url, info, history)
 }
 
-pub fn run(args: &[String]) -> ExitCode {
-    let options = match parse_options(args, std::env::var("TOKEN").ok().filter(|token| !token.is_empty())) {
-        Ok(options) => options,
-        Err(message) => {
-            eprintln!("{message}");
-            println!("{USAGE}");
-            return ExitCode::FAILURE;
-        }
-    };
-    if options.help {
-        println!("{USAGE}");
-        return ExitCode::SUCCESS;
-    }
+/// Shows the server at `url` until the user quits, with `token` for the commands that need it
+pub fn run(url: &str, token: Option<&str>, interval: Duration) -> ExitCode {
     let Some(_screen) = Screen::enter() else {
-        eprintln!("torchio tui needs a terminal");
+        eprintln!("torchio watch needs a terminal to take commands: use --read-only");
         return ExitCode::FAILURE;
     };
 
@@ -259,8 +217,8 @@ pub fn run(args: &[String]) -> ExitCode {
 
     loop {
         if Instant::now() >= next {
-            view = sample(&options.url, &mut history, &style);
-            next = Instant::now() + options.interval;
+            view = sample(url, &mut history, &style);
+            next = Instant::now() + interval;
         }
         while let Ok((line, result)) = results.try_recv() {
             message = match result {
@@ -277,7 +235,7 @@ pub fn run(args: &[String]) -> ExitCode {
             Effect::None => {}
             Effect::Run(line) => {
                 message = format!("{line}: waiting for the answer…");
-                let (sender, url, token) = (sender.clone(), options.url.clone(), options.token.clone());
+                let (sender, url, token) = (sender.clone(), url.to_string(), token.map(String::from));
                 std::thread::spawn(move || {
                     let result = action::perform(&line, &url, token.as_deref());
                     let _ = sender.send((line, result));
@@ -371,17 +329,6 @@ mod tests {
         assert!(text.ends_with("cpu [percent] [hold]"), "{text}");
         type_in(&mut input, "\x1b");
         assert!(footer(&input, "memory 5: ok").ends_with("memory 5: ok"));
-    }
-
-    #[test]
-    fn options_are_the_url_the_token_and_the_interval() {
-        let args = |list: &[&str]| list.iter().map(|s| s.to_string()).collect::<Vec<_>>();
-        let options = parse_options(&args(&["--url", "http://a:1", "--token=t", "--interval", "2"]), Some("env".into())).unwrap();
-        assert_eq!((options.url.as_str(), options.token.as_deref(), options.interval), ("http://a:1", Some("t"), Duration::from_secs(2)));
-        assert_eq!(parse_options(&[], Some("env".into())).unwrap().token.as_deref(), Some("env"));
-        assert_eq!(parse_options(&args(&["--interval", "0.01"]), None).unwrap().interval, Duration::from_millis(200));
-        assert!(parse_options(&args(&["--nope"]), None).is_err());
-        assert!(parse_options(&args(&["--url"]), None).is_err());
     }
 
     #[test]
