@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
+## Unreleased
+
+### Added
+- `torchio serve` starts the server, the same as `torchio` with no command, so the command is in `help` and in the completions. The Docker image still runs `torchio`.
+- `torchio completions <bash|zsh|fish>` prints the completion script of a shell: the commands, their options and the words of `ready`. The Homebrew formula installs them with the binary.
+- Tab completes the name of a command on the command line of `torchio watch`.
+
 ## 4.0.0 - 2026-10-19
 
 ### Changed

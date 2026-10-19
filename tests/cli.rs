@@ -145,7 +145,7 @@ fn watch_prints_a_frame_each_interval() {
 
 #[test]
 fn unknown_commands_and_options_print_the_usage_and_exit_with_1() {
-    for args in [&["nope"][..], &["watch", "--nope"], &["watch", "--url"]] {
+    for args in [&["nope"][..], &["watch", "--nope"], &["watch", "--url"], &["serve", "--port", "1"]] {
         let output = run(args, &[]);
         assert_eq!(output.status.code(), Some(1), "{args:?}");
         assert!(String::from_utf8_lossy(&output.stdout).starts_with("Usage: torchio watch"), "{args:?}");
@@ -237,4 +237,21 @@ fn watch_without_a_terminal_only_looks_even_if_it_is_not_asked_to() {
     let server = Server::start();
     let output = run(&["watch", "--once", "--token", "t", "--read-only", "--url", &server.url()], &[]);
     assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+}
+
+#[test]
+fn serve_starts_the_server_like_no_command_does() {
+    let port = free_port();
+    let mut child = std::process::Command::new(BIN)
+        .arg("serve")
+        .env_clear()
+        .env("PORT", port.to_string())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .unwrap();
+    wait_for("the server to answer", 5000, || try_get(&format!("http://127.0.0.1:{port}/"), &[]).is_ok());
+    assert_eq!(try_get(&format!("http://127.0.0.1:{port}/"), &[]).unwrap().body, "Status: OK");
+    child.kill().unwrap();
+    child.wait().unwrap();
 }

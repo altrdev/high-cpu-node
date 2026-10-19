@@ -24,8 +24,10 @@ Or on your local machine, with Homebrew (macOS and Linux):
 
 ```
 brew install altrdev/tap/torchio
-torchio
+torchio serve
 ```
+
+`torchio` with no command does the same as `torchio serve`: it is what the Docker image runs. The server stays in the foreground, so Ctrl+C stops it; use a second terminal tab for `torchio watch`.
 
 Other ways to get the `torchio` command. A script that downloads the binary of the latest release for your system (macOS or Linux, `amd64` or `arm64`), checks its checksum and installs it:
 
@@ -444,6 +446,23 @@ torchio crash 137 --after 5
 | `torchio ready on \| off [seconds]` | [`/ready`](#ready)   |
 
 The values after the name are the parameters of the endpoint, in the order of the table; any of them can also be given by name, as `--hold 60` or `--hold=60`. The limits are the ones of the server: a value it refuses is printed with its `400` and the command exits with `1`. With [`TOKEN`](#token), pass `--token <token>` or set `TOKEN`. `/stress` and `/delay` answer when they finish, so the command waits for them. Like `watch`, it speaks plain HTTP only.
+
+## Shell completion
+
+`torchio completions <bash|zsh|fish>` prints a script that makes the shell complete the commands (`torchio me<Tab>` gives `memory`), their options (`--hold`, `--url`…) and the words `on` and `off` of `ready`. With Homebrew the completions are installed with the binary: open a new shell. Otherwise:
+
+```
+# bash: in ~/.bashrc
+eval "$(torchio completions bash)"
+
+# zsh: in ~/.zshrc, after compinit
+eval "$(torchio completions zsh)"
+
+# fish
+torchio completions fish > ~/.config/fish/completions/torchio.fish
+```
+
+The scripts are generated from the commands of the binary, so they always match the version you have. On the command line of [`watch`](#keys), Tab completes the name of a command.
 
 ## Watching a server
 
