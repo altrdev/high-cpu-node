@@ -1,3 +1,5 @@
+//! Requests answered, by route and status code, for `/metrics`. The route is the pattern
+//! (`/status/:code`), not the URL, so the number of series stays small.
 use axum::extract::{MatchedPath, Request, State};
 use axum::middleware::Next;
 use axum::response::Response;
@@ -6,8 +8,6 @@ use std::sync::{Arc, Mutex};
 
 use crate::app::AppState;
 
-// Requests answered, by route and status code, for /metrics. The route is the pattern
-// (/status/:code), not the URL, so the number of series stays small.
 #[derive(Default)]
 pub struct Counters {
     counts: Mutex<BTreeMap<(String, u16), u64>>,

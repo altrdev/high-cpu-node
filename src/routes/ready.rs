@@ -1,11 +1,12 @@
 use crate::app::AppState;
 use crate::endpoints::specs;
-use crate::params;
+use crate::http::params::{self, Rejection};
 use axum::extract::{RawQuery, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use std::sync::Arc;
 
+/// The readiness check: `200`, or `503` while it is switched off
 pub async fn handler(State(state): State<Arc<AppState>>) -> Response {
     let ready = state.ready.state();
     if ready.ready {
@@ -18,19 +19,15 @@ pub async fn handler(State(state): State<Arc<AppState>>) -> Response {
     (StatusCode::SERVICE_UNAVAILABLE, body).into_response()
 }
 
-pub async fn off(State(state): State<Arc<AppState>>, RawQuery(query): RawQuery) -> Response {
-    let params = match params::read(query.as_deref(), &specs(&state.config).ready_off) {
-        Ok(params) => params,
-        Err(rejection) => return rejection.into_response(),
-    };
-    let seconds = params.get("seconds");
+/// Makes `/ready` answer `503` for `seconds`, or until `/ready/on` when it is 0
+pub async fn off(State(state): State<Arc<AppState>>, RawQuery(query): RawQuery) -> Result<String, Rejection> {
+    let seconds = params::read(query.as_deref(), &specs(&state.config).ready_off)?.get("seconds");
 
     state.ready.off(seconds as u64);
-    let body = if seconds > 0 { format!("Not ready for {seconds} s") } else { "Not ready until /ready/on".to_string() };
-    (StatusCode::OK, body).into_response()
+    Ok(if seconds > 0 { format!("Not ready for {seconds} s") } else { "Not ready until /ready/on".to_string() })
 }
 
-pub async fn on(State(state): State<Arc<AppState>>) -> Response {
+pub async fn on(State(state): State<Arc<AppState>>) -> &'static str {
     state.ready.on();
-    (StatusCode::OK, "Ready").into_response()
+    "Ready"
 }

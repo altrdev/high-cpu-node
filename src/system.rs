@@ -1,6 +1,24 @@
-// What the operating system says about the process and the machine. Linux is what runs in
-// containers; the other platforms answer as much as is useful during development.
+//! What the operating system says about the process and the machine. Linux is what runs in
+//! containers; the other platforms answer as much as is useful during development.
 use std::ffi::CString;
+use std::io;
+
+/// The name of an error as the tools of the system print it (`EMFILE`, `ENOTDIR`), for the codes
+/// that matter here. Any other error is described in words.
+pub fn errno_name(error: &io::Error) -> String {
+    match error.raw_os_error() {
+        Some(2) => "ENOENT".into(),
+        Some(12) => "ENOMEM".into(),
+        Some(13) => "EACCES".into(),
+        Some(20) => "ENOTDIR".into(),
+        Some(21) => "EISDIR".into(),
+        Some(23) => "ENFILE".into(),
+        Some(24) => "EMFILE".into(),
+        Some(28) => "ENOSPC".into(),
+        Some(30) => "EROFS".into(),
+        _ => error.to_string(),
+    }
+}
 
 #[cfg(target_os = "linux")]
 fn page_size() -> u64 {
@@ -8,7 +26,7 @@ fn page_size() -> u64 {
     unsafe { libc::sysconf(libc::_SC_PAGESIZE) }.max(1) as u64
 }
 
-// Resident memory of this process, in bytes
+/// Resident memory of this process, in bytes
 #[cfg(target_os = "linux")]
 pub fn rss_bytes() -> u64 {
     let statm = std::fs::read_to_string("/proc/self/statm").unwrap_or_default();
@@ -58,7 +76,7 @@ fn cgroup_limit() -> Option<u64> {
     v1.and_then(|text| parse_limit(&text))
 }
 
-// The memory limit of the container, when there is one lower than the memory of the machine
+/// The memory limit of the container, when there is one lower than the memory of the machine
 #[cfg(target_os = "linux")]
 pub fn container_limit_bytes() -> Option<u64> {
     // SAFETY: sysconf has no preconditions
@@ -71,7 +89,7 @@ pub fn container_limit_bytes() -> Option<u64> {
     None
 }
 
-// Free space for an unprivileged process in the file system of `dir`, None when it can't be read
+/// Free space for an unprivileged process in the file system of `dir`, `None` when it can't be read
 pub fn free_bytes(dir: &str) -> Option<u64> {
     let path = CString::new(dir).ok()?;
     // SAFETY: `path` is a valid C string and `stats` is plain data that statfs fills in
@@ -90,6 +108,13 @@ mod tests {
     fn limits() {
         assert_eq!(parse_limit("268435456\n"), Some(268435456));
         assert_eq!(parse_limit("max\n"), None);
+    }
+
+    #[test]
+    fn errors_are_named_when_it_matters() {
+        assert_eq!(errno_name(&io::Error::from_raw_os_error(24)), "EMFILE");
+        assert_eq!(errno_name(&io::Error::from_raw_os_error(20)), "ENOTDIR");
+        assert!(errno_name(&io::Error::other("something else")).contains("something else"));
     }
 
     #[test]

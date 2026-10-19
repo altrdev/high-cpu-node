@@ -28,6 +28,7 @@ RUN mkdir src \
     && cargo zigbuild --release --locked --target "$(cat /target)" \
     && rm -rf src
 COPY src ./src
+COPY assets ./assets
 # /tmp is where /disk writes by default, and the image has nothing else
 RUN touch src/main.rs \
     && cargo zigbuild --release --locked --target "$(cat /target)" \

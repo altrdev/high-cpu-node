@@ -3,13 +3,13 @@ use axum::extract::Path;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 
-// What JavaScript's Number() makes of a path segment, when it is an integer
+/// The integer a path segment spells, if it spells one (`503`, `1e3`)
 fn integer(text: &str) -> Option<i64> {
     let value: f64 = text.trim().parse().ok()?;
     (value.is_finite() && value.fract() == 0.0).then_some(value as i64)
 }
 
-// Answers with the requested status code, to test probes and retries
+/// Answers with the requested status code, to test probes and retries
 pub async fn handler(Path(code): Path<String>) -> Response {
     let code = integer(&code).filter(|code| (STATUS_MIN..=STATUS_MAX).contains(code));
     let Some(code) = code else {

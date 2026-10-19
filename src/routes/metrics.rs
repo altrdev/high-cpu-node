@@ -38,7 +38,7 @@ fn optional(value: Option<u64>) -> Vec<(Labels, f64)> {
     value.map_or_else(Vec::new, |bytes| one(bytes as f64))
 }
 
-// The figures of /info in the Prometheus text format
+/// The figures of `/info` in the Prometheus text format
 pub async fn handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     let s = state.snapshot();
     let mb = MB as f64;

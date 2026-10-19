@@ -10,8 +10,8 @@ fn to_mb(bytes: u64) -> i64 {
     (bytes as f64 / MB as f64).round() as i64
 }
 
-// What the server is doing right now, so you can see the remaining budgets
-// without having to hit a 429 or a 507
+/// What the server is doing right now, so you can see the remaining budgets
+/// without having to hit a 429 or a 507
 pub async fn handler(State(state): State<Arc<AppState>>) -> Json<Value> {
     let config = &state.config;
     let snapshot = state.snapshot();

@@ -1,11 +1,11 @@
+//! A readiness switch: `/ready` answers 200 or 503, `/ready/off` makes it answer 503 (for `seconds`,
+//! or until `/ready/on` when 0) so you can watch what a readiness probe or a load balancer does with
+//! an instance that leaves the rotation but is still alive.
 use serde::Serialize;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::time::Instant;
 
-// A readiness switch you can flip over HTTP: /ready answers 200 or 503, /ready/off makes it
-// answer 503 (for `seconds`, or until /ready/on when 0) so you can watch what a readiness
-// probe or a load balancer does with an instance that leaves the rotation but is still alive.
 #[derive(Default)]
 pub struct Ready {
     inner: Mutex<Inner>,

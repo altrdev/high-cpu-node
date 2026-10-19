@@ -1,8 +1,8 @@
-// The definition of every endpoint: what it does, whether TOKEN protects it and the parameters
-// it takes with their defaults and limits. The routes read their parameters from `Specs` and
-// /help is built from `catalog`, so the two can't go out of date.
+//! The definition of every endpoint: what it does, whether `TOKEN` protects it and the parameters
+//! it takes with their defaults and limits. The routes read their parameters from `Specs` and
+//! `/help` is built from `catalog`, so the two can't go out of date.
 use crate::config::Config;
-use crate::params::Param;
+use crate::http::params::Param;
 use serde_json::{Map, Value, json};
 
 pub const STATUS_MIN: i64 = 200;
@@ -171,5 +171,49 @@ mod tests {
         assert!(text.contains("/stress  [needs TOKEN]\n  Runs a Fibonacci"));
         assert!(text.contains("  number: default 45, 0..50\n"));
         assert!(text.contains("  code: required, 200..599\n"));
+    }
+
+    #[test]
+    fn paths_are_unique_and_start_with_a_slash() {
+        let catalog = catalog(&config(true));
+        let mut paths: Vec<&str> = catalog.iter().map(|e| e.path).collect();
+        assert!(paths.iter().all(|path| path.starts_with('/')));
+        paths.sort_unstable();
+        paths.dedup();
+        assert_eq!(paths.len(), catalog.len());
+    }
+
+    #[test]
+    fn the_endpoints_that_change_the_state_are_the_protected_ones() {
+        let protected: Vec<&str> = catalog(&config(false)).iter().filter(|e| e.auth).map(|e| e.path).collect();
+        assert_eq!(protected, ["/stress", "/cpu", "/memory", "/leak", "/disk", "/fd", "/ready/off", "/ready/on", "/crash", "/log"]);
+    }
+
+    #[test]
+    fn every_parameter_has_a_default_inside_its_range_but_the_code_of_status() {
+        for endpoint in catalog(&config(false)) {
+            for (name, param) in &endpoint.params {
+                match param.fallback {
+                    Some(fallback) => assert!((param.min..=param.max).contains(&fallback), "{} {name}", endpoint.path),
+                    None => assert_eq!(endpoint.path, "/status/:code"),
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn the_limits_follow_the_configuration() {
+        let get = |name: &str| match name {
+            "MAX_NUMBER" => Some("30".to_string()),
+            "MAX_HOLD_SECONDS" => Some("60".to_string()),
+            "MAX_LOG_RATE" => Some("500".to_string()),
+            _ => None,
+        };
+        let specs = specs(&Config::read(get, |_| {}));
+        assert_eq!(specs.stress[0].1.max, 30);
+        assert_eq!((specs.cpu[1].0, specs.cpu[1].1.max), ("hold", 60));
+        assert_eq!(specs.log[1].1.max, 500);
+        assert_eq!(specs.crash[1].1.max, 60, "`after` is limited by the same hold");
+        assert_eq!(specs.ready_off[0].1.max, 60);
     }
 }

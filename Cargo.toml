@@ -5,6 +5,11 @@ edition = "2024"
 rust-version = "1.88"
 description = "Break your containers on purpose: burn CPU, hold memory, fill disk and more, on demand over HTTP"
 license = "MIT"
+repository = "https://github.com/altrdev/torchio"
+readme = "README.md"
+keywords = ["load-testing", "chaos", "kubernetes", "docker", "stress"]
+categories = ["command-line-utilities", "development-tools::testing"]
+publish = false
 authors = ["altrdev"]
 
 [dependencies]
@@ -28,3 +33,4 @@ strip = true
 
 [dev-dependencies]
 tokio = { version = "1.53.3", features = ["test-util", "macros", "rt", "io-util", "net"] }
+tower = { version = "0.5.3", features = ["util"] }

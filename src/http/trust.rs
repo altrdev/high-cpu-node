@@ -1,6 +1,8 @@
-// TRUST_PROXY and the addresses that follow from it, as Express 5 and proxy-addr work them out:
-// the client is the first address, walking back from the socket through X-Forwarded-For, that
-// does not belong to a trusted proxy.
+//! `TRUST_PROXY`: which proxies are trusted, and the client address that follows from it. Walking
+//! back from the socket through `X-Forwarded-For`, the client is the first address that does not
+//! belong to a trusted proxy. A proxy is trusted by its number of hops from the application, or by
+//! address or subnet; `loopback`, `linklocal` and `uniquelocal` stand for the usual private ranges.
+//! An IPv4-mapped IPv6 address (`::ffff:10.0.0.1`) counts as the IPv4 one.
 use crate::config::TrustProxy;
 use std::net::IpAddr;
 
@@ -197,7 +199,7 @@ mod tests {
     }
 
     #[test]
-    fn the_header_is_read_like_forwarded_does() {
+    fn the_header_is_read_from_the_right_ignoring_empty_entries() {
         let all = Trust::All;
         assert_eq!(all.addresses("::1", Some("  a ,, b ,")), ["::1", "b", "a"]);
         assert_eq!(all.addresses("::1", None), ["::1"]);
@@ -213,7 +215,7 @@ mod tests {
     }
 
     #[test]
-    fn invalid_settings_are_reported_like_proxy_addr_does() {
+    fn invalid_settings_are_reported() {
         let error = |list: &str| Trust::from_setting(&TrustProxy::List(list.to_string())).unwrap_err();
         assert_eq!(error("10.0.0.0/8, nope"), "invalid IP address: nope");
         assert_eq!(error("10.0.0.0/33"), "invalid range on address: 10.0.0.0/33");

@@ -1,3 +1,4 @@
+//! `TOKEN`: the endpoints that change the state of the instance ask for `Authorization: Bearer <token>`.
 use crate::app::AppState;
 use axum::extract::{Request, State};
 use axum::http::{HeaderValue, StatusCode, header};
@@ -11,8 +12,8 @@ fn digest(value: &str) -> [u8; 32] {
     Sha256::digest(value.as_bytes()).into()
 }
 
-// Whether `header` is `Bearer <token>`. The scheme is case-insensitive and the token is
-// compared through a digest, so the comparison takes the same time whatever the value is.
+/// Whether `header` is `Bearer <token>`. The scheme is case-insensitive and the token is
+/// compared through a digest, so the comparison takes the same time whatever the value is.
 fn authorized(header: &str, token: &str) -> bool {
     let mut parts = header.split(' ');
     let scheme = parts.next().unwrap_or("");
@@ -20,8 +21,8 @@ fn authorized(header: &str, token: &str) -> bool {
     scheme.eq_ignore_ascii_case("bearer") && bool::from(digest(value).ct_eq(&digest(token)))
 }
 
-// With TOKEN set, the endpoints that change the state of the instance need
-// `Authorization: Bearer <token>`. Without it nothing is checked.
+/// With a token set the request must carry it, or it is answered with a `401`. Without one
+/// nothing is checked.
 pub async fn guard(State(state): State<Arc<AppState>>, request: Request, next: Next) -> Response {
     let token = &state.config.token;
     if token.is_empty() {
@@ -51,6 +52,6 @@ mod tests {
         assert!(!authorized("Basic s3cret", "s3cret"));
         assert!(!authorized("s3cret", "s3cret"));
         assert!(!authorized("", "s3cret"));
-        assert!(!authorized("Bearer  s3cret", "s3cret"), "two spaces make the token empty, as in the Node version");
+        assert!(!authorized("Bearer  s3cret", "s3cret"), "two spaces make the token empty");
     }
 }

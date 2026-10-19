@@ -1,5 +1,5 @@
-// A small version of what Express's req.accepts does: given the Accept header, does the client
-// prefer HTML to JSON? A browser sends text/html first, curl and fetch send */* or nothing.
+//! Content negotiation, for the one place that needs it: given the `Accept` header, does the client
+//! prefer HTML to JSON? A browser sends `text/html` first, curl and most libraries send `*/*` or nothing.
 
 struct Range<'a> {
     kind: &'a str,
@@ -19,7 +19,7 @@ fn parse(header: &str) -> Vec<Range<'_>> {
         .collect()
 }
 
-// (quality, specificity, earlier in the header is better) of the best range for a media type
+// (quality, specificity, earlier in the header is better) of the range that fits a media type best
 fn score(ranges: &[Range], kind: &str, subtype: &str) -> Option<(f64, u8, isize)> {
     ranges
         .iter()
@@ -36,8 +36,8 @@ fn score(ranges: &[Range], kind: &str, subtype: &str) -> Option<(f64, u8, isize)
         .max_by(|a, b| (a.1, a.0, a.2).partial_cmp(&(b.1, b.0, b.2)).unwrap())
 }
 
-// JSON is what the API answers unless the client prefers HTML. With no preference (no header, or
-// */*) it is JSON; between equals, the one listed first in the header wins.
+/// JSON is what the API answers unless the client prefers HTML. With no preference (no header, or
+/// `*/*`) it is JSON; between equals, the one listed first in the header wins.
 pub fn prefers_html(header: Option<&str>) -> bool {
     let Some(header) = header else { return false };
     let ranges = parse(header);
@@ -68,6 +68,24 @@ mod tests {
         assert!(!prefers_html(Some("application/json, text/html;q=0.5")));
         assert!(!prefers_html(Some("text/html;q=0")));
         assert!(!prefers_html(Some("garbage")));
+    }
+
+    #[test]
+    fn quality_decides_before_the_order() {
+        assert!(prefers_html(Some("application/json;q=0.5, text/html")));
+        assert!(!prefers_html(Some("text/html;q=0.5, application/json")));
+        assert!(prefers_html(Some("text/html;q=0.9, */*;q=0.1")));
+    }
+
+    #[test]
+    fn a_more_specific_range_wins_over_a_wildcard() {
+        assert!(prefers_html(Some("text/html, application/*")), "text/html is exact and listed first");
+        assert!(!prefers_html(Some("application/json, text/*")));
+    }
+
+    #[test]
+    fn media_types_are_not_case_sensitive_and_spaces_do_not_matter() {
+        assert!(prefers_html(Some(" Text/HTML ;  q=1 ")));
     }
 
     #[test]

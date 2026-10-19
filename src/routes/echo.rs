@@ -1,5 +1,5 @@
 use crate::app::AppState;
-use crate::trust::Trust;
+use crate::http::trust::Trust;
 use axum::Json;
 use axum::extract::{ConnectInfo, OriginalUri, State};
 use axum::http::{HeaderMap, Method, Version};
@@ -7,7 +7,7 @@ use serde_json::{Map, Value, json};
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-// Headers that carry credentials are never echoed back
+/// Headers that carry credentials are never echoed back
 const MASKED: [&str; 4] = ["authorization", "proxy-authorization", "cookie", "set-cookie"];
 
 fn http_version(version: Version) -> &'static str {
@@ -20,13 +20,13 @@ fn http_version(version: Version) -> &'static str {
     }
 }
 
-// A header as Node gives it: repeated ones joined with a comma
+/// The value of a header; a repeated header is joined with commas
 fn header_value(headers: &HeaderMap, name: &str) -> Option<String> {
     let values: Vec<String> = headers.get_all(name).iter().map(|v| String::from_utf8_lossy(v.as_bytes()).into_owned()).collect();
     (!values.is_empty()).then(|| values.join(", "))
 }
 
-// req.protocol of Express: the forwarded one when the socket is a trusted proxy
+/// `http`, or the protocol the proxy forwarded when the socket is a trusted proxy
 fn protocol(trust: &Trust, remote: &str, headers: &HeaderMap) -> String {
     if !trust.trusts(remote, 0) {
         return "http".into();
@@ -35,7 +35,7 @@ fn protocol(trust: &Trust, remote: &str, headers: &HeaderMap) -> String {
     forwarded.split(',').next().unwrap_or("").trim().to_string()
 }
 
-// req.hostname of Express: the forwarded host when the socket is a trusted proxy, without the port
+/// The host the client asked for, without the port: the forwarded one when the socket is a trusted proxy
 fn hostname(trust: &Trust, remote: &str, headers: &HeaderMap) -> Option<String> {
     let forwarded = header_value(headers, "x-forwarded-host").filter(|v| !v.is_empty());
     let host = match forwarded {
@@ -55,16 +55,23 @@ fn hostname(trust: &Trust, remote: &str, headers: &HeaderMap) -> Option<String> 
     })
 }
 
+/// The request as a JSON document
 pub fn describe(trust: &Trust, method: &Method, url: &str, version: Version, headers: &HeaderMap, remote: &str) -> Value {
     let addresses = trust.addresses(remote, header_value(headers, "x-forwarded-for").as_deref());
     let ips: Vec<&String> = addresses.iter().skip(1).rev().collect();
     let protocol = protocol(trust, remote, headers);
 
+    let mut shown = Map::new();
+    for name in headers.keys() {
+        let value = if MASKED.contains(&name.as_str()) { Some("[masked]".to_string()) } else { header_value(headers, name.as_str()) };
+        shown.insert(name.as_str().to_string(), json!(value));
+    }
+
     let mut echo = Map::new();
     echo.insert("method".into(), json!(method.as_str()));
     echo.insert("url".into(), json!(url));
-    echo.insert("secure".into(), json!(protocol == "https"));
     echo.insert("protocol".into(), json!(protocol));
+    echo.insert("secure".into(), json!(protocol == "https"));
     echo.insert("httpVersion".into(), json!(http_version(version)));
     if let Some(hostname) = hostname(trust, remote, headers) {
         echo.insert("hostname".into(), json!(hostname));
@@ -72,26 +79,13 @@ pub fn describe(trust: &Trust, method: &Method, url: &str, version: Version, hea
     echo.insert("ip".into(), json!(addresses.last()));
     echo.insert("ips".into(), json!(ips));
     echo.insert("remoteAddress".into(), json!(remote));
-
-    let mut shown = Map::new();
-    for name in headers.keys() {
-        let value = if MASKED.contains(&name.as_str()) { Some("[masked]".to_string()) } else { header_value(headers, name.as_str()) };
-        shown.insert(name.as_str().to_string(), json!(value));
-    }
     echo.insert("headers".into(), Value::Object(shown));
-    // Express lists protocol before secure
-    let mut ordered = Map::new();
-    for key in ["method", "url", "protocol", "secure", "httpVersion", "hostname", "ip", "ips", "remoteAddress", "headers"] {
-        if let Some(value) = echo.remove(key) {
-            ordered.insert(key.into(), value);
-        }
-    }
-    Value::Object(ordered)
+    Value::Object(echo)
 }
 
-// Returns the request as the server sees it, to show what a proxy, an ingress controller or a
-// load balancer adds, removes or rewrites (Host, X-Forwarded-*, the client address).
-// `ip` follows TRUST_PROXY, so it shows the address a proxy would pass on.
+/// Returns the request as the server sees it, to show what a proxy, an ingress controller or a
+/// load balancer adds, removes or rewrites (`Host`, `X-Forwarded-*`, the client address).
+/// `ip` follows `TRUST_PROXY`, so it shows the address a proxy would pass on.
 pub async fn handler(
     State(state): State<Arc<AppState>>,
     ConnectInfo(peer): ConnectInfo<SocketAddr>,

@@ -1,3 +1,4 @@
+//! The worker threads that `/stress` and `/cpu` use to keep the cores busy.
 use serde::Serialize;
 use std::hint::black_box;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -160,7 +161,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn fibonacci_as_the_node_version_calculates_it() {
+    fn both_first_terms_of_the_sequence_are_one() {
         assert_eq!(fibo(-1), 1);
         assert_eq!(fibo(0), 1);
         assert_eq!(fibo(19), 6765);
