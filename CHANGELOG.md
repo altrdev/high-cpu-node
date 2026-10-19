@@ -4,6 +4,9 @@ All notable changes to this project are documented here. The GitHub release of e
 
 ## Unreleased
 
+### Added
+- `/payload?mb=` answers with `mb` MB of data, streamed and announced with its `Content-Length`, and `POST /payload` takes an upload, throws it away and reports its bytes, time and speed (`413` over the limit). `MAX_PAYLOAD_MB` (`1024` by default) limits both, and `TOKEN` protects it. It is for testing the limits on the size of a body and the timeouts of proxies, ingresses and load balancers.
+
 ### Documentation
 - The reference of the endpoints names the command that does the same (`torchio cpu [percent] [hold] [workers]`), in a column of the table and in the section of each endpoint. It comes from the list of commands the program itself uses, and a test checks that every command calls an endpoint of the catalog.
 

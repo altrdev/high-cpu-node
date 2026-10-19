@@ -58,7 +58,7 @@ The tests come in three kinds, and `cargo test` runs them all:
 
 - **Unit tests** live in the module they test (`#[cfg(test)]`): the budgets, the parsing of parameters and `TRUST_PROXY`, the view of `watch`, the worker pool, the timers (with a paused clock).
 - **Router tests** (`tests/api.rs`) call the router without a socket: every endpoint of the catalog is routed and protected as it says, every parameter is rejected one step outside its range, CORS, methods, content negotiation, and the shape of `/info`, `/config` and `/metrics`.
-- **Integration tests** (`tests/*.rs`, with what they share in `tests/common`) start the real binary on a free port with small limits and call it over HTTP: `probes` (`/`, `/status`, `/ready`, `/delay`), `resources` (`/memory`, `/leak`, `/disk`, `/fd`), `load` (`/stress`, `/cpu`), `observability` (`/info`, `/metrics`, `/log`, `/echo`, `/help`, `/config`), `lifecycle` (configuration, start, signals, `/crash`), `auth` (`TOKEN`), `ui` and `cli` (`watch`, `healthcheck`).
+- **Integration tests** (`tests/*.rs`, with what they share in `tests/common`) start the real binary on a free port with small limits and call it over HTTP: `probes` (`/`, `/status`, `/ready`, `/delay`), `resources` (`/memory`, `/leak`, `/disk`, `/fd`), `load` (`/stress`, `/cpu`), `payload` (`/payload`), `observability` (`/info`, `/metrics`, `/log`, `/echo`, `/help`, `/config`), `lifecycle` (configuration, start, signals, `/crash`), `auth` (`TOKEN`), `ui` and `cli` (`watch`, `healthcheck`).
 
 CI runs them on Linux and macOS with the format check, `clippy` and the documentation, builds the image for both platforms, runs it with a memory limit and a CPU limit, and validates `/metrics` with `promtool`.
 

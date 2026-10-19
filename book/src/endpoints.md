@@ -21,6 +21,7 @@ Most of the endpoints that start a test are also a command, so you can skip `cur
 | `/crash`        | `code`, `after`    | Ends the process, to test restarts and backoff              |
 | `/block`        | `ms`               | Freezes every thread of the server, to test liveness probes and timeouts |
 | `/oom`          |                    | Allocates until the kernel kills the process, only with `ALLOW_OOM=1` |
+| `/payload`      | `mb`               | Sends or takes a large body, to test body size limits and timeouts of proxies |
 | `/fd`           | `count`, `hold`    | Opens file descriptors and holds them, to test `EMFILE`     |
 | `/connections`  | `count`, `hold`    | Opens TCP connections to the server and holds them, to test connection limits |
 | `/log`          | `lines`, `rate`    | Writes lines to stdout at a rate, to test log collection and rotation |
@@ -214,6 +215,24 @@ docker inspect --format '{{.State.OOMKilled}} {{.State.ExitCode}}' <container>
 ```
 
 Use it only in a container with a memory limit. Without one it fills the memory of the machine, and the kernel may kill another process before this one.
+
+## `/payload`
+
+`GET` answers with `mb` MB of data and `POST` takes an upload and throws it away, to load the network and to test the limits on the size of a body and the timeouts of a proxy, an ingress or a load balancer.
+
+| Parameter | Default | Allowed range         |
+|-----------|---------|-----------------------|
+| `mb`      | `10`    | `1..MAX_PAYLOAD_MB`   |
+
+- **`GET`** streams the data a chunk at a time, so nothing is held in memory, and announces the length (`Content-Length`), so a client or a proxy can tell a body that was cut short. The bytes don't compress, so a proxy that compresses doesn't make the test smaller.
+- **`POST`** reads the body as it arrives, without keeping it, and answers with `{ "bytes", "seconds", "mbPerSecond" }`. It takes no parameter: a body over `MAX_PAYLOAD_MB` is answered with a `413`, which is also what a proxy with a limit on the size does. A connection that breaks halfway is a `400` that says how much had arrived.
+
+Both need the token when `TOKEN` is set, since they use the bandwidth of the instance.
+
+```
+curl -o /dev/null -w "%{size_download} bytes in %{time_total} s\n" "http://127.0.0.1:3000/payload?mb=100"
+head -c 50000000 /dev/zero | curl -X POST --data-binary @- http://127.0.0.1:3000/payload
+```
 
 ## `/fd`
 
