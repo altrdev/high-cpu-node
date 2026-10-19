@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
+## Unreleased
+
+### Documentation
+- The site has `llms.txt` (an index of the pages) and `llms-full.txt` (all of them in one file) for language models, and a skill for agents that use torchio, at `/SKILL.md` and in `skills/torchio/`. The page *For AI agents* says how to install it.
+
 ## 4.6.0 - 2026-10-19
 
 ### Added

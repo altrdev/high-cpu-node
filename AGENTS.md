@@ -24,6 +24,7 @@ CI (`.github/workflows/ci.yml`) runs all of the above on Linux and macOS, so run
 - `assets/ui.html`: the control panel, a single self-contained page.
 - `tests/`: integration tests; shared helpers are in `tests/common`.
 - `book/`: documentation (mdBook), published at <https://torchio.altr.dev>. `book/src/reference.md` is generated, do not edit it by hand: `cargo run --example endpoints_reference > book/src/reference.md`. `book/src/development.md` has the full module map.
+- `skills/torchio/SKILL.md`: the skill for agents that *use* torchio (not for working on this repo). `book/llms.py` writes `llms.txt` and `llms-full.txt` from the book. Keep the skill in line with the endpoints when they change.
 - `deploy/`: Kubernetes manifest and Helm chart.
 
 ## Conventions

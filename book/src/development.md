@@ -50,7 +50,8 @@ src/
 assets/ui.html     the control panel, a single static page
 tests/             integration tests, by area
 deploy/            Kubernetes manifests and the Helm chart
-book/              this documentation, with mdBook (`SUMMARY.md` is the list of pages)
+book/              this documentation, with mdBook (`SUMMARY.md` is the list of pages); `llms.py` writes llms.txt from it
+skills/torchio/    the skill that tells an agent how to run a test, published at /SKILL.md
 examples/          the reference of the endpoints, written from the catalog
 Dockerfile         builds the binary for both platforms with cargo-zigbuild, into an image of one file
 ```

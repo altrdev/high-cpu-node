@@ -12,6 +12,7 @@
 - [Starting a test](starting-a-test.md)
 - [Scenarios](scenarios.md)
 - [Shell completion](shell-completion.md)
+- [For AI agents](agents.md)
 
 # Watch it
 
