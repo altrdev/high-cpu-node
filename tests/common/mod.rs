@@ -102,7 +102,7 @@ pub fn raw(port: u16, request: &str) -> String {
 }
 
 // What to do with DISK_DIR before the server starts
-type Prepare = Box<dyn FnOnce(&Path)>;
+type Prepare = Box<dyn Fn(&Path)>;
 
 // What a server is started with: the environment, and what to put in DISK_DIR first
 #[derive(Default)]
@@ -117,7 +117,7 @@ impl Options {
         self
     }
 
-    pub fn prepare(mut self, prepare: impl FnOnce(&Path) + 'static) -> Options {
+    pub fn prepare(mut self, prepare: impl Fn(&Path) + 'static) -> Options {
         self.prepare = Some(Box::new(prepare));
         self
     }
@@ -144,10 +144,22 @@ impl Server {
         env.iter().fold(Options::default(), |options, (name, value)| options.env(name, value)).start()
     }
 
+    // The port is free when it is picked, but another test can take it before the server binds it, so a server that
+    // finds it taken is started again on another one
     fn spawn(options: Options) -> Server {
+        for _ in 0..4 {
+            if let Some(server) = Server::try_spawn(&options) {
+                return server;
+            }
+        }
+        Server::try_spawn(&options).expect("a free port to start the server on")
+    }
+
+    // None when the port was taken
+    fn try_spawn(options: &Options) -> Option<Server> {
         let port = free_port();
         let disk_dir = TempDir::new();
-        if let Some(prepare) = options.prepare {
+        if let Some(prepare) = &options.prepare {
             prepare(disk_dir.path());
         }
 
@@ -189,10 +201,17 @@ impl Server {
         let mut server = Server { child, port, disk_dir, output, readers };
         for _ in 0..100 {
             if let Some(status) = server.child.try_wait().unwrap() {
+                // the reader threads may not have the last line yet
+                for reader in server.readers.drain(..) {
+                    let _ = reader.join();
+                }
+                if server.output().contains("Address already in use") {
+                    return None;
+                }
                 panic!("the server exited while starting ({status}): {}", server.output());
             }
             if try_get(&format!("{}/", server.url()), &[]).is_ok_and(|r| r.status == 200) {
-                return server;
+                return Some(server);
             }
             sleep(100);
         }
