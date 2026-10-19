@@ -58,8 +58,8 @@ jobs:
       - uses: docker/setup-buildx-action@v4
 
       # The layers of the dependencies are kept between runs, so only torchio itself is compiled again.
-      # The image for the tests and the one for both platforms share them: the second build finds
-      # the amd64 layers of the first in the cache.
+      # Only the build for both platforms writes the cache: one that wrote only the amd64 layers
+      # would replace the arm64 ones, and the second build finds the amd64 layers of the first.
       - name: Build the Docker image
         uses: docker/build-push-action@v7
         with:
@@ -67,7 +67,6 @@ jobs:
           load: true
           tags: torchio
           cache-from: type=gha
-          cache-to: type=gha,mode=max
 
       # the same Dockerfile compiles for both platforms on this one, without emulation
       - name: Build the Docker image for both platforms
