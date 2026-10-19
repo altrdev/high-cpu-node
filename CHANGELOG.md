@@ -2,13 +2,17 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
-## Unreleased
+## 4.3.0 - 2026-10-19
 
 ### Added
 - `/flaky?rate=&code=&ms=` fails `rate` percent of the requests with `code` (`503` by default) and answers `200` to the rest, to test retries, circuit breakers and outlier detection. `ms` makes a failing answer wait first, like `/delay`. `torchio flaky [rate] [code] [ms]` calls it.
 - `/cpu?workers=` loads only the first workers and leaves the others idle, to simulate an uneven load across the cores. `/info` (`stress.burn.workers`), `torchio_cpu_burn_workers`, `watch` and the control panel show how many are loaded. By default it is all of them, as before.
 - `/connections?count=&hold=` opens TCP connections to the server itself and holds them, with the budget `MAX_CONNECTIONS` (`500` by default, `429` when it does not fit), to test connection limits, load balancers and a shutdown with open sockets. `/info` (`connections`), `/metrics` (`torchio_connections_held` and `torchio_connections_limit`), `watch`, the control panel and `torchio connections [count] [hold]` have it. Like the other endpoints that change the state, `TOKEN` protects it.
 - `SHUTDOWN_GRACE_SECONDS` makes SIGTERM and SIGINT drain before the process ends: the port closes, the requests and connections already open are served, and it ends when none is left or the time is up. A line each second says what is open, `/info` (`shutdown`) and `/metrics` (`torchio_draining`, `torchio_open_requests`, `torchio_open_connections`) report it, and another signal ends it at once. The default `0` ends the process right away, as before, and now says which signal arrived.
+
+### Documentation
+- The documentation is a site, at https://torchio.altr.dev, with a page for each part of what used to be the README: the endpoints and their reference (written from the catalog that `/help` is built from), the command line, `watch` and the control panel, the configuration, Docker and Kubernetes. It is published with each release.
+- The README is short: the install, the first test and the links to the site. It has a section for each way to install (Docker, Homebrew, the install script, the release binary and the source), and it now fits in Docker Hub whole.
 
 ## 4.2.0 - 2026-10-19
 
