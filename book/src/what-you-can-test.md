@@ -61,10 +61,11 @@ docker run -p 3000:3000 -e START_DELAY_SECONDS=30 altrdev/torchio
 curl "http://127.0.0.1:3000/ready/off?seconds=60"
 curl -i http://127.0.0.1:3000/ready
 curl "http://127.0.0.1:3000/crash?code=1"
+curl "http://127.0.0.1:3000/block?ms=10000"
 curl "http://127.0.0.1:3000/fd?count=500&hold=30"
 ```
 
-`/ready/off` makes `/ready` answer `503` for a while while `/` keeps answering `200`, so you can see an instance leave a Service or a load balancer without being restarted. `/crash` ends the process with the exit code you choose, to watch restarts and backoff. `/fd` holds file descriptors open, to see what a process does when it runs out of them.
+`/ready/off` makes `/ready` answer `503` for a while while `/` keeps answering `200`, so you can see an instance leave a Service or a load balancer without being restarted. `/crash` ends the process with the exit code you choose, to watch restarts and backoff. `/block` freezes every thread of the server for a while, so a liveness probe times out on an instance that is alive. `/oom` (with `ALLOW_OOM=1`) allocates until the kernel kills the container, to see `OOMKilled` and the exit code `137`. `/fd` holds file descriptors open, to see what a process does when it runs out of them.
 
 ## Metrics and dashboards
 

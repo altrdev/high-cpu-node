@@ -1,4 +1,5 @@
 //! One file for each endpoint: it reads the parameters, asks `resources` to do the work and writes the answer.
+pub mod block;
 pub mod config;
 pub mod connections;
 pub mod cpu;
@@ -14,6 +15,7 @@ pub mod leak;
 pub mod log;
 pub mod memory;
 pub mod metrics;
+pub mod oom;
 pub mod ready;
 pub mod status;
 pub mod stress;

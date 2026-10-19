@@ -24,7 +24,7 @@ fn info_describes_the_server() {
     assert!(info["log"].is_null());
     assert_eq!(
         info["limits"],
-        json!({"maxNumber": 50, "maxDelayMs": 5000, "maxHoldSeconds": 30, "maxLogLines": 100000, "maxLogRate": 10000})
+        json!({"maxNumber": 50, "maxDelayMs": 5000, "maxHoldSeconds": 30, "maxBlockMs": 30000, "maxLogLines": 100000, "maxLogRate": 10000})
     );
 }
 

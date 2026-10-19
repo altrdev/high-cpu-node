@@ -3,6 +3,7 @@ use crate::config::Config;
 use crate::http::counters::{self, Counters};
 use crate::http::{auth, open, trust::Trust};
 use crate::logging;
+use crate::resources::block::Block;
 use crate::resources::connections::Connections;
 use crate::resources::delay::Delay;
 use crate::resources::disk::Disk;
@@ -37,6 +38,7 @@ pub struct AppState {
     pub fd: Fd,
     pub connections: Connections,
     pub flaky: Flaky,
+    pub block: Block,
     pub log: Arc<Log>,
     pub pool: WorkerPool,
     pub shutdown: Arc<Shutdown>,
@@ -57,6 +59,7 @@ impl AppState {
             // port is checked when the server starts, and a value out of range connects nowhere
             connections: Connections::new(config.max_connections, u16::try_from(config.port).unwrap_or(0)),
             flaky: Flaky::default(),
+            block: Block::default(),
             log: Arc::new(Log::new(config.log_format)),
             pool: WorkerPool::new(config.workers as usize),
             shutdown: Arc::new(Shutdown::new(config.shutdown_grace_seconds)),
@@ -84,6 +87,8 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/connections", get(routes::connections::handler))
         .route("/log", get(routes::log::handler))
         .route("/crash", get(routes::crash::handler))
+        .route("/block", get(routes::block::handler))
+        .route("/oom", get(routes::oom::handler))
         .route_layer(from_fn_with_state(state.clone(), auth::guard));
 
     let mut open = Router::new()

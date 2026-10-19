@@ -27,6 +27,7 @@ pub struct Specs {
     pub ready_off: Specs1,
     pub log: Specs2,
     pub crash: Specs2,
+    pub block: Specs1,
 }
 
 pub fn specs(config: &Config) -> Specs {
@@ -59,6 +60,7 @@ pub fn specs(config: &Config) -> Specs {
             ("rate", Param::new(config.default_log_rate, 1, config.max_log_rate)),
         ],
         crash: [("code", Param::new(1, 0, 255)), ("after", Param::new(0, 0, config.max_hold_seconds))],
+        block: [("ms", Param::new(5000.min(config.max_block_ms), 1, config.max_block_ms))],
     }
 }
 
@@ -104,6 +106,8 @@ pub fn catalog(config: &Config) -> Vec<Endpoint> {
         endpoint("/ready/off", true, &s.ready_off, "Makes /ready answer 503 for seconds (0 until /ready/on)"),
         endpoint("/ready/on", true, &[], "Makes /ready answer 200 again"),
         endpoint("/crash", true, &s.crash, "Ends the process with the exit code, after the given seconds"),
+        endpoint("/block", true, &s.block, "Freezes every thread of the server for ms, so it accepts and answers nothing"),
+        endpoint("/oom", true, &[], "Allocates memory until the kernel kills the process, needs ALLOW_OOM=1"),
         endpoint("/log", true, &s.log, "Writes lines to stdout at rate lines/s, then stops"),
         endpoint("/echo", false, &[], "The request as the server sees it: headers, client address, protocol (credentials masked)"),
         endpoint("/info", false, &[], "JSON with what the server is doing and the remaining budgets"),
@@ -210,7 +214,21 @@ mod tests {
         let protected: Vec<&str> = catalog(&config(false)).iter().filter(|e| e.auth).map(|e| e.path).collect();
         assert_eq!(
             protected,
-            ["/stress", "/cpu", "/memory", "/leak", "/disk", "/fd", "/connections", "/ready/off", "/ready/on", "/crash", "/log"]
+            [
+                "/stress",
+                "/cpu",
+                "/memory",
+                "/leak",
+                "/disk",
+                "/fd",
+                "/connections",
+                "/ready/off",
+                "/ready/on",
+                "/crash",
+                "/block",
+                "/oom",
+                "/log"
+            ]
         );
     }
 

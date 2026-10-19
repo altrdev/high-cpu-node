@@ -17,6 +17,8 @@ The server listens on port 3000.
 | `/ready/off`    | `seconds`          | Makes `/ready` answer `503`, to test readiness probes       |
 | `/ready/on`     |                    | Makes `/ready` answer `200` again                           |
 | `/crash`        | `code`, `after`    | Ends the process, to test restarts and backoff              |
+| `/block`        | `ms`               | Freezes every thread of the server, to test liveness probes and timeouts |
+| `/oom`          |                    | Allocates until the kernel kills the process, only with `ALLOW_OOM=1` |
 | `/fd`           | `count`, `hold`    | Opens file descriptors and holds them, to test `EMFILE`     |
 | `/connections`  | `count`, `hold`    | Opens TCP connections to the server and holds them, to test connection limits |
 | `/log`          | `lines`, `rate`    | Writes lines to stdout at a rate, to test log collection and rotation |
@@ -182,6 +184,35 @@ curl "http://127.0.0.1:3000/crash?code=137&after=5"
 
 Remember that anyone who can reach the server can stop it. As with the rest, don't expose it to the internet.
 
+## `/block`
+
+Freezes the server: after answering, every thread of the runtime goes to sleep for `ms`, so the process is alive but accepts nothing and answers nothing until the time is over. Use it to test liveness probes, client timeouts and what a load balancer does with an instance that hangs. `/stress` and `/cpu` run in threads of their own and don't count.
+
+| Parameter | Default | Allowed range         |
+|-----------|---------|-----------------------|
+| `ms`      | `5000`  | `1..MAX_BLOCK_MS`     |
+
+The answer is sent first, so the request that starts the block returns at once; the next ones wait. A new `/block` can't start while one is going on, it is answered with a `409`. `/info` doesn't answer during the block either, but it counts them afterwards (`block`), and the log says when it starts and when the server answers again.
+
+```
+curl "http://127.0.0.1:3000/block?ms=10000"
+curl -m 2 http://127.0.0.1:3000/    # times out for the next 10 seconds
+```
+
+## `/oom`
+
+Allocates memory without any budget, a chunk of 64 MB at a time, until the kernel kills the process, to test what a container does when it is killed for memory: the `OOMKilled` status, the exit code `137` and the restart policy. `/memory` and `/leak` stop at `MAX_MEMORY_MB` and never get there.
+
+It needs `ALLOW_OOM=1` (otherwise the answer is a `403` and nothing is allocated) and, when `TOKEN` is set, the token. The answer is sent first, and a warning in the log says what is about to happen and which limit the container has.
+
+```
+docker run -p 3000:3000 --memory 256m -e ALLOW_OOM=1 altrdev/torchio:latest
+curl http://127.0.0.1:3000/oom
+docker inspect --format '{{.State.OOMKilled}} {{.State.ExitCode}}' <container>
+```
+
+Use it only in a container with a memory limit. Without one it fills the memory of the machine, and the kernel may kill another process before this one.
+
 ## `/fd`
 
 Opens `count` file descriptors and closes them after `hold` seconds.
@@ -257,6 +288,7 @@ Returns a JSON document with what the server is doing right now. It takes no par
 | `connections.held`, `limit`   | Connections held by `/connections` and the total it may hold (`MAX_CONNECTIONS`) |
 | `log`                         | What `/log` is writing, `{ "sent", "lines", "rate" }`, or `null` when it is not running |
 | `shutdown`                    | `{ "draining", "graceSeconds", "drainSeconds", "openRequests", "openConnections" }`: whether SIGTERM started a [drain](shutdown.md#shutdown), for how long (`null` if not), and what is open now, the request for `/info` and its connection included |
+| `block`                       | `{ "count", "lastMs", "msLeft" }`: the blocks of `/block` so far, the length of the last one and what is left of the one running |
 | `ready.ready`, `secondsLeft`  | What `/ready` answers, and the seconds left before it is ready again (`null` if nothing is counting down) |
 
 ## `/metrics`

@@ -255,6 +255,7 @@ async fn the_configuration_has_these_keys() {
     assert_eq!(
         keys,
         [
+            "allowOom",
             "auth",
             "defaultConnections",
             "defaultCpuPercent",
@@ -271,6 +272,7 @@ async fn the_configuration_has_these_keys() {
             "diskDir",
             "host",
             "logFormat",
+            "maxBlockMs",
             "maxConnections",
             "maxDelayMs",
             "maxDiskMb",
@@ -306,6 +308,7 @@ async fn info_has_these_fields() {
         keys(&info),
         [
             "auth",
+            "block",
             "connections",
             "delay",
             "disk",
@@ -325,7 +328,8 @@ async fn info_has_these_fields() {
     assert_eq!(keys(&info["memory"]), ["containerLimitMb", "heldMb", "limitMb", "processRssMb"]);
     assert_eq!(keys(&info["disk"]), ["dir", "freeMb", "heldMb", "limitMb"]);
     assert_eq!(keys(&info["ready"]), ["ready", "secondsLeft"]);
-    assert_eq!(keys(&info["limits"]), ["maxDelayMs", "maxHoldSeconds", "maxLogLines", "maxLogRate", "maxNumber"]);
+    assert_eq!(keys(&info["block"]), ["count", "lastMs", "msLeft"]);
+    assert_eq!(keys(&info["limits"]), ["maxBlockMs", "maxDelayMs", "maxHoldSeconds", "maxLogLines", "maxLogRate", "maxNumber"]);
 }
 
 #[tokio::test]

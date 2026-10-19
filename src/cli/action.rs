@@ -34,6 +34,7 @@ const ACTIONS: &[Action] = &[
     },
     Action { name: "log", about: "Write lines to the log at a rate", path: "/log", params: &["lines", "rate"] },
     Action { name: "crash", about: "End the server process", path: "/crash", params: &["code", "after"] },
+    Action { name: "block", about: "Freeze every thread of the server for a while", path: "/block", params: &["ms"] },
     // `ready on` and `ready off [seconds]`: the word picks the endpoint
     Action {
         name: "ready",
@@ -316,7 +317,7 @@ mod tests {
 
     #[test]
     fn every_action_is_known() {
-        for name in ["stress", "cpu", "delay", "status", "memory", "leak", "disk", "fd", "log", "crash", "ready"] {
+        for name in ["stress", "cpu", "delay", "status", "memory", "leak", "disk", "fd", "log", "crash", "block", "ready"] {
             assert!(is_action(name), "{name}");
         }
         assert!(!is_action("watch"));

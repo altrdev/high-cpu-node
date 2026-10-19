@@ -288,6 +288,7 @@ function buildControls(info) {
         {title: 'Readiness', path: '/ready/off', params: [{name: 'seconds', label: 'seconds', min: 0, max: hold, value: 60, unit: ' s'}], actions: [{label: 'Make not ready'}, {label: 'Ready again', path: '/ready/on'}]},
         {title: 'Delay', path: '/delay', params: [{name: 'ms', label: 'ms', min: 0, max: info.limits.maxDelayMs, value: 3000, step: 100}], actions: [{label: 'Wait'}]},
         {title: 'Log', path: '/log', params: [{name: 'lines', label: 'lines', min: 1, max: info.limits.maxLogLines, value: 1000, step: 100}, {name: 'rate', label: 'rate', min: 1, max: info.limits.maxLogRate, value: 100, step: 10, unit: ' lines/s'}], actions: [{label: 'Write'}]},
+        {title: 'Block', path: '/block', danger: true, params: [{name: 'ms', label: 'ms', min: 1, max: info.limits.maxBlockMs, value: Math.min(5000, info.limits.maxBlockMs), step: 500}], actions: [{label: 'Freeze the server'}]},
         {title: 'Crash', path: '/crash', danger: true, params: [{name: 'code', label: 'exit code', min: 0, max: 255, value: 137}, secs('after', 0)], actions: [{label: 'End the process'}]},
     ].forEach(buildControl);
 }
