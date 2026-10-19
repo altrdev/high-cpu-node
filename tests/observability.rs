@@ -56,13 +56,17 @@ fn check_prometheus_text(body: &str) {
         if let Some(rest) = line.strip_prefix("# TYPE ") {
             let mut parts = rest.split(' ');
             declared.insert(parts.next().unwrap().to_string());
-            assert!(matches!(parts.next(), Some("gauge" | "counter")), "{line}");
+            assert!(matches!(parts.next(), Some("gauge" | "counter" | "histogram")), "{line}");
         } else if !line.starts_with("# HELP ") {
             let (series, value) = line.rsplit_once(' ').unwrap_or_else(|| panic!("not a sample: {line}"));
             value.parse::<f64>().unwrap_or_else(|_| panic!("not a number: {line}"));
             let name = series.split('{').next().unwrap();
             assert!(name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == ':'), "bad name: {line}");
-            assert!(declared.contains(name), "no TYPE before {name}");
+            let base = ["_bucket", "_sum", "_count"]
+                .iter()
+                .find_map(|suffix| name.strip_suffix(suffix).filter(|b| declared.contains(*b)))
+                .unwrap_or(name);
+            assert!(declared.contains(base), "no TYPE before {name}");
             if let Some(labels) = series.strip_prefix(name).filter(|l| !l.is_empty()) {
                 assert!(labels.starts_with('{') && labels.ends_with('}'), "bad labels: {line}");
             }
@@ -116,6 +120,21 @@ fn metrics_count_the_requests_by_route_and_code() {
     assert_eq!(count(r#"torchio_http_requests_total{route="other",code="404"}"#), 1.0);
     server.get("/delay?ms=99999");
     assert_eq!(count(r#"torchio_http_requests_total{route="/delay",code="400"}"#), 1.0);
+}
+
+#[test]
+fn metrics_time_the_requests_in_a_histogram() {
+    let server = Server::start();
+    server.get("/delay?ms=300");
+    let text = server.text("/metrics");
+    let series = r#"route="/delay",code="200""#;
+    let value = |suffix: &str| metric(&text, &format!("torchio_http_request_duration_seconds_{suffix}")).unwrap();
+    assert!(text.contains("# TYPE torchio_http_request_duration_seconds histogram"));
+    assert_eq!(value(&format!("count{{{series}}}")), 1.0);
+    assert!(value(&format!("sum{{{series}}}")) >= 0.3);
+    assert_eq!(value(&format!("bucket{{{series},le=\"0.25\"}}")), 0.0);
+    assert_eq!(value(&format!("bucket{{{series},le=\"0.5\"}}")), 1.0);
+    assert_eq!(value(&format!("bucket{{{series},le=\"+Inf\"}}")), 1.0);
 }
 
 #[test]
