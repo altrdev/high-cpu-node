@@ -57,7 +57,8 @@ fn scenario_with_wait_ends_when_the_scenario_does_and_says_how() {
     let server = Server::start();
     let dir = TempDir::new();
     let file = dir.path().join("short.json");
-    std::fs::write(&file, r#"[{"seconds":1},{"seconds":1}]"#).unwrap();
+    // two seconds each: the command asks once a second, and a step of one could pass between two questions
+    std::fs::write(&file, r#"[{"seconds":2},{"seconds":2}]"#).unwrap();
     let done = run(&["scenario", file.to_str().unwrap(), "--wait", "--url", &server.url()], &[]);
     assert!(done.status.success(), "{}", text(&done.stderr));
     assert!(text(&done.stderr).contains("The scenario finished"), "{}", text(&done.stderr));
