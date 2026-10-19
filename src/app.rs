@@ -89,6 +89,7 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/crash", get(routes::crash::handler))
         .route("/block", get(routes::block::handler))
         .route("/oom", get(routes::oom::handler))
+        .route("/payload", get(routes::payload::download).post(routes::payload::upload))
         .route_layer(from_fn_with_state(state.clone(), auth::guard));
 
     let mut open = Router::new()

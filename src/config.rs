@@ -41,6 +41,7 @@ pub struct Config {
     pub default_connections: i64,
     pub max_connections: i64,
     pub max_block_ms: i64,
+    pub max_payload_mb: i64,
     pub allow_oom: bool,
     pub default_not_ready_seconds: i64,
     pub default_log_lines: i64,
@@ -132,6 +133,7 @@ impl Config {
         let max_fd = int("MAX_FD", 10000);
         let max_connections = int("MAX_CONNECTIONS", 500);
         let max_block_ms = int("MAX_BLOCK_MS", 30000);
+        let max_payload_mb = int("MAX_PAYLOAD_MB", 1024);
         let max_log_lines = int("MAX_LOG_LINES", 100000);
         let max_log_rate = int("MAX_LOG_RATE", 10000);
         let start_delay_seconds = positive_int(&get, &mut warn, "START_DELAY_SECONDS", 0, 0);
@@ -163,6 +165,7 @@ impl Config {
             default_connections: 10,
             max_connections,
             max_block_ms,
+            max_payload_mb,
             allow_oom: matches!(get("ALLOW_OOM").as_deref(), Some("1") | Some("true")),
             default_not_ready_seconds: 30,
             default_log_lines: 1000,
