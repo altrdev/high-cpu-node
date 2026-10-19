@@ -597,49 +597,21 @@ services:
 
 ### Kubernetes
 
-A pod with a memory limit and probes on `/`:
+The [`deploy`](deploy) folder has what you need to run torchio in a cluster, with a memory and CPU limit, a liveness probe on `/` and a readiness probe on `/ready`, and a container that runs as non-root with a read-only filesystem:
 
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: torchio
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: torchio
-  template:
-    metadata:
-      labels:
-        app: torchio
-    spec:
-      containers:
-        - name: torchio
-          image: altrdev/torchio:latest
-          ports:
-            - containerPort: 3000
-          env:
-            - name: WORKERS
-              value: "1"
-            - name: MAX_MEMORY_MB
-              value: "1024"   # above the limit below, so /memory can trigger an OOM kill
-          resources:
-            requests:
-              cpu: 250m
-              memory: 128Mi
-            limits:
-              cpu: 500m
-              memory: 256Mi
-          readinessProbe:
-            httpGet:
-              path: /ready
-              port: 3000
-          livenessProbe:
-            httpGet:
-              path: /
-              port: 3000
 ```
+kubectl apply -k deploy/kubernetes
+```
+
+applies the Deployment and the Service as they are in [`deploy/kubernetes`](deploy/kubernetes). Or install the Helm chart in [`deploy/helm/torchio`](deploy/helm/torchio), where the image tag, the replicas, `WORKERS`, `UI`, the `TOKEN` (kept in a Secret), any other variable and the resources are values:
+
+```
+helm install torchio deploy/helm/torchio --set replicaCount=3 --set config.workers=2
+```
+
+They are a starting point: copy and change them, or leave them as they are and override what you need (in a kustomization of your own, or with `-f my-values.yaml` for the chart; the `env` value takes any variable the chart has no value for).
+
+Both use the image of the version they sit next to, `altrdev/torchio:X.Y.Z`, and CI fails when it is not the one of `Cargo.toml`. The memory budget of the manifests (`MAX_MEMORY_MB`) is above the container limit, so `/memory` can trigger an OOM kill.
 
 Some things to try, after `kubectl port-forward deploy/torchio 3000:3000`:
 
@@ -728,6 +700,7 @@ src/
   units.rs         units of size
 assets/ui.html     the control panel, a single static page
 tests/             integration tests, by area
+deploy/            Kubernetes manifests and the Helm chart
 Dockerfile         builds the binary for both platforms with cargo-zigbuild, into an image of one file
 ```
 
