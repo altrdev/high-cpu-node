@@ -85,11 +85,33 @@ impl Input {
                 0x7f | 0x08 => {
                     line.pop();
                 }
+                b'\t' => complete(line),
                 0x20..=0x7e => line.push(byte as char),
                 _ => {}
             },
         }
         Effect::None
+    }
+}
+
+/// Completes the name of the command being written: the whole name when only one starts with what
+/// is typed, else as much as they all have in common. It does nothing once a space was typed.
+fn complete(line: &mut String) {
+    if line.contains(' ') {
+        return;
+    }
+    let names = action::names();
+    let matches: Vec<&str> = names.iter().copied().filter(|name| name.starts_with(line.as_str())).collect();
+    match matches.as_slice() {
+        [] => {}
+        [only] => *line = format!("{only} "),
+        [first, rest @ ..] => {
+            let common =
+                rest.iter().fold(first.len(), |len, name| first.bytes().zip(name.bytes()).take(len).take_while(|(a, b)| a == b).count());
+            if common > line.len() {
+                *line = first[..common].to_string();
+            }
+        }
     }
 }
 
@@ -311,6 +333,23 @@ mod tests {
         assert_eq!(input.mode, Mode::Prompt("memory 52".into()));
         type_in(&mut input, "\x1b");
         assert_eq!(input.mode, Mode::Browse);
+    }
+
+    #[test]
+    fn tab_completes_the_name_of_the_command() {
+        let mut input = input();
+        type_in(&mut input, ":lea\t");
+        assert_eq!(input.mode, Mode::Prompt("leak ".into()));
+        type_in(&mut input, "\x03");
+        type_in(&mut input, ":s\t");
+        assert_eq!(input.mode, Mode::Prompt("st".into()), "stress and status share st");
+        type_in(&mut input, "a\t");
+        assert_eq!(input.mode, Mode::Prompt("status ".into()));
+        type_in(&mut input, "5\t");
+        assert_eq!(input.mode, Mode::Prompt("status 5".into()), "after a space nothing is completed");
+        type_in(&mut input, "\x03");
+        type_in(&mut input, ":zzz\t");
+        assert_eq!(input.mode, Mode::Prompt("zzz".into()));
     }
 
     #[test]

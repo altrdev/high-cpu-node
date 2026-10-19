@@ -4,8 +4,10 @@
 //! - `torchio watch [--url <url>] [--interval <seconds>] [--once] [--read-only]`: a terminal view of
 //!   `/info`, with keys that start the tests unless it is read only;
 //! - `torchio healthcheck`: exits with 0 when the server answers;
+//! - `torchio completions <bash|zsh|fish>`: the script that completes the commands in a shell;
 //! - `torchio cpu 80`, `torchio memory 512`…: start a test on a running server.
 mod action;
+mod completions;
 mod healthcheck;
 mod http;
 mod info;
@@ -36,6 +38,7 @@ Start a test on a running server (--url, --token or $TOKEN, and --<parameter> <v
 
 Other commands:
   torchio              start the server
+  torchio completions  print the completion script of a shell: bash, zsh or fish
   torchio healthcheck  exit with status 0 when the server answers on $PORT (or 3000)";
 
 /// Runs the command in `args` (what follows the name of the program) and says how it ended
@@ -44,6 +47,7 @@ pub fn run(args: &[String]) -> ExitCode {
         None => crate::server::run(),
         Some("watch") => watch::run(&args[1..]),
         Some("healthcheck") => healthcheck::run(),
+        Some("completions") => completions::run(&args[1..]),
         Some("help" | "--help" | "-h") => {
             println!("{USAGE}");
             ExitCode::SUCCESS

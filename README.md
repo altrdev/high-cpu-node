@@ -445,6 +445,23 @@ torchio crash 137 --after 5
 
 The values after the name are the parameters of the endpoint, in the order of the table; any of them can also be given by name, as `--hold 60` or `--hold=60`. The limits are the ones of the server: a value it refuses is printed with its `400` and the command exits with `1`. With [`TOKEN`](#token), pass `--token <token>` or set `TOKEN`. `/stress` and `/delay` answer when they finish, so the command waits for them. Like `watch`, it speaks plain HTTP only.
 
+## Shell completion
+
+`torchio completions <bash|zsh|fish>` prints a script that makes the shell complete the commands (`torchio me<Tab>` gives `memory`), their options (`--hold`, `--url`…) and the words `on` and `off` of `ready`. With Homebrew the completions are installed with the binary: open a new shell. Otherwise:
+
+```
+# bash: in ~/.bashrc
+eval "$(torchio completions bash)"
+
+# zsh: in ~/.zshrc, after compinit
+eval "$(torchio completions zsh)"
+
+# fish
+torchio completions fish > ~/.config/fish/completions/torchio.fish
+```
+
+The scripts are generated from the commands of the binary, so they always match the version you have. On the command line of [`watch`](#keys), Tab completes the name of a command.
+
 ## Watching a server
 
 `torchio watch` shows what a server is doing in the terminal, refreshing every second with bars and a short history of the last samples (workers, memory, process memory, disk and file descriptors), plus whether `/ready` is answering `200` or `503`. It is a command of the same binary, reads [`/info`](#info) and works against any running instance:

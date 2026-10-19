@@ -167,6 +167,7 @@ jobs:
 
             def install
               bin.install Dir["torchio-*"].first => "torchio"
+              generate_completions_from_executable(bin/"torchio", "completions", shells: [:bash, :zsh, :fish])
             end
 
             test do

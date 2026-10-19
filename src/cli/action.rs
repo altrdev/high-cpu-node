@@ -11,24 +11,56 @@ use std::time::Duration;
 /// A command, the endpoint it calls and the parameters it takes, in order
 struct Action {
     name: &'static str,
+    about: &'static str,
     path: &'static str,
     params: &'static [&'static str],
 }
 
 const ACTIONS: &[Action] = &[
-    Action { name: "stress", path: "/stress", params: &["number"] },
-    Action { name: "cpu", path: "/cpu", params: &["percent", "hold"] },
-    Action { name: "delay", path: "/delay", params: &["ms"] },
-    Action { name: "status", path: "/status/{code}", params: &["code"] },
-    Action { name: "memory", path: "/memory", params: &["mb", "hold"] },
-    Action { name: "leak", path: "/leak", params: &["rate", "mb", "hold"] },
-    Action { name: "disk", path: "/disk", params: &["mb", "hold"] },
-    Action { name: "fd", path: "/fd", params: &["count", "hold"] },
-    Action { name: "log", path: "/log", params: &["lines", "rate"] },
-    Action { name: "crash", path: "/crash", params: &["code", "after"] },
+    Action { name: "stress", about: "Keep a core busy with a calculation", path: "/stress", params: &["number"] },
+    Action { name: "cpu", about: "Keep every worker busy for a share of the time", path: "/cpu", params: &["percent", "hold"] },
+    Action { name: "delay", about: "Make the server answer after a delay", path: "/delay", params: &["ms"] },
+    Action { name: "status", about: "Make the server answer with an HTTP status", path: "/status/{code}", params: &["code"] },
+    Action { name: "memory", about: "Allocate memory and hold it", path: "/memory", params: &["mb", "hold"] },
+    Action { name: "leak", about: "Grow memory by itself up to a ceiling", path: "/leak", params: &["rate", "mb", "hold"] },
+    Action { name: "disk", about: "Write a file and keep it", path: "/disk", params: &["mb", "hold"] },
+    Action { name: "fd", about: "Open file descriptors and hold them", path: "/fd", params: &["count", "hold"] },
+    Action { name: "log", about: "Write lines to the log at a rate", path: "/log", params: &["lines", "rate"] },
+    Action { name: "crash", about: "End the server process", path: "/crash", params: &["code", "after"] },
     // `ready on` and `ready off [seconds]`: the word picks the endpoint
-    Action { name: "ready", path: "/ready/{state}", params: &["state", "seconds"] },
+    Action {
+        name: "ready",
+        about: "Make the readiness probe fail (off) or pass (on)",
+        path: "/ready/{state}",
+        params: &["state", "seconds"],
+    },
 ];
+
+/// What the shell completions say about a command
+pub struct Command {
+    pub name: &'static str,
+    pub about: &'static str,
+    /// The parameters that can be given by name, as `--hold`
+    pub params: Vec<&'static str>,
+}
+
+/// The commands that start a test, for the completions
+pub fn commands() -> Vec<Command> {
+    // the word after `ready` is positional, it is not an option
+    ACTIONS
+        .iter()
+        .map(|action| Command {
+            name: action.name,
+            about: action.about,
+            params: action.params.iter().copied().filter(|param| *param != "state").collect(),
+        })
+        .collect()
+}
+
+/// The names of the commands that start a test
+pub fn names() -> Vec<&'static str> {
+    ACTIONS.iter().map(|action| action.name).collect()
+}
 
 /// How a command is written, like `cpu [percent] [hold]`
 pub fn usage(name: &str) -> Option<String> {
