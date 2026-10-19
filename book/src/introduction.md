@@ -7,6 +7,8 @@
 
 ![torchio watch: gradient bars and history of busy workers, held memory, process RSS and held disk, while keys start a memory test, a CPU burn and a leak](https://raw.githubusercontent.com/altrdev/torchio/refs/heads/main/docs/watch.svg)
 
+This is the documentation of torchio {{#include version.md}}. The changes of each release are in the [changelog](changelog.md).
+
 Source code and issues: https://github.com/altrdev/torchio
 
 > **Warning:** this server is meant to consume resources on purpose. Don't expose it to the public internet.
