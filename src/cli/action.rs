@@ -87,6 +87,9 @@ pub fn command_for(path: &str) -> Option<String> {
         // one command with a word for the two endpoints
         "/ready/off" => return Some("torchio ready off [seconds]".to_string()),
         "/ready/on" => return Some("torchio ready on".to_string()),
+        // the two that send or read a body, in `body`
+        "/scenario" => return Some("torchio scenario <file|-> [--wait] | status | stop".to_string()),
+        "/payload" => return Some("torchio payload get [mb] | post <file|->".to_string()),
         _ => ACTIONS.iter().find(|action| action.path.replace('{', ":").replace('}', "") == path)?.name,
     };
     usage(name).map(|usage| format!("torchio {usage}"))
@@ -333,7 +336,8 @@ mod tests {
         for path in &paths {
             // the other way round: what the commands start is what the endpoints are called
             if let Some(command) = command_for(path) {
-                assert!(is_action(command.split_whitespace().nth(1).unwrap()), "{path}: {command}");
+                let name = command.split_whitespace().nth(1).unwrap();
+                assert!(is_action(name) || ["scenario", "payload"].contains(&name), "{path}: {command}");
             }
         }
         for name in names() {
@@ -353,6 +357,8 @@ mod tests {
         assert_eq!(command_for("/status/:code").as_deref(), Some("torchio status <code>"));
         assert_eq!(command_for("/ready/off").as_deref(), Some("torchio ready off [seconds]"));
         assert_eq!(command_for("/ready/on").as_deref(), Some("torchio ready on"));
+        assert_eq!(command_for("/scenario").as_deref(), Some("torchio scenario <file|-> [--wait] | status | stop"));
+        assert_eq!(command_for("/payload").as_deref(), Some("torchio payload get [mb] | post <file|->"));
         assert_eq!(command_for("/info"), None);
     }
 
