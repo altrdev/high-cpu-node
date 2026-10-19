@@ -1,4 +1,9 @@
 pub mod config;
+pub mod delay;
+pub mod disk;
+pub mod fd;
 pub mod help;
+pub mod leak;
+pub mod memory;
 pub mod ready;
 pub mod status;

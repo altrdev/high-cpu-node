@@ -1,11 +1,15 @@
 mod accept;
 mod app;
 mod auth;
+mod budget;
 mod config;
 mod endpoints;
+mod errno;
+mod memory;
 mod params;
 mod ready;
 mod routes;
+mod units;
 
 use app::AppState;
 use config::Config;
@@ -19,9 +23,9 @@ use tokio::signal::unix::{SignalKind, signal};
 async fn main() {
     let config = Config::from_env();
     let state = Arc::new(AppState::new(config.clone()));
-    let app = app::router(state);
+    let app = app::router(state.clone());
 
-    tokio::spawn(shutdown());
+    tokio::spawn(shutdown(state));
 
     // START_DELAY_SECONDS: the port stays closed for a while, like an application that is slow to start
     if config.start_delay_seconds > 0 {
@@ -41,12 +45,13 @@ fn fail(error: impl std::fmt::Display) -> ! {
 }
 
 // SIGTERM and SIGINT end the process right away, without waiting for the requests in progress
-async fn shutdown() {
+async fn shutdown(state: Arc<AppState>) {
     let mut term = signal(SignalKind::terminate()).expect("a SIGTERM handler");
     let mut int = signal(SignalKind::interrupt()).expect("a SIGINT handler");
     tokio::select! {
         _ = term.recv() => {}
         _ = int.recv() => {}
     }
+    state.stop();
     exit(0);
 }
