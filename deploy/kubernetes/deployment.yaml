@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: torchio
+  labels:
+    app.kubernetes.io/name: torchio
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: torchio
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: torchio
+    spec:
+      containers:
+        - name: torchio
+          image: altrdev/torchio:4.1.2
+          ports:
+            - name: http
+              containerPort: 3000
+          env:
+            # one worker for each CPU of the limit below, which is also the default; here to show it
+            - name: WORKERS
+              value: "1"
+            # above the memory limit below, so that /memory can trigger an OOM kill
+            - name: MAX_MEMORY_MB
+              value: "1024"
+            # the control panel, at /ui
+            - name: UI
+              value: "1"
+          resources:
+            requests:
+              cpu: 250m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            # where /disk writes
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

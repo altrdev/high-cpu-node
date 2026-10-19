@@ -1,0 +1,47 @@
+image:
+  repository: altrdev/torchio
+  # the version of the chart (appVersion) when empty
+  tag: ""
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+service:
+  type: ClusterIP
+  port: 3000
+
+# The settings of torchio, see "Configuration" in the README. Empty ones are left out.
+config:
+  # worker threads for /stress, one for each CPU of the limit when empty
+  workers: ""
+  # the budget of /memory and /leak, above the memory limit so that an OOM kill can be triggered
+  maxMemoryMb: 1024
+  # the control panel, at /ui
+  ui: true
+  # protects the endpoints that change the state of the instance, kept in a Secret
+  token: ""
+
+# Any other variable, for example { START_DELAY_SECONDS: "20", MAX_DISK_MB: "512" }
+env: {}
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+livenessProbe:
+  httpGet:
+    path: /
+    port: http
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: http
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
