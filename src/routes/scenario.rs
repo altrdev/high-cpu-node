@@ -1,6 +1,7 @@
 use crate::actions::{self, Outcome};
 use crate::app::AppState;
-use crate::resources::scenario::{self, Action, Step};
+use crate::resources::scenario::{Action, Step};
+use crate::scenario_parse;
 use axum::Json;
 use axum::body::Bytes;
 use axum::extract::State;
@@ -20,7 +21,7 @@ pub async fn status(State(state): State<Arc<AppState>>) -> Json<serde_json::Valu
 /// Starts the scenario in the body: every step is checked against the limits first, and a wrong
 /// one is a `400` that says which. The steps then run one after the other, by themselves.
 pub async fn start(State(state): State<Arc<AppState>>, body: Bytes) -> Response {
-    let steps = match scenario::parse(&body, &state.config) {
+    let steps = match scenario_parse::parse(&body, &state.config) {
         Ok(steps) => steps,
         Err(message) => return (StatusCode::BAD_REQUEST, message).into_response(),
     };

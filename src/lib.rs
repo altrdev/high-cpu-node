@@ -6,6 +6,7 @@
 //! - [`app`]: what the routes share, and the router.
 //! - [`actions`]: what the endpoints that change the state do and say, shared by the routes and the scenarios.
 //! - [`routes`]: one file for each endpoint.
+//! - [`scenario_parse`]: reads a scenario from the body of a request.
 //! - [`resources`]: what the server holds or does on purpose (budgets, memory, files, workers…).
 //! - [`http`]: what serves requests and is not specific to an endpoint.
 //! - [`server`]: starts listening and ends the process.
@@ -20,6 +21,7 @@ pub mod http;
 pub mod logging;
 pub mod resources;
 pub mod routes;
+pub mod scenario_parse;
 pub mod server;
 pub mod snapshot;
 pub mod system;
