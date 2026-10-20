@@ -1,5 +1,6 @@
 //! What the routes share, and the router.
 use crate::config::Config;
+use crate::endpoints::{Specs, specs};
 use crate::http::counters::{self, Counters};
 use crate::http::{auth, open, trust::Trust};
 use crate::logging;
@@ -28,6 +29,8 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 /// What the routes share: the configuration and the state that lives for the whole run
 pub struct AppState {
     pub config: Config,
+    /// The parameters of the endpoints with their defaults and limits, from the configuration
+    pub specs: Specs,
     pub trust: Trust,
     pub started_at: SystemTime,
     pub counters: Counters,
@@ -50,6 +53,7 @@ impl AppState {
     /// Fails when `TRUST_PROXY` can't be understood
     pub fn new(config: Config) -> Result<AppState, String> {
         Ok(AppState {
+            specs: specs(&config),
             trust: Trust::from_setting(&config.trust_proxy)?,
             started_at: SystemTime::now(),
             counters: Counters::default(),

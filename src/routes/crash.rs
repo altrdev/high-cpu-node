@@ -1,5 +1,4 @@
 use crate::app::AppState;
-use crate::endpoints::specs;
 use crate::http::params::{self, Rejection};
 use axum::extract::{RawQuery, State};
 use std::sync::Arc;
@@ -8,7 +7,7 @@ use std::time::Duration;
 /// Ends the whole process with the exit code you ask for, after `after` seconds, to test restart
 /// policies, backoff and `CrashLoopBackOff`. The answer is sent before the process exits.
 pub async fn handler(State(state): State<Arc<AppState>>, RawQuery(query): RawQuery) -> Result<String, Rejection> {
-    let params = params::read(query.as_deref(), &specs(&state.config).crash)?;
+    let params = params::read(query.as_deref(), &state.specs.crash)?;
     let (code, after) = (params.get("code"), params.get("after"));
 
     // with no delay, a moment to let the answer leave

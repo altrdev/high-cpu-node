@@ -1,10 +1,10 @@
 //! The lines that `/log` writes to stdout at a given rate.
-use crate::logging::{Level, LogFormat};
+use crate::logging::{Level, LogFormat, iso};
 use serde::Serialize;
 use std::io::Write;
 use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime};
 use tokio::task::JoinHandle;
 use tokio::time::Instant;
 
@@ -74,30 +74,6 @@ impl Log {
     }
 }
 
-/// `2026-10-19T12:34:56.789Z`: ISO 8601, in UTC, with milliseconds
-pub fn iso(time: SystemTime) -> String {
-    let since_epoch = time.duration_since(UNIX_EPOCH).unwrap_or_default();
-    let days = (since_epoch.as_secs() / 86400) as i64;
-    let seconds = since_epoch.as_secs() % 86400;
-    // days since 1970-01-01 to a calendar date (Howard Hinnant's algorithm)
-    let z = days + 719468;
-    let era = z.div_euclid(146097);
-    let day_of_era = z.rem_euclid(146097);
-    let year_of_era = (day_of_era - day_of_era / 1460 + day_of_era / 36524 - day_of_era / 146096) / 365;
-    let day_of_year = day_of_era - (365 * year_of_era + year_of_era / 4 - year_of_era / 100);
-    let month_index = (5 * day_of_year + 2) / 153;
-    let day = day_of_year - (153 * month_index + 2) / 5 + 1;
-    let month = if month_index < 10 { month_index + 3 } else { month_index - 9 };
-    let year = year_of_era + era * 400 + i64::from(month <= 2);
-    format!(
-        "{year:04}-{month:02}-{day:02}T{:02}:{:02}:{:02}.{:03}Z",
-        seconds / 3600,
-        seconds % 3600 / 60,
-        seconds % 60,
-        since_epoch.subsec_millis()
-    )
-}
-
 /// Line `n` of `lines`: the time, then `torchio-log line 7 of 1000`; or a JSON object with the same message
 fn line(format: LogFormat, at: SystemTime, n: i64, lines: i64) -> String {
     let message = format!("torchio-log line {n} of {lines}");
@@ -131,16 +107,6 @@ async fn write_lines(lines: i64, rate: i64, format: LogFormat, sent: &AtomicI64,
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn dates_are_iso_8601_in_utc_with_milliseconds() {
-        let at = |ms: u64| iso(UNIX_EPOCH + Duration::from_millis(ms));
-        assert_eq!(at(0), "1970-01-01T00:00:00.000Z");
-        assert_eq!(at(1_700_000_000_123), "2023-11-14T22:13:20.123Z");
-        assert_eq!(at(951_782_400_000), "2000-02-29T00:00:00.000Z", "a leap day");
-        assert_eq!(at(951_868_800_000), "2000-03-01T00:00:00.000Z");
-        assert_eq!(at(4_102_444_799_999), "2099-12-31T23:59:59.999Z");
-    }
 
     #[tokio::test(start_paused = true)]
     async fn it_writes_the_lines_at_the_rate_and_stops() {

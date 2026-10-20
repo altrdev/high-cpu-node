@@ -1,5 +1,4 @@
 use crate::app::AppState;
-use crate::endpoints::specs;
 use crate::http::params::{self, Rejection};
 use axum::extract::{RawQuery, State};
 use axum::http::StatusCode;
@@ -9,7 +8,7 @@ use std::sync::Arc;
 /// Fails `rate` percent of the requests with `code` and answers `200` to the rest, to test retries,
 /// circuit breakers and outlier detection. A failing answer waits `ms` first, like `/delay`.
 pub async fn handler(State(state): State<Arc<AppState>>, RawQuery(query): RawQuery) -> Result<Response, Rejection> {
-    let params = params::read(query.as_deref(), &specs(&state.config).flaky)?;
+    let params = params::read(query.as_deref(), &state.specs.flaky)?;
     let (rate, code, ms) = (params.get("rate"), params.get("code"), params.get("ms"));
 
     if !state.flaky.fails(rate) {

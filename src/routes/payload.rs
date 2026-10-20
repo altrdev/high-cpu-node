@@ -1,5 +1,4 @@
 use crate::app::AppState;
-use crate::endpoints::specs;
 use crate::http::params::{self, Rejection};
 use crate::resources::payload;
 use crate::units::MB;
@@ -15,7 +14,7 @@ use std::time::Instant;
 /// `mb` MB of data, streamed: nothing is held in memory but a chunk. The length is announced, so
 /// a client or a proxy can tell a body that was cut short.
 pub async fn download(State(state): State<Arc<AppState>>, RawQuery(query): RawQuery) -> Result<Response, Rejection> {
-    let params = params::read(query.as_deref(), &specs(&state.config).payload)?;
+    let params = params::read(query.as_deref(), &state.specs.payload)?;
     let bytes = params.get("mb") as u64 * MB;
     let headers = [(header::CONTENT_TYPE, "application/octet-stream".to_string()), (header::CONTENT_LENGTH, bytes.to_string())];
     Ok((headers, Body::from_stream(payload::stream(bytes))).into_response())

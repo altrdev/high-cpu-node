@@ -1,5 +1,4 @@
 use crate::app::AppState;
-use crate::endpoints::specs;
 use crate::http::params::{self, Rejection};
 use axum::extract::{RawQuery, State};
 use axum::http::StatusCode;
@@ -9,7 +8,7 @@ use tokio::sync::oneshot;
 
 /// Runs a Fibonacci calculation in a worker, to keep a core busy
 pub async fn handler(State(state): State<Arc<AppState>>, RawQuery(query): RawQuery) -> Result<Response, Rejection> {
-    let number = params::read(query.as_deref(), &specs(&state.config).stress)?.get("number");
+    let number = params::read(query.as_deref(), &state.specs.stress)?.get("number");
 
     let (reply, answer) = oneshot::channel();
     let _waiting = state.pool.run(number, reply);

@@ -17,6 +17,7 @@ src/
   app.rs           what the routes share, and the router
   actions.rs       what the endpoints that change the state do and say, shared by the routes and the scenarios
   server.rs        listens, and ends the process
+  scenario_parse.rs reads a scenario from the body of a request, checked against the limits
   routes/          one file for each endpoint: reads the parameters, asks resources, writes the answer
   resources/       what the server holds or does on purpose, without knowing about HTTP
     budget.rs        the total that /memory, /disk and /fd share between requests
@@ -24,6 +25,10 @@ src/
     disk.rs          the files of /disk
     fd.rs            the descriptors of /fd
     connections.rs   the connections of /connections
+    opened.rs        what /fd and /connections share once they have opened what was asked
+    counted.rs       the guard that counts what is going on while it lives
+    scenario.rs      the steps of a scenario and where a running one is
+    splitmix.rs      the generator of random numbers of /flaky and /payload
     workers.rs       the pool of worker threads for /stress and /cpu
     ready.rs         the readiness switch
     shutdown.rs      the drain after SIGTERM, and what is open
@@ -39,6 +44,8 @@ src/
     open.rs          the listener that counts connections and stops accepting, and the count of requests
   cli/             the commands besides the server
     watch.rs         torchio watch
+    common.rs        the options, the token and the usage that the commands share
+    terminal.rs      the screen sequences, NO_COLOR and one frame of the view
     view.rs          what watch draws
     info.rs          what /info says, as watch reads it
     http.rs          the small HTTP client of the commands
