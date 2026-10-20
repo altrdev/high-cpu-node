@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
-## Unreleased
+## 4.6.2 - 2026-10-20
 
 ### Changed
 - `watch` needs a server of version 4.5.0 or newer (`/info` with `connections` and `scenario`). Before, it left out the lines that an older server did not report; now it stops with `This server is torchio 4.2.1, and watch needs 4.5.0 or newer`. A server newer than `watch` is read as before.

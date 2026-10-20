@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: torchio
-          image: altrdev/torchio:4.6.1
+          image: altrdev/torchio:4.6.2
           ports:
             - name: http
               containerPort: 3000
