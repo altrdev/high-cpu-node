@@ -44,6 +44,7 @@ pub async fn handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     let s = state.snapshot();
     let mb = MB as f64;
     let started = state.started_at.duration_since(UNIX_EPOCH).unwrap_or_default().as_secs_f64();
+    let entries = state.counters.entries();
     let mut lines = Vec::new();
 
     metric(&mut lines, "torchio_info", "gauge", "Version of the server.", vec![(vec![("version", VERSION.to_string())], 1.0)]);
@@ -140,10 +141,9 @@ pub async fn handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
         "torchio_http_requests_total",
         "counter",
         "Requests answered, by route and status code.",
-        state.counters.entries().into_iter().map(|e| (vec![("route", e.route), ("code", e.code.to_string())], e.count as f64)).collect(),
+        entries.iter().map(|e| (vec![("route", e.route.clone()), ("code", e.code.to_string())], e.count as f64)).collect(),
     );
 
-    let entries = state.counters.entries();
     if !entries.is_empty() {
         let name = "torchio_http_request_duration_seconds";
         lines.push(format!("# HELP {name} Time taken to answer, by route and status code."));

@@ -42,11 +42,7 @@ enum Effect {
     Run(String),
 }
 
-struct Input {
-    mode: Mode,
-}
-
-impl Input {
+impl Mode {
     /// Handles what one read of the terminal returned. Escape sequences (arrows, function keys) are
     /// ignored; a lone Escape cancels the command line. The first effect wins.
     fn feed(&mut self, bytes: &[u8]) -> Effect {
@@ -63,21 +59,21 @@ impl Input {
     }
 
     fn key(&mut self, byte: u8) -> Effect {
-        match &mut self.mode {
+        match self {
             Mode::Browse => match byte {
                 b'q' | 0x03 => return Effect::Quit,
-                b':' => self.mode = Mode::Prompt(String::new()),
+                b':' => *self = Mode::Prompt(String::new()),
                 other => {
                     if let Some((_, name)) = KEYS.iter().find(|(key, _)| *key == other) {
-                        self.mode = Mode::Prompt(format!("{name} "));
+                        *self = Mode::Prompt(format!("{name} "));
                     }
                 }
             },
             Mode::Prompt(line) => match byte {
-                0x1b | 0x03 => self.mode = Mode::Browse,
+                0x1b | 0x03 => *self = Mode::Browse,
                 b'\r' | b'\n' => {
                     let line = line.trim().to_string();
-                    self.mode = Mode::Browse;
+                    *self = Mode::Browse;
                     if !line.is_empty() {
                         return Effect::Run(line);
                     }
@@ -180,11 +176,11 @@ enum Message {
 }
 
 /// The text of the bottom of the screen: the keys, then the command line or the last answer
-fn footer(style: &Style, input: &Input, message: &Message) -> String {
+fn footer(style: &Style, mode: &Mode, message: &Message) -> String {
     let mut keys: Vec<String> = KEYS.iter().map(|(key, name)| style.key(&(*key as char).to_string(), name)).collect();
     keys.push(style.key(":", "command"));
     keys.push(style.key("q", "quit"));
-    let last = match &input.mode {
+    let last = match mode {
         Mode::Prompt(line) => {
             let hint = action::usage(line.split_whitespace().next().unwrap_or("")).unwrap_or_default();
             // the cursor is a lit block with colours and an underscore without
@@ -248,7 +244,7 @@ pub fn run(url: &str, token: Option<&str>, interval: Duration) -> ExitCode {
 
     let style = Style::new(std::env::var("NO_COLOR").map_or(true, |value| value.is_empty()));
     let mut history = History::default();
-    let mut input = Input { mode: Mode::Browse };
+    let mut mode = Mode::Browse;
     let mut message = Message::None;
     let mut view = String::new();
     let mut next = Instant::now();
@@ -265,11 +261,11 @@ pub fn run(url: &str, token: Option<&str>, interval: Duration) -> ExitCode {
                 Err(error) => Message::Failed(format!("✖ {line}: {}", one_line(&error))),
             };
         }
-        if !draw(&format!("{view}\n\n{}", footer(&style, &input, &message))) {
+        if !draw(&format!("{view}\n\n{}", footer(&style, &mode, &message))) {
             return ExitCode::SUCCESS; // the screen went away
         }
         let keys = read_keys(next.saturating_duration_since(Instant::now()).min(Duration::from_millis(100)));
-        match input.feed(&keys) {
+        match mode.feed(&keys) {
             Effect::Quit => return ExitCode::SUCCESS,
             Effect::None => {}
             Effect::Run(line) => {
@@ -289,11 +285,11 @@ pub fn run(url: &str, token: Option<&str>, interval: Duration) -> ExitCode {
 mod tests {
     use super::*;
 
-    fn input() -> Input {
-        Input { mode: Mode::Browse }
+    fn input() -> Mode {
+        Mode::Browse
     }
 
-    fn type_in(input: &mut Input, text: &str) -> Effect {
+    fn type_in(input: &mut Mode, text: &str) -> Effect {
         input.feed(text.as_bytes())
     }
 
@@ -301,18 +297,18 @@ mod tests {
     fn a_key_opens_the_command_line_with_the_name_of_the_command() {
         let mut input = input();
         assert_eq!(type_in(&mut input, "c"), Effect::None);
-        assert_eq!(input.mode, Mode::Prompt("cpu ".into()));
+        assert_eq!(input, Mode::Prompt("cpu ".into()));
         assert_eq!(type_in(&mut input, "80 60\r"), Effect::Run("cpu 80 60".into()));
-        assert_eq!(input.mode, Mode::Browse);
+        assert_eq!(input, Mode::Browse);
     }
 
     #[test]
     fn a_colon_opens_an_empty_command_line() {
         let mut input = input();
         type_in(&mut input, ":status 503\n");
-        assert_eq!(input.mode, Mode::Browse);
+        assert_eq!(input, Mode::Browse);
         type_in(&mut input, ":");
-        assert_eq!(input.mode, Mode::Prompt(String::new()));
+        assert_eq!(input, Mode::Prompt(String::new()));
     }
 
     #[test]
@@ -321,35 +317,35 @@ mod tests {
         assert_eq!(type_in(&mut input(), "\x03"), Effect::Quit);
         let mut input = input();
         type_in(&mut input, ":q");
-        assert_eq!(input.mode, Mode::Prompt("q".into()));
+        assert_eq!(input, Mode::Prompt("q".into()));
         assert_eq!(type_in(&mut input, "\x03"), Effect::None);
-        assert_eq!(input.mode, Mode::Browse);
+        assert_eq!(input, Mode::Browse);
     }
 
     #[test]
     fn escape_cancels_the_command_line_and_backspace_edits_it() {
         let mut input = input();
         type_in(&mut input, "m512\x7f\x7f2");
-        assert_eq!(input.mode, Mode::Prompt("memory 52".into()));
+        assert_eq!(input, Mode::Prompt("memory 52".into()));
         type_in(&mut input, "\x1b");
-        assert_eq!(input.mode, Mode::Browse);
+        assert_eq!(input, Mode::Browse);
     }
 
     #[test]
     fn tab_completes_the_name_of_the_command() {
         let mut input = input();
         type_in(&mut input, ":lea\t");
-        assert_eq!(input.mode, Mode::Prompt("leak ".into()));
+        assert_eq!(input, Mode::Prompt("leak ".into()));
         type_in(&mut input, "\x03");
         type_in(&mut input, ":s\t");
-        assert_eq!(input.mode, Mode::Prompt("st".into()), "stress and status share st");
+        assert_eq!(input, Mode::Prompt("st".into()), "stress and status share st");
         type_in(&mut input, "a\t");
-        assert_eq!(input.mode, Mode::Prompt("status ".into()));
+        assert_eq!(input, Mode::Prompt("status ".into()));
         type_in(&mut input, "5\t");
-        assert_eq!(input.mode, Mode::Prompt("status 5".into()), "after a space nothing is completed");
+        assert_eq!(input, Mode::Prompt("status 5".into()), "after a space nothing is completed");
         type_in(&mut input, "\x03");
         type_in(&mut input, ":zzz\t");
-        assert_eq!(input.mode, Mode::Prompt("zzz".into()));
+        assert_eq!(input, Mode::Prompt("zzz".into()));
     }
 
     #[test]
@@ -358,14 +354,14 @@ mod tests {
         assert_eq!(type_in(&mut input, ":\r"), Effect::None);
         type_in(&mut input, ":");
         assert_eq!(input.feed(b"\x1b[A"), Effect::None);
-        assert_eq!(input.mode, Mode::Prompt(String::new()));
+        assert_eq!(input, Mode::Prompt(String::new()));
     }
 
     #[test]
     fn keys_that_mean_nothing_do_nothing() {
         let mut input = input();
         assert_eq!(type_in(&mut input, "zZ1 "), Effect::None);
-        assert_eq!(input.mode, Mode::Browse);
+        assert_eq!(input, Mode::Browse);
     }
 
     #[test]

@@ -216,7 +216,7 @@ pub fn run(name: &str, args: &[String]) -> ExitCode {
         Ok(request) => request,
         Err(message) => {
             eprintln!("{message}");
-            println!("{USAGE}");
+            eprintln!("{USAGE}");
             return ExitCode::FAILURE;
         }
     };

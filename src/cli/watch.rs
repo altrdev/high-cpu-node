@@ -74,7 +74,7 @@ pub fn run(args: &[String]) -> ExitCode {
         Ok(options) => options,
         Err(message) => {
             eprintln!("{message}");
-            println!("{USAGE}");
+            eprintln!("{USAGE}");
             return ExitCode::FAILURE;
         }
     };

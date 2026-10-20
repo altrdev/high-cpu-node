@@ -75,7 +75,7 @@ pub fn scenario(args: &[String]) -> ExitCode {
         Ok(options) => options,
         Err(message) => {
             eprintln!("{message}");
-            println!("{USAGE}");
+            eprintln!("{USAGE}");
             return ExitCode::FAILURE;
         }
     };
@@ -119,7 +119,7 @@ fn wait(url: &str, token: Option<&str>) -> ExitCode {
     let mut seen = 0;
     loop {
         std::thread::sleep(Duration::from_secs(1));
-        let state = match http::get_with_token(url, token, Duration::from_secs(10)).map_err(|e| e.to_string()) {
+        let state = match http::get_with_token(url, token, Duration::from_secs(10)) {
             Ok((200, body)) => serde_json::from_str::<Value>(&body).unwrap_or(Value::Null),
             Ok((status, body)) => return fail(&format!("HTTP {status}: {}", body.trim_end())),
             // the server is frozen by a block, or restarting: keep asking
@@ -150,7 +150,7 @@ pub fn payload(args: &[String]) -> ExitCode {
         Ok(options) => options,
         Err(message) => {
             eprintln!("{message}");
-            println!("{USAGE}");
+            eprintln!("{USAGE}");
             return ExitCode::FAILURE;
         }
     };

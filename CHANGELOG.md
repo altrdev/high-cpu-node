@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
+## Unreleased
+
+### Changed
+- When a command or an option is wrong, the usage is printed on the standard error, after the message, and not on the standard output, so it no longer ends up in a file or a pipe that receives the output of a command. `--help`, `-h` and `help` still print it on the standard output.
+
 ## 4.6.1 - 2026-10-19
 
 ### Added
