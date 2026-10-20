@@ -20,7 +20,7 @@ pub struct Specs {
     pub delay: Specs1,
     pub flaky: Specs3,
     pub memory: Specs2,
-    pub leak: [(&'static str, Param); 3],
+    pub leak: Specs3,
     pub disk: Specs2,
     pub fd: Specs2,
     pub connections: Specs2,
