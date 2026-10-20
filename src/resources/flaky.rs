@@ -1,8 +1,7 @@
 //! The coin that `/flaky` tosses: which requests fail, for a share of them.
+use crate::resources::splitmix::{GAMMA, mix};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
-
-const GAMMA: u64 = 0x9E37_79B9_7F4A_7C15;
 
 /// A generator of random numbers that needs no lock: every call takes the next step of a counter and
 /// scrambles it (SplitMix64), so requests that arrive together don't repeat a number.
@@ -23,10 +22,7 @@ impl Flaky {
     }
 
     fn next(&self) -> u64 {
-        let mut z = self.state.fetch_add(GAMMA, Ordering::Relaxed).wrapping_add(GAMMA);
-        z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
-        z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
-        z ^ (z >> 31)
+        mix(self.state.fetch_add(GAMMA, Ordering::Relaxed).wrapping_add(GAMMA))
     }
 
     /// Whether this request fails, `rate` percent of the time: never at 0 and always at 100

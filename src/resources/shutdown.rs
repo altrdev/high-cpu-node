@@ -1,27 +1,18 @@
 //! Whether the server is draining after SIGTERM, and what is still open: the requests being
 //! answered and the connections. None of it knows about HTTP.
+use crate::resources::counted::Counted;
 use serde::Serialize;
-use std::sync::atomic::{AtomicI64, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use tokio::sync::watch;
 
 pub struct Shutdown {
     grace_seconds: i64,
-    requests: Arc<AtomicI64>,
-    connections: Arc<AtomicI64>,
+    requests: Arc<AtomicUsize>,
+    connections: Arc<AtomicUsize>,
     since: Mutex<Option<Instant>>,
     draining: watch::Sender<bool>,
-}
-
-/// Counts something as open until it is dropped
-#[must_use = "it stops counting as soon as it is dropped"]
-pub struct Open(Arc<AtomicI64>);
-
-impl Drop for Open {
-    fn drop(&mut self) {
-        self.0.fetch_sub(1, Ordering::Relaxed);
-    }
 }
 
 #[derive(Debug, PartialEq, Serialize)]
@@ -46,19 +37,14 @@ impl Shutdown {
         }
     }
 
-    fn open(counter: &Arc<AtomicI64>) -> Open {
-        counter.fetch_add(1, Ordering::Relaxed);
-        Open(Arc::clone(counter))
-    }
-
     /// A request is being answered, for as long as the result is kept
-    pub fn request(&self) -> Open {
-        Shutdown::open(&self.requests)
+    pub fn request(&self) -> Counted {
+        Counted::new(&self.requests)
     }
 
     /// A connection is open, for as long as the result is kept
-    pub fn connection(&self) -> Open {
-        Shutdown::open(&self.connections)
+    pub fn connection(&self) -> Counted {
+        Counted::new(&self.connections)
     }
 
     /// Starts draining. `false` when it already was.
@@ -83,8 +69,8 @@ impl Shutdown {
             draining: drain_seconds.is_some(),
             grace_seconds: self.grace_seconds,
             drain_seconds,
-            open_requests: self.requests.load(Ordering::Relaxed),
-            open_connections: self.connections.load(Ordering::Relaxed),
+            open_requests: self.requests.load(Ordering::Relaxed) as i64,
+            open_connections: self.connections.load(Ordering::Relaxed) as i64,
         }
     }
 }

@@ -16,7 +16,7 @@ use std::time::Instant;
 /// a client or a proxy can tell a body that was cut short.
 pub async fn download(State(state): State<Arc<AppState>>, RawQuery(query): RawQuery) -> Result<Response, Rejection> {
     let params = params::read(query.as_deref(), &specs(&state.config).payload)?;
-    let bytes = params.get("mb") as u64 * MB as u64;
+    let bytes = params.get("mb") as u64 * MB;
     let headers = [(header::CONTENT_TYPE, "application/octet-stream".to_string()), (header::CONTENT_LENGTH, bytes.to_string())];
     Ok((headers, Body::from_stream(payload::stream(bytes))).into_response())
 }
@@ -24,7 +24,7 @@ pub async fn download(State(state): State<Arc<AppState>>, RawQuery(query): RawQu
 /// Takes an upload and throws it away as it arrives, then says how much came and how long it took.
 /// More than `MAX_PAYLOAD_MB` is a `413`, which is also what a proxy with a limit answers.
 pub async fn upload(State(state): State<Arc<AppState>>, body: Body) -> Response {
-    let limit = state.config.max_payload_mb as u64 * MB as u64;
+    let limit = state.config.max_payload_mb as u64 * MB;
     let started = Instant::now();
     let mut received: u64 = 0;
     let mut stream = body.into_data_stream();

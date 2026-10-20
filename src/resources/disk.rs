@@ -94,7 +94,7 @@ impl Disk {
 
 async fn write_file(file: &Path, mb: i64) -> io::Result<()> {
     let mut handle = tokio::fs::File::create(file).await?;
-    let chunk = vec![1u8; MB];
+    let chunk = vec![1u8; MB as usize];
     for _ in 0..mb {
         handle.write_all(&chunk).await?;
     }
@@ -151,7 +151,7 @@ mod tests {
         // the file may already be on its way out; while it exists it has the size asked
         for name in dir.names() {
             if let Ok(meta) = std::fs::metadata(dir.0.join(name)) {
-                assert_eq!(meta.len(), 2 * MB as u64);
+                assert_eq!(meta.len(), 2 * MB);
             }
         }
         for _ in 0..200 {

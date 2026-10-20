@@ -3,24 +3,19 @@ mod common;
 
 use common::*;
 use serde_json::Value;
-use std::time::Duration;
-
-fn agent() -> ureq::Agent {
-    ureq::Agent::config_builder().http_status_as_error(false).timeout_global(Some(Duration::from_secs(10))).build().into()
-}
 
 // What the server answered to a request with a method other than GET, as its status and text
 fn send(server: &Server, method: &str, body: &str, token: Option<&str>) -> (u16, String) {
     let url = format!("{}/scenario", server.url());
     let authorization = token.map(|token| format!("Bearer {token}"));
     let mut response = if method == "POST" {
-        let mut request = agent().post(&url);
+        let mut request = agent(10).post(&url);
         if let Some(authorization) = &authorization {
             request = request.header("authorization", authorization);
         }
         request.send(body.as_bytes()).unwrap()
     } else {
-        let mut request = agent().delete(&url);
+        let mut request = agent(10).delete(&url);
         if let Some(authorization) = &authorization {
             request = request.header("authorization", authorization);
         }

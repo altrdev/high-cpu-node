@@ -21,7 +21,7 @@ pub enum HoldError {
 
 /// `mb` megabytes with every page written. Blocks while they are.
 fn allocate(mb: i64) -> io::Result<MmapMut> {
-    let mut map = MmapMut::map_anon(mb as usize * MB)?;
+    let mut map = MmapMut::map_anon(mb as usize * MB as usize)?;
     map.fill(1);
     Ok(map)
 }
@@ -122,7 +122,7 @@ mod tests {
     #[test]
     fn allocated_memory_is_written() {
         let map = allocate(2).unwrap();
-        assert_eq!(map.len(), 2 * MB);
+        assert_eq!(map.len(), 2 * MB as usize);
         assert!(map.iter().all(|byte| *byte == 1));
     }
 

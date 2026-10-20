@@ -1,14 +1,13 @@
 //! `install.sh`, against a release made of local files: the right binary is installed when the
 //! checksum matches, and nothing is written when it does not.
+mod common;
+
+use common::available;
 use sha2::{Digest, Sha256};
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::process::{Command, Output};
-
-fn available(program: &str) -> bool {
-    Command::new("sh").args(["-c", &format!("command -v {program}")]).output().is_ok_and(|output| output.status.success())
-}
 
 /// The name the release gives to the binary for this system
 fn asset() -> String {

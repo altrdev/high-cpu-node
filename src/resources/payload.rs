@@ -1,5 +1,6 @@
 //! The data of `/payload`: bytes to send, made once and shared, and a count of the bytes received.
 //! Nothing is held in memory but one chunk.
+use crate::resources::splitmix::{GAMMA, mix};
 use axum::body::Bytes;
 use futures_util::Stream;
 use std::convert::Infallible;
@@ -12,15 +13,12 @@ const CHUNK: usize = 64 * 1024;
 fn chunk() -> &'static Bytes {
     static CHUNK_OF_BYTES: OnceLock<Bytes> = OnceLock::new();
     CHUNK_OF_BYTES.get_or_init(|| {
-        // SplitMix64 from a fixed seed: the content does not matter, only that it looks random
+        // a fixed seed: the content does not matter, only that it looks random
         let mut state: u64 = 0x2545_F491_4F6C_DD1D;
         let mut bytes = Vec::with_capacity(CHUNK);
         while bytes.len() < CHUNK {
-            state = state.wrapping_add(0x9E37_79B9_7F4A_7C15);
-            let mut z = state;
-            z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
-            z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
-            bytes.extend_from_slice(&(z ^ (z >> 31)).to_le_bytes());
+            state = state.wrapping_add(GAMMA);
+            bytes.extend_from_slice(&mix(state).to_le_bytes());
         }
         Bytes::from(bytes)
     })

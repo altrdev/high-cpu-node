@@ -1,3 +1,3 @@
 //! Units of size.
 /// A megabyte, in bytes
-pub const MB: usize = 1024 * 1024;
+pub const MB: u64 = 1024 * 1024;

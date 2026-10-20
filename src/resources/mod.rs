@@ -4,6 +4,7 @@
 pub mod block;
 pub mod budget;
 pub mod connections;
+pub mod counted;
 pub mod delay;
 pub mod disk;
 pub mod fd;
@@ -11,8 +12,10 @@ pub mod flaky;
 pub mod log;
 pub mod memory;
 pub mod oom;
+pub mod opened;
 pub mod payload;
 pub mod ready;
 pub mod scenario;
 pub mod shutdown;
+pub mod splitmix;
 pub mod workers;
