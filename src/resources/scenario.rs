@@ -171,8 +171,9 @@ pub fn parse(body: &[u8], config: &Config) -> Result<Vec<Step>, String> {
     list.iter().enumerate().map(|(index, step)| parse_step(index + 1, step, config)).collect()
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 enum Phase {
+    #[default]
     Idle,
     Running,
     Finished,
@@ -192,6 +193,7 @@ impl Phase {
     }
 }
 
+#[derive(Default)]
 struct Inner {
     phase: Phase,
     steps: Vec<Step>,
@@ -203,6 +205,7 @@ struct Inner {
     run: u64,
 }
 
+#[derive(Default)]
 pub struct Scenario {
     inner: Mutex<Inner>,
 }
@@ -212,22 +215,6 @@ pub struct Scenario {
 pub struct Busy {
     pub step: usize,
     pub steps: usize,
-}
-
-impl Default for Scenario {
-    fn default() -> Scenario {
-        Scenario {
-            inner: Mutex::new(Inner {
-                phase: Phase::Idle,
-                steps: Vec::new(),
-                current: 0,
-                step_started: None,
-                error: None,
-                task: None,
-                run: 0,
-            }),
-        }
-    }
 }
 
 impl Scenario {
