@@ -43,28 +43,21 @@ impl Step {
     /// The step as it is written in a scenario
     pub fn to_json(&self) -> Value {
         let mut map = Map::new();
+        let name = self.action.name().to_string();
         match self.action {
             Action::Cpu { percent, workers } => {
-                map.insert("cpu".into(), json!(percent));
+                map.insert(name, json!(percent));
                 map.insert("workers".into(), json!(workers));
             }
-            Action::Memory { mb } => {
-                map.insert("memory".into(), json!(mb));
-            }
-            Action::Disk { mb } => {
-                map.insert("disk".into(), json!(mb));
-            }
-            Action::Fd { count } => {
-                map.insert("fd".into(), json!(count));
-            }
-            Action::Connections { count } => {
-                map.insert("connections".into(), json!(count));
+            Action::Memory { mb: value }
+            | Action::Disk { mb: value }
+            | Action::Fd { count: value }
+            | Action::Connections { count: value }
+            | Action::Block { ms: value } => {
+                map.insert(name, json!(value));
             }
             Action::NotReady => {
-                map.insert("ready".into(), json!("off"));
-            }
-            Action::Block { ms } => {
-                map.insert("block".into(), json!(ms));
+                map.insert(name, json!("off"));
             }
             Action::Pause => {}
         }
