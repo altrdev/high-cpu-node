@@ -15,6 +15,7 @@ mod healthcheck;
 mod http;
 mod info;
 mod interactive;
+mod terminal;
 mod view;
 mod watch;
 

@@ -4,8 +4,8 @@
 //! add the values and press Enter. `:` opens an empty one, for any command. The request runs in a
 //! thread, so the view keeps refreshing while `/stress` or `/delay` wait for their answer.
 use super::action;
-use super::info::{self, Info};
-use super::view::{History, Style, render};
+use super::terminal::{ENTER_SCREEN, LEAVE_SCREEN, colors_wanted, sample};
+use super::view::{History, Style};
 use std::io::Write;
 use std::process::ExitCode;
 use std::sync::OnceLock;
@@ -24,8 +24,6 @@ const KEYS: &[(u8, &str)] = &[
     (b'r', "ready"),
     (b'x', "crash"),
 ];
-
-const LEAVE_SCREEN: &[u8] = b"\x1b[?25h\x1b[?1049l";
 
 /// What the keys do now: move around, or write a command
 #[derive(Debug, PartialEq)]
@@ -138,7 +136,7 @@ impl Screen {
             libc::signal(libc::SIGTERM, restore_and_exit as *const () as libc::sighandler_t);
             libc::signal(libc::SIGHUP, restore_and_exit as *const () as libc::sighandler_t);
         }
-        print!("\x1b[?1049h\x1b[?25l");
+        print!("{ENTER_SCREEN}");
         let _ = std::io::stdout().flush();
         Some(Screen)
     }
@@ -223,18 +221,6 @@ fn draw(text: &str) -> bool {
     out.write_all(format!("\x1b[H{body}\x1b[J").as_bytes()).and_then(|_| out.flush()).is_ok()
 }
 
-fn sample(url: &str, history: &mut History, style: &Style) -> String {
-    match info::fetch(url) {
-        Ok(info) => view(style, url, &info, history),
-        Err(message) => format!("Cannot reach {url}: {message}"),
-    }
-}
-
-fn view(style: &Style, url: &str, info: &Info, history: &mut History) -> String {
-    history.record(info);
-    render(style, url, info, history)
-}
-
 /// Shows the server at `url` until the user quits, with `token` for the commands that need it
 pub fn run(url: &str, token: Option<&str>, interval: Duration) -> ExitCode {
     let Some(_screen) = Screen::enter() else {
@@ -242,7 +228,7 @@ pub fn run(url: &str, token: Option<&str>, interval: Duration) -> ExitCode {
         return ExitCode::FAILURE;
     };
 
-    let style = Style::new(std::env::var("NO_COLOR").map_or(true, |value| value.is_empty()));
+    let style = Style::new(colors_wanted());
     let mut history = History::default();
     let mut mode = Mode::Browse;
     let mut message = Message::None;
@@ -252,7 +238,7 @@ pub fn run(url: &str, token: Option<&str>, interval: Duration) -> ExitCode {
 
     loop {
         if Instant::now() >= next {
-            view = sample(url, &mut history, &style);
+            view = sample(&style, url, &mut history);
             next = Instant::now() + interval;
         }
         while let Ok((line, result)) = results.try_recv() {

@@ -1,8 +1,8 @@
 //! `torchio watch`: what a server is doing, in the terminal. On a terminal it also takes keys that
 //! start tests (see `interactive`), unless `--read-only` says it must only look.
-use super::info::{self, Info};
 use super::interactive;
-use super::view::{History, Style, render};
+use super::terminal::{ENTER_SCREEN, LEAVE_SCREEN, colors_wanted, frame, sample};
+use super::view::{History, Style};
 use super::{common, http};
 use std::io::{IsTerminal, Write};
 use std::process::ExitCode;
@@ -44,19 +44,11 @@ fn interval(text: &str) -> Duration {
 
 /// Restores the terminal when Ctrl+C or SIGTERM ends the view: show the cursor, leave the alternate screen
 extern "C" fn restore_terminal_and_exit(_: libc::c_int) {
-    const RESTORE: &[u8] = b"\x1b[?25h\x1b[?1049l";
     // SAFETY: write and _exit are async-signal-safe, and RESTORE is a valid buffer
     unsafe {
-        libc::write(1, RESTORE.as_ptr().cast(), RESTORE.len());
+        libc::write(1, LEAVE_SCREEN.as_ptr().cast(), LEAVE_SCREEN.len());
         libc::_exit(0);
     }
-}
-
-/// One frame: the view of a sample, or why there is none
-fn frame(style: &Style, url: &str, history: &mut History) -> Result<String, String> {
-    let info: Info = info::fetch(url)?;
-    history.record(&info);
-    Ok(render(style, url, &info, history))
 }
 
 pub fn run(args: &[String]) -> ExitCode {
@@ -69,7 +61,7 @@ pub fn run(args: &[String]) -> ExitCode {
     }
 
     let stdout = std::io::stdout();
-    let style = Style::new(stdout.is_terminal() && std::env::var("NO_COLOR").map_or(true, |value| value.is_empty()));
+    let style = Style::new(stdout.is_terminal() && colors_wanted());
     let mut history = History::default();
 
     if options.once {
@@ -90,7 +82,7 @@ pub fn run(args: &[String]) -> ExitCode {
         return interactive::run(&options.url, options.token.as_deref(), interval(&options.interval));
     }
     if screen {
-        print!("\x1b[?1049h\x1b[?25l"); // alternate screen, hide cursor
+        print!("{ENTER_SCREEN}");
         // SAFETY: the handler only calls async-signal-safe functions
         unsafe {
             libc::signal(libc::SIGINT, restore_terminal_and_exit as *const () as libc::sighandler_t);
@@ -100,7 +92,7 @@ pub fn run(args: &[String]) -> ExitCode {
     let interval = interval(&options.interval);
     let mut next = Instant::now();
     loop {
-        let view = frame(&style, &options.url, &mut history).unwrap_or_else(|message| format!("Cannot reach {}: {message}", options.url));
+        let view = sample(&style, &options.url, &mut history);
         let text = if screen { format!("\x1b[H\x1b[J{view}\n\nCtrl+C to quit\n") } else { format!("\n{view}\n") };
         let mut out = stdout.lock();
         if out.write_all(text.as_bytes()).and_then(|_| out.flush()).is_err() {
