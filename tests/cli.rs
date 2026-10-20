@@ -148,7 +148,8 @@ fn unknown_commands_and_options_print_the_usage_and_exit_with_1() {
     for args in [&["nope"][..], &["watch", "--nope"], &["watch", "--url"], &["serve", "--port", "1"]] {
         let output = run(args, &[]);
         assert_eq!(output.status.code(), Some(1), "{args:?}");
-        assert!(String::from_utf8_lossy(&output.stdout).starts_with("Usage: torchio watch"), "{args:?}");
+        assert!(String::from_utf8_lossy(&output.stderr).contains("Usage: torchio watch"), "{args:?}");
+        assert!(output.stdout.is_empty(), "{args:?}");
     }
 }
 

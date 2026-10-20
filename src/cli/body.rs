@@ -75,7 +75,7 @@ pub fn scenario(args: &[String]) -> ExitCode {
         Ok(options) => options,
         Err(message) => {
             eprintln!("{message}");
-            println!("{USAGE}");
+            eprintln!("{USAGE}");
             return ExitCode::FAILURE;
         }
     };
@@ -150,7 +150,7 @@ pub fn payload(args: &[String]) -> ExitCode {
         Ok(options) => options,
         Err(message) => {
             eprintln!("{message}");
-            println!("{USAGE}");
+            eprintln!("{USAGE}");
             return ExitCode::FAILURE;
         }
     };

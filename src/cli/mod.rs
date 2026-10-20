@@ -73,7 +73,7 @@ pub fn run(args: &[String]) -> ExitCode {
         }
         Some(name) if action::is_action(name) => action::run(name, &args[1..]),
         Some(_) => {
-            println!("{USAGE}");
+            eprintln!("{USAGE}");
             ExitCode::FAILURE
         }
     }
