@@ -70,10 +70,7 @@ pub fn run(args: &[String]) -> ExitCode {
                 println!("{view}");
                 ExitCode::SUCCESS
             }
-            Err(message) => {
-                eprintln!("Cannot reach {}: {message}", options.url);
-                ExitCode::FAILURE
-            }
+            Err(error) => common::fail(&error.describe(&options.url)),
         };
     }
 

@@ -1,6 +1,6 @@
 //! What `watch` and its interactive version share on a terminal: how the screen is taken and given
 //! back, whether colours are wanted, and one frame of the view.
-use super::info::{self, Info};
+use super::info::{self, FetchError, Info};
 use super::view::{History, Style, render};
 
 /// Takes the alternate screen and hides the cursor
@@ -15,7 +15,7 @@ pub fn colors_wanted() -> bool {
 }
 
 /// One frame: the view of a sample, or why there is none
-pub fn frame(style: &Style, url: &str, history: &mut History) -> Result<String, String> {
+pub fn frame(style: &Style, url: &str, history: &mut History) -> Result<String, FetchError> {
     let info: Info = info::fetch(url)?;
     history.record(&info);
     Ok(render(style, url, &info, history))
@@ -23,5 +23,5 @@ pub fn frame(style: &Style, url: &str, history: &mut History) -> Result<String, 
 
 /// The frame, or the reason there is none as the text to show instead
 pub fn sample(style: &Style, url: &str, history: &mut History) -> String {
-    frame(style, url, history).unwrap_or_else(|message| format!("Cannot reach {url}: {message}"))
+    frame(style, url, history).unwrap_or_else(|error| error.describe(url))
 }
