@@ -8,7 +8,7 @@ use std::io::Read;
 use std::process::ExitCode;
 use std::time::{Duration, Instant};
 
-const MB: f64 = 1024.0 * 1024.0;
+const MB: f64 = crate::units::MB as f64;
 
 struct Options {
     url: String,

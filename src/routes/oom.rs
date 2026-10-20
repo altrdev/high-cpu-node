@@ -1,6 +1,7 @@
 use crate::app::AppState;
 use crate::resources::oom;
 use crate::system;
+use crate::units::MB;
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
@@ -13,7 +14,7 @@ pub async fn handler(State(state): State<Arc<AppState>>) -> Response {
         return (StatusCode::FORBIDDEN, "Forbidden: /oom ends the process, set ALLOW_OOM=1 to allow it").into_response();
     }
     let limit = match system::container_limit_bytes() {
-        Some(bytes) => format!("the container limit is {} MB", bytes / crate::units::MB as u64),
+        Some(bytes) => format!("the container limit is {} MB", bytes / MB),
         None => "there is no container limit, so it fills the memory of the machine".to_string(),
     };
     state.config.log_format.warn(&format!("Allocating memory until the kernel kills the process: {limit}"));
