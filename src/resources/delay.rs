@@ -1,26 +1,12 @@
 //! The requests of `/delay` that are still waiting.
+use crate::resources::counted::Counted;
+use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
 #[derive(Default)]
 pub struct Delay {
-    in_flight: AtomicUsize,
-}
-
-/// Counts a wait for as long as it lives
-struct Waiting<'a>(&'a AtomicUsize);
-
-impl<'a> Waiting<'a> {
-    fn new(counter: &'a AtomicUsize) -> Self {
-        counter.fetch_add(1, Ordering::Relaxed);
-        Waiting(counter)
-    }
-}
-
-impl Drop for Waiting<'_> {
-    fn drop(&mut self) {
-        self.0.fetch_sub(1, Ordering::Relaxed);
-    }
+    in_flight: Arc<AtomicUsize>,
 }
 
 impl Delay {
@@ -31,7 +17,7 @@ impl Delay {
     /// Waits without blocking anything else. It counts until it ends or the future is dropped, which
     /// is what happens when the client gives up.
     pub async fn wait(&self, ms: u64) {
-        let _waiting = Waiting::new(&self.in_flight);
+        let _waiting = Counted::new(&self.in_flight);
         tokio::time::sleep(Duration::from_millis(ms)).await;
     }
 }

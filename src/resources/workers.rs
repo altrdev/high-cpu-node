@@ -1,4 +1,5 @@
 //! The worker threads that `/stress` and `/cpu` use to keep the cores busy.
+use crate::resources::counted::Counted;
 use serde::Serialize;
 use std::hint::black_box;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -31,15 +32,6 @@ pub struct WorkerPool {
     next: AtomicUsize,
     // what /cpu is burning, and how many workers (the first ones) it loads
     burning: Mutex<Option<(Burn, usize)>>,
-}
-
-// Counts a request of /stress until it is dropped
-pub struct Waiting(Arc<AtomicUsize>);
-
-impl Drop for Waiting {
-    fn drop(&mut self) {
-        self.0.fetch_sub(1, Ordering::Relaxed);
-    }
 }
 
 #[derive(Debug, PartialEq, Serialize)]
@@ -78,12 +70,11 @@ impl WorkerPool {
 
     // Hands the calculation to the next worker. The answer comes through `reply`, and never
     // comes if the worker is gone. Keep the returned value for as long as the answer is waited for.
-    pub fn run(&self, number: i64, reply: oneshot::Sender<u64>) -> Waiting {
+    pub fn run(&self, number: i64, reply: oneshot::Sender<u64>) -> Counted {
         let worker = self.next.fetch_add(1, Ordering::Relaxed) % self.senders.len();
-        self.in_flight[worker].fetch_add(1, Ordering::Relaxed);
         // if the worker is gone the message, and with it the reply, is dropped
         let _ = self.senders[worker].send(Message::Stress { number, reply });
-        Waiting(Arc::clone(&self.in_flight[worker]))
+        Counted::new(&self.in_flight[worker])
     }
 
     // Keeps the first `workers` workers busy for `percent` of the time during `seconds`, and the others

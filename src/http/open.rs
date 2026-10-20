@@ -2,7 +2,8 @@
 //! close, and the requests being answered. The listener also stops accepting when the server starts
 //! draining, so new connections are refused while the ones already open keep being served.
 use crate::app::AppState;
-use crate::resources::shutdown::{Open, Shutdown};
+use crate::resources::counted;
+use crate::resources::shutdown::Shutdown;
 use axum::extract::{Request, State};
 use axum::middleware::Next;
 use axum::response::Response;
@@ -19,7 +20,7 @@ use tokio::sync::watch;
 /// A connection that counts as open for as long as it lives
 pub struct Counted {
     io: TcpStream,
-    _open: Open,
+    _open: counted::Counted,
 }
 
 impl AsyncRead for Counted {

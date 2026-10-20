@@ -4,6 +4,7 @@
 pub mod block;
 pub mod budget;
 pub mod connections;
+pub mod counted;
 pub mod delay;
 pub mod disk;
 pub mod fd;
