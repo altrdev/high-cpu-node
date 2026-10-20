@@ -17,4 +17,5 @@ pub mod payload;
 pub mod ready;
 pub mod scenario;
 pub mod shutdown;
+pub mod splitmix;
 pub mod workers;
