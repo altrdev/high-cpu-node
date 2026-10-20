@@ -1,6 +1,6 @@
 use crate::app::{AppState, VERSION};
 use crate::endpoints::{catalog, to_json, to_text};
-use crate::http::accept::prefers_html;
+use crate::http::accept::prefers_plain_text;
 use axum::Json;
 use axum::extract::State;
 use axum::http::{HeaderMap, header};
@@ -12,7 +12,7 @@ use std::sync::Arc;
 pub async fn handler(State(state): State<Arc<AppState>>, headers: HeaderMap) -> Response {
     let endpoints = catalog(&state.config);
     let accept = headers.get(header::ACCEPT).and_then(|value| value.to_str().ok());
-    if prefers_html(accept) {
+    if prefers_plain_text(accept) {
         return ([(header::CONTENT_TYPE, "text/plain; charset=utf-8")], to_text(VERSION, &endpoints)).into_response();
     }
     Json(json!({"name": state.config.name, "version": VERSION, "endpoints": to_json(&endpoints)})).into_response()
