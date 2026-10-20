@@ -1,6 +1,5 @@
 use crate::actions::{self, Outcome};
 use crate::app::AppState;
-use crate::endpoints::specs;
 use crate::http::params::{self, Rejection};
 use axum::extract::{RawQuery, State};
 use axum::http::StatusCode;
@@ -22,7 +21,7 @@ pub async fn handler(State(state): State<Arc<AppState>>) -> Response {
 
 /// Makes `/ready` answer `503` for `seconds`, or until `/ready/on` when it is 0
 pub async fn off(State(state): State<Arc<AppState>>, RawQuery(query): RawQuery) -> Result<Outcome, Rejection> {
-    let seconds = params::read(query.as_deref(), &specs(&state.config).ready_off)?.get("seconds");
+    let seconds = params::read(query.as_deref(), &state.specs.ready_off)?.get("seconds");
     Ok(actions::ready_off(&state, seconds))
 }
 

@@ -1,5 +1,4 @@
 use crate::app::AppState;
-use crate::endpoints::specs;
 use crate::http::params::{self, Rejection};
 use axum::extract::{RawQuery, State};
 use std::sync::Arc;
@@ -8,7 +7,7 @@ use std::sync::Arc;
 /// rotation and what the logs of a container do to a disk. A new request replaces the one still
 /// running, and the lines already written stay where they are.
 pub async fn handler(State(state): State<Arc<AppState>>, RawQuery(query): RawQuery) -> Result<String, Rejection> {
-    let params = params::read(query.as_deref(), &specs(&state.config).log)?;
+    let params = params::read(query.as_deref(), &state.specs.log)?;
     let (lines, rate) = (params.get("lines"), params.get("rate"));
 
     state.log.start(lines, rate);

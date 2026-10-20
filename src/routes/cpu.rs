@@ -1,6 +1,5 @@
 use crate::actions::{self, Outcome};
 use crate::app::AppState;
-use crate::endpoints::specs;
 use crate::http::params::{self, Rejection};
 use axum::extract::{RawQuery, State};
 use std::sync::Arc;
@@ -11,6 +10,6 @@ use std::sync::Arc;
 /// ones, for an uneven load; by default it is all of them. A new request replaces the previous
 /// one, and `percent=0` stops it.
 pub async fn handler(State(state): State<Arc<AppState>>, RawQuery(query): RawQuery) -> Result<Outcome, Rejection> {
-    let params = params::read(query.as_deref(), &specs(&state.config).cpu)?;
+    let params = params::read(query.as_deref(), &state.specs.cpu)?;
     Ok(actions::cpu(&state, params.get("percent"), params.get("hold"), params.get("workers") as usize))
 }
