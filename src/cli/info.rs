@@ -1,4 +1,5 @@
-//! What `/info` says, as far as the view needs it. The fields that older servers do not report are optional.
+//! What `/info` says, as far as the view needs it. A field is optional only when the server reports it
+//! as `null` at times (nothing held, no limit); a server too old to have the others is refused.
 use super::http;
 use serde::Deserialize;
 use std::time::Duration;
@@ -119,11 +120,67 @@ pub struct Log {
     pub rate: i64,
 }
 
+/// The oldest server whose `/info` has every field that `watch` reads (`/scenario` came with 4.5.0)
+const OLDEST_SERVER: (u32, u32, u32) = (4, 5, 0);
+
+/// `4.5.0` as numbers; `None` for anything that is not three of them
+fn version_of(text: &str) -> Option<(u32, u32, u32)> {
+    let mut parts = text.split('.').map(|part| part.parse().ok());
+    let version = (parts.next()??, parts.next()??, parts.next()??);
+    parts.next().is_none().then_some(version)
+}
+
+/// Why an answer is not an `/info` that `watch` can read: a server that is too old says so, with
+/// its version, and anything else is described by the error
+fn unreadable(body: &str, error: &serde_json::Error) -> String {
+    let version = serde_json::from_str::<serde_json::Value>(body).ok().and_then(|value| value["version"].as_str().map(String::from));
+    match version {
+        Some(version) if version_of(&version).is_some_and(|found| found < OLDEST_SERVER) => {
+            let (major, minor, patch) = OLDEST_SERVER;
+            format!("This server is torchio {version}, and watch needs {major}.{minor}.{patch} or newer")
+        }
+        _ => format!("not the /info of torchio: {error}"),
+    }
+}
+
 /// Asks the server that `base` points to how it is
 pub fn fetch(base: &str) -> Result<Info, String> {
     let (status, body) = http::get(&http::info_url(base)?, Duration::from_secs(2))?;
     if !(200..300).contains(&status) {
         return Err(format!("HTTP {status}"));
     }
-    serde_json::from_str(&body).map_err(|e| format!("not the /info of torchio: {e}"))
+    serde_json::from_str(&body).map_err(|e| unreadable(&body, &e))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn error_of(body: &str) -> String {
+        let error = serde_json::from_str::<Info>(body).unwrap_err();
+        unreadable(body, &error)
+    }
+
+    #[test]
+    fn versions_are_three_numbers() {
+        assert_eq!(version_of("4.5.0"), Some((4, 5, 0)));
+        assert_eq!(version_of("4.10.2"), Some((4, 10, 2)));
+        for text in ["", "4.5", "4.5.0.1", "4.x.0", "dev"] {
+            assert_eq!(version_of(text), None, "{text:?}");
+        }
+    }
+
+    #[test]
+    fn a_server_older_than_watch_needs_says_its_version() {
+        assert_eq!(error_of(r#"{"name":"torchio","version":"4.2.1"}"#), "This server is torchio 4.2.1, and watch needs 4.5.0 or newer");
+        assert_eq!(error_of(r#"{"version":"3.9.0"}"#), "This server is torchio 3.9.0, and watch needs 4.5.0 or newer");
+    }
+
+    #[test]
+    fn anything_else_that_cannot_be_read_is_described_by_the_error() {
+        // a current version with a missing field, a version we can't read, and no JSON at all
+        assert!(error_of(r#"{"version":"4.6.1"}"#).starts_with("not the /info of torchio: missing field"));
+        assert!(error_of(r#"{"version":"dev"}"#).starts_with("not the /info of torchio: "));
+        assert!(error_of("<html>").starts_with("not the /info of torchio: "));
+    }
 }
