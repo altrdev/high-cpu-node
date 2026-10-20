@@ -1,17 +1,17 @@
 //! What the integration tests share: a real `torchio` started on a free port with small limits and
 //! its own `DISK_DIR`, and a small HTTP client to talk to it.
-#![allow(dead_code, unused_imports)]
+#![allow(dead_code)]
 
 use serde_json::Value;
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitStatus, Stdio};
 use std::sync::atomic::{AtomicU32, Ordering};
-use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
+#[allow(unused_imports)]
 pub use torchio::units::MB;
 pub const BIN: &str = env!("CARGO_BIN_EXE_torchio");
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -141,8 +141,10 @@ pub struct Server {
     child: Child,
     pub port: u16,
     pub disk_dir: TempDir,
-    output: Arc<Mutex<String>>,
-    readers: Vec<thread::JoinHandle<()>>,
+    // where the server writes its stdout and stderr: a file, so that what it has written is there as soon as it
+    // has written it, with no thread in between that could be late
+    output: PathBuf,
+    _output_dir: TempDir,
 }
 
 impl Server {
@@ -190,37 +192,24 @@ impl Server {
         for (name, value) in &options.env {
             command.env(name, value);
         }
-        let mut child = command.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn().expect("the binary starts");
+        let output_dir = TempDir::new();
+        let output = output_dir.path().join("output");
+        let file = std::fs::File::create(&output).unwrap();
+        let (stdout, stderr) = (Stdio::from(file.try_clone().unwrap()), Stdio::from(file));
+        let child = command.stdin(Stdio::null()).stdout(stdout).stderr(stderr).spawn().expect("the binary starts");
 
-        // everything the server writes, to look at in the test
-        let output = Arc::new(Mutex::new(String::new()));
-        let stdout = child.stdout.take().unwrap();
-        let stderr = child.stderr.take().unwrap();
-        let mut readers = Vec::new();
-        for stream in [Box::new(stdout) as Box<dyn Read + Send>, Box::new(stderr)] {
-            let output = Arc::clone(&output);
-            readers.push(thread::spawn(move || {
-                for line in BufReader::new(stream).lines().map_while(Result::ok) {
-                    let mut output = output.lock().unwrap();
-                    output.push_str(&line);
-                    output.push('\n');
-                }
-            }));
-        }
-
-        let mut server = Server { child, port, disk_dir, output, readers };
+        let mut server = Server { child, port, disk_dir, output, _output_dir: output_dir };
         for _ in 0..100 {
             if let Some(status) = server.child.try_wait().unwrap() {
-                // the reader threads may not have the last line yet
-                for reader in server.readers.drain(..) {
-                    let _ = reader.join();
-                }
                 if server.output().contains("Address already in use") {
                     return None;
                 }
                 panic!("the server exited while starting ({status}): {}", server.output());
             }
-            if try_get(&format!("{}/", server.url()), &[]).is_ok_and(|r| r.status == 200) {
+            // the answer has to come from this server and not from another one that took the port: this one has
+            // written that it is listening on it, which it does once it has bound it
+            let listening = server.output().contains(&format!("running on 0.0.0.0:{port} "));
+            if listening && try_get(&format!("{}/", server.url()), &[]).is_ok_and(|r| r.status == 200) {
                 return Some(server);
             }
             sleep(100);
@@ -262,7 +251,7 @@ impl Server {
 
     // What the server has written to stdout and stderr so far
     pub fn output(&self) -> String {
-        self.output.lock().unwrap().clone()
+        String::from_utf8_lossy(&std::fs::read(&self.output).unwrap_or_default()).into_owned()
     }
 
     // The files /disk keeps in DISK_DIR
@@ -277,12 +266,7 @@ impl Server {
     }
 
     pub fn exited(&mut self) -> Option<ExitStatus> {
-        let status = self.child.try_wait().unwrap()?;
-        // the last lines are still in the pipes: wait for the readers to take them, so `output()` is complete
-        for reader in self.readers.drain(..) {
-            let _ = reader.join();
-        }
-        Some(status)
+        self.child.try_wait().unwrap()
     }
 
     // Waits for the process to end by itself
