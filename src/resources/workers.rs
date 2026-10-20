@@ -76,10 +76,6 @@ impl WorkerPool {
         }
     }
 
-    pub fn workers(&self) -> usize {
-        self.senders.len()
-    }
-
     // Hands the calculation to the next worker. The answer comes through `reply`, and never
     // comes if the worker is gone. Keep the returned value for as long as the answer is waited for.
     pub fn run(&self, number: i64, reply: oneshot::Sender<u64>) -> Waiting {
