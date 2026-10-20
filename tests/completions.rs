@@ -10,10 +10,6 @@ fn script(shell: &str) -> String {
     String::from_utf8(output.stdout).unwrap()
 }
 
-fn available(program: &str) -> bool {
-    Command::new("sh").args(["-c", &format!("command -v {program}")]).output().is_ok_and(|output| output.status.success())
-}
-
 /// What bash offers after `torchio <words>`, the last word being the one being typed
 fn bash_offers(words: &[&str]) -> Vec<String> {
     let array = words.iter().map(|word| format!("'{word}'")).collect::<Vec<_>>().join(" ");

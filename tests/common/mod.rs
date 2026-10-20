@@ -16,6 +16,16 @@ pub use torchio::units::MB;
 pub const BIN: &str = env!("CARGO_BIN_EXE_torchio");
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
+/// Whether a program is installed
+pub fn available(program: &str) -> bool {
+    Command::new("sh").args(["-c", &format!("command -v {program}")]).output().is_ok_and(|output| output.status.success())
+}
+
+/// A client that gives the status of an error answer back as it is, and gives up after `seconds`
+pub fn agent(seconds: u64) -> ureq::Agent {
+    ureq::Agent::config_builder().http_status_as_error(false).timeout_global(Some(Duration::from_secs(seconds))).build().into()
+}
+
 pub fn sleep(ms: u64) {
     thread::sleep(Duration::from_millis(ms));
 }
