@@ -1,9 +1,10 @@
 //! Freezes the runtime: every thread that serves requests sleeps, so the process is alive but
 //! accepts and answers nothing, to test liveness probes and client timeouts. The workers of `/stress`
 //! and `/cpu` have their own threads and don't count.
+use crate::logging::LogFormat;
 use serde::Serialize;
-use std::sync::Mutex;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 /// A moment to let the answer leave before the threads go to sleep
@@ -55,11 +56,9 @@ impl Block {
         self.last_ms.store(ms, Ordering::Relaxed);
         Ok(end)
     }
-}
 
-impl Block {
     /// Reserves the block, says so in the log and freezes the threads after the answer has left
-    pub fn start(&self, ms: u64, format: crate::logging::LogFormat) -> Result<(), Busy> {
+    pub fn start(&self, ms: u64, format: LogFormat) -> Result<(), Busy> {
         let end = self.reserve(ms)?;
         format.warn(&format!("Blocking every thread of the server for {ms} ms"));
         freeze(end, move || format.info("The server answers again"));
@@ -72,12 +71,12 @@ impl Block {
 pub fn freeze(end: Instant, then: impl Fn() + Send + Sync + 'static) {
     let handle = tokio::runtime::Handle::current();
     let threads = handle.metrics().num_workers();
-    let then = std::sync::Arc::new(then);
+    let then = Arc::new(then);
     handle.spawn(async move {
         tokio::time::sleep(SETTLE).await;
-        let running = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(threads));
+        let running = Arc::new(AtomicUsize::new(threads));
         for _ in 0..threads {
-            let (running, then) = (std::sync::Arc::clone(&running), std::sync::Arc::clone(&then));
+            let (running, then) = (Arc::clone(&running), Arc::clone(&then));
             tokio::spawn(async move {
                 if let Some(left) = end.checked_duration_since(Instant::now()) {
                     std::thread::sleep(left);
