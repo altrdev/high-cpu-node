@@ -3,7 +3,7 @@
 use super::info::{self, Info};
 use super::interactive;
 use super::view::{History, Style, render};
-use super::{USAGE, http};
+use super::{common, http};
 use std::io::{IsTerminal, Write};
 use std::process::ExitCode;
 use std::time::{Duration, Instant};
@@ -18,25 +18,15 @@ struct Options {
 }
 
 fn parse_options(args: &[String], env_token: Option<String>) -> Result<Options, String> {
-    let mut options = Options {
-        url: format!("http://127.0.0.1:{}", http::port()),
-        interval: "1".into(),
-        token: env_token,
-        once: false,
-        read_only: false,
-        help: false,
-    };
+    let mut options =
+        Options { url: http::local_url(), interval: "1".into(), token: env_token, once: false, read_only: false, help: false };
     let mut args = args.iter();
     while let Some(arg) = args.next() {
-        let (name, inline) = match arg.split_once('=') {
-            Some((name, value)) if name.starts_with("--") => (name, Some(value.to_string())),
-            _ => (arg.as_str(), None),
-        };
-        let mut value = |what: &str| inline.clone().or_else(|| args.next().cloned()).ok_or(format!("Option '{what}' argument missing"));
+        let (name, inline) = common::split(arg);
         match name {
-            "--url" => options.url = value("--url <url>")?,
-            "--interval" => options.interval = value("--interval <seconds>")?,
-            "--token" => options.token = Some(value("--token <token>")?),
+            "--url" => options.url = common::value(inline, &mut args, "--url <url>")?,
+            "--interval" => options.interval = common::value(inline, &mut args, "--interval <seconds>")?,
+            "--token" => options.token = Some(common::value(inline, &mut args, "--token <token>")?),
             "--once" => options.once = true,
             "--read-only" => options.read_only = true,
             "--help" | "-h" => options.help = true,
@@ -70,17 +60,12 @@ fn frame(style: &Style, url: &str, history: &mut History) -> Result<String, Stri
 }
 
 pub fn run(args: &[String]) -> ExitCode {
-    let options = match parse_options(args, std::env::var("TOKEN").ok().filter(|token| !token.is_empty())) {
+    let options = match parse_options(args, common::env_token()) {
         Ok(options) => options,
-        Err(message) => {
-            eprintln!("{message}");
-            eprintln!("{USAGE}");
-            return ExitCode::FAILURE;
-        }
+        Err(message) => return common::usage_error(&message),
     };
     if options.help {
-        println!("{USAGE}");
-        return ExitCode::SUCCESS;
+        return common::help();
     }
 
     let stdout = std::io::stdout();
