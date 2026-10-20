@@ -202,6 +202,16 @@ fn shorten(text: &str, max: usize) -> String {
     if length > max { format!("…{}", text.chars().skip(length - max + 1).collect::<String>()) } else { text.to_string() }
 }
 
+/// The free space of the directory of `/disk`, or that it can't be used
+fn free_space(info: &Info) -> String {
+    info.disk.free_mb.map_or("not usable".to_string(), |mb| format!("{mb} MB free"))
+}
+
+/// The directory of `/disk`, short enough for the line
+fn disk_dir(info: &Info) -> String {
+    shorten(&info.disk.dir, 40)
+}
+
 fn readiness(ready: &Ready) -> String {
     if ready.ready {
         return "readiness: ready".to_string();
@@ -304,7 +314,7 @@ pub fn render(style: &Style, url: &str, info: &Info, history: &History) -> Strin
     if style.color {
         return render_color(style, url, info, history);
     }
-    let free = info.disk.free_mb.map_or("not usable".to_string(), |mb| format!("{mb} MB free"));
+    let free = free_space(info);
     let mut lines = vec![format!("{} {}  {url}  up {}", info.name, info.version, duration(info.uptime_seconds)), String::new()];
     lines.extend(rows(style, info, history));
     lines.push(String::new());
@@ -324,13 +334,13 @@ pub fn render(style: &Style, url: &str, info: &Info, history: &History) -> Strin
     if let Some(ready) = &info.ready {
         lines.push(readiness(ready));
     }
-    lines.push(format!("disk dir: {}   {free}", shorten(&info.disk.dir, 40)));
+    lines.push(format!("disk dir: {}   {free}", disk_dir(info)));
     lines.join("\n")
 }
 
 /// The same view with colours: a header, smooth bars, badges and lit-up activity
 fn render_color(style: &Style, url: &str, info: &Info, history: &History) -> String {
-    let free = info.disk.free_mb.map_or("not usable".to_string(), |mb| format!("{mb} MB free"));
+    let free = free_space(info);
     let ready = info.ready.as_ref().map(|ready| {
         if ready.ready {
             style.badge(35, 16, "● READY")
@@ -379,7 +389,7 @@ fn render_color(style: &Style, url: &str, info: &Info, history: &History) -> Str
     {
         lines.push(activity(scenario.state == "running", 117, format!("/scenario {text}")));
     }
-    let place = format!("{}   {}", style.dim(&format!("disk dir {}", shorten(&info.disk.dir, 40))), style.dim(&free));
+    let place = format!("{}   {}", style.dim(&format!("disk dir {}", disk_dir(info))), style.dim(&free));
     lines.push(match ready {
         Some(ready) => format!(" {ready}   {place}"),
         None => format!(" {place}"),
