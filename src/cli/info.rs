@@ -143,13 +143,33 @@ fn unreadable(body: &str, error: &serde_json::Error) -> String {
     }
 }
 
-/// Asks the server that `base` points to how it is
-pub fn fetch(base: &str) -> Result<Info, String> {
-    let (status, body) = http::get(&http::info_url(base)?, Duration::from_secs(2))?;
-    if !(200..300).contains(&status) {
-        return Err(format!("HTTP {status}"));
+/// Why there is no `/info` to show
+#[derive(Debug, PartialEq)]
+pub enum FetchError {
+    /// The server did not answer, or not with a success
+    Unreachable(String),
+    /// It answered, but with something `watch` can't read: not torchio, or too old
+    Unreadable(String),
+}
+
+impl FetchError {
+    /// What to tell about the server at `url`
+    pub fn describe(&self, url: &str) -> String {
+        match self {
+            FetchError::Unreachable(reason) => format!("Cannot reach {url}: {reason}"),
+            FetchError::Unreadable(reason) => format!("{url}: {reason}"),
+        }
     }
-    serde_json::from_str(&body).map_err(|e| unreadable(&body, &e))
+}
+
+/// Asks the server that `base` points to how it is
+pub fn fetch(base: &str) -> Result<Info, FetchError> {
+    let url = http::info_url(base).map_err(FetchError::Unreachable)?;
+    let (status, body) = http::get(&url, Duration::from_secs(2)).map_err(FetchError::Unreachable)?;
+    if !(200..300).contains(&status) {
+        return Err(FetchError::Unreachable(format!("HTTP {status}")));
+    }
+    serde_json::from_str(&body).map_err(|e| FetchError::Unreadable(unreadable(&body, &e)))
 }
 
 #[cfg(test)]
@@ -159,6 +179,12 @@ mod tests {
     fn error_of(body: &str) -> String {
         let error = serde_json::from_str::<Info>(body).unwrap_err();
         unreadable(body, &error)
+    }
+
+    #[test]
+    fn an_error_says_whether_the_server_was_reached() {
+        assert_eq!(FetchError::Unreachable("HTTP 500".into()).describe("http://h:1"), "Cannot reach http://h:1: HTTP 500");
+        assert_eq!(FetchError::Unreadable("too old".into()).describe("http://h:1"), "http://h:1: too old");
     }
 
     #[test]
