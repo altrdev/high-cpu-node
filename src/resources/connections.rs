@@ -1,21 +1,14 @@
 //! The TCP connections that `/connections` opens to the server itself and holds, against the budget
 //! `MAX_CONNECTIONS`.
 use crate::resources::budget::{Budget, OverBudget};
+use crate::resources::opened::{Opened, keep};
 use crate::system::errno_name;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::net::TcpStream;
 
 pub struct Connections {
     budget: Arc<Budget>,
     port: u16,
-}
-
-/// How many connections could be opened, and why the others could not
-#[derive(Debug, PartialEq)]
-pub struct Opened {
-    pub opened: usize,
-    pub failure: Option<String>,
 }
 
 impl Connections {
@@ -31,7 +24,7 @@ impl Connections {
     /// takes a descriptor in the client side and another in the server side, so a process whose limit
     /// of descriptors is lower stops earlier: the ones that could be opened stay open until then.
     pub async fn hold(&self, count: i64, seconds: u64) -> Result<Opened, OverBudget> {
-        let mut reservation = self.budget.reserve(count)?;
+        let reservation = self.budget.reserve(count)?;
 
         let mut streams = Vec::with_capacity(count as usize);
         let mut failure = None;
@@ -44,24 +37,14 @@ impl Connections {
                 }
             }
         }
-        // what was reserved but not opened goes back
-        reservation.shrink_to(streams.len() as i64);
-        let opened = streams.len();
-
-        let ending = self.budget.ends_in(seconds);
-        tokio::spawn(async move {
-            tokio::time::sleep(Duration::from_secs(seconds)).await;
-            drop(ending);
-            drop(streams);
-            drop(reservation);
-        });
-        Ok(Opened { opened, failure })
+        Ok(keep(&self.budget, reservation, streams, failure, seconds))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::Duration;
     use tokio::net::TcpListener;
 
     // a port that accepts connections, kept for as long as the listener lives

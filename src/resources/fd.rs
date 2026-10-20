@@ -1,19 +1,12 @@
 //! The file descriptors that `/fd` opens and holds, against the budget `MAX_FD`.
 use crate::resources::budget::{Budget, OverBudget};
+use crate::resources::opened::{Opened, keep};
 use crate::system::errno_name;
 use std::fs::File;
 use std::sync::Arc;
-use std::time::Duration;
 
 pub struct Fd {
     budget: Arc<Budget>,
-}
-
-/// How many descriptors could be opened, and why the others could not
-#[derive(Debug, PartialEq)]
-pub struct Opened {
-    pub opened: usize,
-    pub failure: Option<String>,
 }
 
 impl Fd {
@@ -29,7 +22,7 @@ impl Fd {
     /// lower the ones that could be opened stay open until then: the server then can't accept
     /// connections either, which is the case being tested.
     pub fn hold(&self, count: i64, seconds: u64) -> Result<Opened, OverBudget> {
-        let mut reservation = self.budget.reserve(count)?;
+        let reservation = self.budget.reserve(count)?;
 
         let mut files = Vec::with_capacity(count as usize);
         let mut failure = None;
@@ -42,24 +35,14 @@ impl Fd {
                 }
             }
         }
-        // what was reserved but not opened goes back
-        reservation.shrink_to(files.len() as i64);
-        let opened = files.len();
-
-        let ending = self.budget.ends_in(seconds);
-        tokio::spawn(async move {
-            tokio::time::sleep(Duration::from_secs(seconds)).await;
-            drop(ending);
-            drop(files);
-            drop(reservation);
-        });
-        Ok(Opened { opened, failure })
+        Ok(keep(&self.budget, reservation, files, failure, seconds))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::Duration;
 
     #[tokio::test(start_paused = true)]
     async fn it_holds_descriptors_for_a_while() {
