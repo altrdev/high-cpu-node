@@ -33,5 +33,5 @@ codegen-units = 1
 strip = true
 
 [dev-dependencies]
-tokio = { version = "1.53.3", features = ["test-util", "macros", "rt", "io-util", "net"] }
+tokio = { version = "1.53.3", features = ["test-util"] }
 tower = { version = "0.5.3", features = ["util"] }
