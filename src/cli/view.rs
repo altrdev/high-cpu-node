@@ -118,7 +118,7 @@ impl Style {
     /// each cell has the colour of its place (green to red, or blue to cyan when `neutral`); without
     /// them it is whole cells. `neutral` is for a size reference and not for a real limit.
     fn bar(&self, value: i64, max: i64, neutral: bool) -> String {
-        let ratio = if max > 0 { (value as f64 / max as f64).clamp(0.0, 1.0) } else { 0.0 };
+        let ratio = ratio(value, max);
         if !self.color {
             let filled = (ratio * BAR_WIDTH as f64).round() as usize;
             return "█".repeat(filled) + &"░".repeat(BAR_WIDTH - filled);
@@ -140,12 +140,11 @@ impl Style {
 
     /// The history of a figure: one character per sample, taller and brighter when it is higher
     fn trace(&self, history: &[i64], max: i64) -> String {
-        let max = if max == 0 { 1 } else { max } as f64;
         history
             .iter()
             .map(|value| {
-                let level = (((*value as f64 / max) * 7.0).floor().max(0.0) as usize).min(7);
-                self.fg(TRACE[level], &SPARK[level].to_string())
+                let step = step(*value, max);
+                self.fg(TRACE[step], &SPARK[step].to_string())
             })
             .collect()
     }
@@ -155,7 +154,7 @@ impl Style {
         if !self.color {
             return format!("{label:<14}{}  {text:<26} {}", self.bar(value, max, neutral), spark(history, max));
         }
-        let ratio = if max > 0 { (value as f64 / max as f64).clamp(0.0, 1.0) } else { 0.0 };
+        let ratio = ratio(value, max);
         let share = if neutral { self.dim("    ") } else { self.fg(Style::level(ratio), &format!("{:>3.0}%", ratio * 100.0)) };
         format!(
             " {}  {} {share}  {text:<26} {}",
@@ -172,8 +171,18 @@ impl Style {
 
 /// One character per sample, scaled between 0 and `max`
 fn spark(history: &[i64], max: i64) -> String {
+    history.iter().map(|value| SPARK[step(*value, max)]).collect()
+}
+
+/// How full `value` is against `max`, from 0 to 1; 0 when there is no limit
+fn ratio(value: i64, max: i64) -> f64 {
+    if max > 0 { (value as f64 / max as f64).clamp(0.0, 1.0) } else { 0.0 }
+}
+
+/// Which of the eight heights of a history `value` has, between 0 and `max`
+fn step(value: i64, max: i64) -> usize {
     let max = if max == 0 { 1 } else { max } as f64;
-    history.iter().map(|value| SPARK[(((*value as f64 / max) * 7.0).floor().max(0.0) as usize).min(7)]).collect()
+    (((value as f64 / max) * 7.0).floor().max(0.0) as usize).min(7)
 }
 
 fn duration(seconds: i64) -> String {
@@ -191,6 +200,16 @@ fn duration(seconds: i64) -> String {
 fn shorten(text: &str, max: usize) -> String {
     let length = text.chars().count();
     if length > max { format!("…{}", text.chars().skip(length - max + 1).collect::<String>()) } else { text.to_string() }
+}
+
+/// The free space of the directory of `/disk`, or that it can't be used
+fn free_space(info: &Info) -> String {
+    info.disk.free_mb.map_or("not usable".to_string(), |mb| format!("{mb} MB free"))
+}
+
+/// The directory of `/disk`, short enough for the line
+fn disk_dir(info: &Info) -> String {
+    shorten(&info.disk.dir, 40)
 }
 
 fn readiness(ready: &Ready) -> String {
@@ -295,7 +314,7 @@ pub fn render(style: &Style, url: &str, info: &Info, history: &History) -> Strin
     if style.color {
         return render_color(style, url, info, history);
     }
-    let free = info.disk.free_mb.map_or("not usable".to_string(), |mb| format!("{mb} MB free"));
+    let free = free_space(info);
     let mut lines = vec![format!("{} {}  {url}  up {}", info.name, info.version, duration(info.uptime_seconds)), String::new()];
     lines.extend(rows(style, info, history));
     lines.push(String::new());
@@ -315,13 +334,13 @@ pub fn render(style: &Style, url: &str, info: &Info, history: &History) -> Strin
     if let Some(ready) = &info.ready {
         lines.push(readiness(ready));
     }
-    lines.push(format!("disk dir: {}   {free}", shorten(&info.disk.dir, 40)));
+    lines.push(format!("disk dir: {}   {free}", disk_dir(info)));
     lines.join("\n")
 }
 
 /// The same view with colours: a header, smooth bars, badges and lit-up activity
 fn render_color(style: &Style, url: &str, info: &Info, history: &History) -> String {
-    let free = info.disk.free_mb.map_or("not usable".to_string(), |mb| format!("{mb} MB free"));
+    let free = free_space(info);
     let ready = info.ready.as_ref().map(|ready| {
         if ready.ready {
             style.badge(35, 16, "● READY")
@@ -370,7 +389,7 @@ fn render_color(style: &Style, url: &str, info: &Info, history: &History) -> Str
     {
         lines.push(activity(scenario.state == "running", 117, format!("/scenario {text}")));
     }
-    let place = format!("{}   {}", style.dim(&format!("disk dir {}", shorten(&info.disk.dir, 40))), style.dim(&free));
+    let place = format!("{}   {}", style.dim(&format!("disk dir {}", disk_dir(info))), style.dim(&free));
     lines.push(match ready {
         Some(ready) => format!(" {ready}   {place}"),
         None => format!(" {place}"),

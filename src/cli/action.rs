@@ -4,7 +4,7 @@
 //! The first values after the name are the parameters of the endpoint in the order of `/help`, and
 //! any of them can also be given as `--name value`. The limits are the server's: a value it does not
 //! accept comes back as its `400`.
-use super::{USAGE, http};
+use super::{common, http};
 use std::process::ExitCode;
 use std::time::Duration;
 
@@ -107,14 +107,11 @@ struct Request {
 }
 
 fn parse(action: &Action, args: &[String], env_token: Option<String>) -> Result<Request, String> {
-    let mut request = Request { url: format!("http://127.0.0.1:{}", http::port()), token: env_token, values: Vec::new(), help: false };
+    let mut request = Request { url: http::local_url(), token: env_token, values: Vec::new(), help: false };
     let mut positional = action.params.iter();
     let mut args = args.iter();
     while let Some(arg) = args.next() {
-        let (name, inline) = match arg.split_once('=') {
-            Some((name, value)) if name.starts_with("--") => (name, Some(value.to_string())),
-            _ => (arg.as_str(), None),
-        };
+        let (name, inline) = common::split(arg);
         if arg == "-h" || arg == "--help" {
             request.help = true;
             continue;
@@ -124,13 +121,12 @@ fn parse(action: &Action, args: &[String], env_token: Option<String>) -> Result<
             set(&mut request.values, param, arg.clone())?;
             continue;
         };
-        let mut value = |what: &str| inline.clone().or_else(|| args.next().cloned()).ok_or(format!("Option '{what}' argument missing"));
         match option {
-            "url" => request.url = value("--url <url>")?,
-            "token" => request.token = Some(value("--token <token>")?),
+            "url" => request.url = common::value(inline, &mut args, "--url <url>")?,
+            "token" => request.token = Some(common::value(inline, &mut args, "--token <token>")?),
             other => {
                 let param = action.params.iter().find(|param| **param == other).ok_or(format!("Unknown option '{name}'"))?;
-                set(&mut request.values, param, value(&format!("--{other} <value>"))?)?;
+                set(&mut request.values, param, common::value(inline, &mut args, &format!("--{other} <value>"))?)?;
             }
         }
     }
@@ -211,35 +207,23 @@ pub(super) fn answer(result: Result<(u16, String), String>, url: &str) -> Result
 
 pub fn run(name: &str, args: &[String]) -> ExitCode {
     let Some(action) = ACTIONS.iter().find(|action| action.name == name) else { return ExitCode::FAILURE };
-    let env_token = std::env::var("TOKEN").ok().filter(|token| !token.is_empty());
-    let request = match parse(action, args, env_token) {
+    let request = match parse(action, args, common::env_token()) {
         Ok(request) => request,
-        Err(message) => {
-            eprintln!("{message}");
-            eprintln!("{USAGE}");
-            return ExitCode::FAILURE;
-        }
+        Err(message) => return common::usage_error(&message),
     };
     if request.help {
-        println!("{USAGE}");
-        return ExitCode::SUCCESS;
+        return common::help();
     }
     let url = match target(action, &request.values).and_then(|target| http::endpoint_url(&request.url, &target)) {
         Ok(url) => url,
-        Err(message) => {
-            eprintln!("{message}");
-            return ExitCode::FAILURE;
-        }
+        Err(message) => return common::fail(&message),
     };
     match answer(http::get_with_token(&url, request.token.as_deref(), timeout(action)), &request.url) {
         Ok(body) => {
             println!("{body}");
             ExitCode::SUCCESS
         }
-        Err(message) => {
-            eprintln!("{message}");
-            ExitCode::FAILURE
-        }
+        Err(message) => common::fail(&message),
     }
 }
 

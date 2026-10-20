@@ -2,7 +2,8 @@
 //! `torchio scenario <file>` and `torchio payload get|post`. They take `--url` and `--token` like the
 //! others and speak plain HTTP only.
 use super::action::answer;
-use super::{USAGE, http};
+use super::common::{self, fail};
+use super::http;
 use serde_json::Value;
 use std::io::Read;
 use std::process::ExitCode;
@@ -21,19 +22,14 @@ struct Options {
 /// What follows the name of the command: words, and the options of every command (`--url`, `--token`,
 /// and `--wait` for a scenario)
 fn parse(args: &[String], env_token: Option<String>, allow_wait: bool) -> Result<Options, String> {
-    let mut options =
-        Options { url: format!("http://127.0.0.1:{}", http::port()), token: env_token, wait: false, help: false, words: Vec::new() };
+    let mut options = Options { url: http::local_url(), token: env_token, wait: false, help: false, words: Vec::new() };
     let mut args = args.iter();
     while let Some(arg) = args.next() {
-        let (name, inline) = match arg.split_once('=') {
-            Some((name, value)) if name.starts_with("--") => (name, Some(value.to_string())),
-            _ => (arg.as_str(), None),
-        };
-        let mut value = |what: &str| inline.clone().or_else(|| args.next().cloned()).ok_or(format!("Option '{what}' argument missing"));
+        let (name, inline) = common::split(arg);
         match name {
             "-h" | "--help" => options.help = true,
-            "--url" => options.url = value("--url <url>")?,
-            "--token" => options.token = Some(value("--token <token>")?),
+            "--url" => options.url = common::value(inline, &mut args, "--url <url>")?,
+            "--token" => options.token = Some(common::value(inline, &mut args, "--token <token>")?),
             "--wait" if allow_wait => options.wait = true,
             // `-` is stdin, and the only word that starts with a dash
             _ if name.starts_with('-') && name != "-" => return Err(format!("Unknown option '{name}'")),
@@ -41,15 +37,6 @@ fn parse(args: &[String], env_token: Option<String>, allow_wait: bool) -> Result
         }
     }
     Ok(options)
-}
-
-fn env_token() -> Option<String> {
-    std::env::var("TOKEN").ok().filter(|token| !token.is_empty())
-}
-
-fn fail(message: &str) -> ExitCode {
-    eprintln!("{message}");
-    ExitCode::FAILURE
 }
 
 /// The text of a JSON answer written out, or the text as it came
@@ -71,17 +58,12 @@ fn read_scenario(source: &str) -> Result<String, String> {
 
 /// `torchio scenario <file|-> [--wait]`, `torchio scenario status`, `torchio scenario stop`
 pub fn scenario(args: &[String]) -> ExitCode {
-    let options = match parse(args, env_token(), true) {
+    let options = match parse(args, common::env_token(), true) {
         Ok(options) => options,
-        Err(message) => {
-            eprintln!("{message}");
-            eprintln!("{USAGE}");
-            return ExitCode::FAILURE;
-        }
+        Err(message) => return common::usage_error(&message),
     };
     if options.help {
-        println!("{USAGE}");
-        return ExitCode::SUCCESS;
+        return common::help();
     }
     let [word] = options.words.as_slice() else {
         return fail("Usage: torchio scenario <file|-> [--wait] | status | stop");
@@ -146,17 +128,12 @@ fn wait(url: &str, token: Option<&str>) -> ExitCode {
 
 /// `torchio payload get [mb]` and `torchio payload post <file|->`
 pub fn payload(args: &[String]) -> ExitCode {
-    let options = match parse(args, env_token(), false) {
+    let options = match parse(args, common::env_token(), false) {
         Ok(options) => options,
-        Err(message) => {
-            eprintln!("{message}");
-            eprintln!("{USAGE}");
-            return ExitCode::FAILURE;
-        }
+        Err(message) => return common::usage_error(&message),
     };
     if options.help {
-        println!("{USAGE}");
-        return ExitCode::SUCCESS;
+        return common::help();
     }
     let url = match http::endpoint_url(&options.url, "/payload") {
         Ok(url) => url,
@@ -177,12 +154,9 @@ pub fn payload(args: &[String]) -> ExitCode {
     }
 }
 
+/// Long enough for a transfer of the largest payload on a slow link
 fn agent() -> ureq::Agent {
-    ureq::Agent::config_builder().timeout_global(Some(Duration::from_secs(3600))).http_status_as_error(false).build().into()
-}
-
-fn authorization(token: Option<&str>) -> String {
-    token.map(|token| format!("Bearer {token}")).unwrap_or_default()
+    http::agent(Duration::from_secs(3600))
 }
 
 /// Asks for `mb` MB and throws them away as they come, counting. A body shorter than the server
@@ -193,8 +167,8 @@ fn download(url: &str, mb: Option<&str>, token: Option<&str>) -> Result<String, 
         None => url.to_string(),
     };
     let mut request = agent().get(&target);
-    if token.is_some() {
-        request = request.header("Authorization", authorization(token));
+    if let Some(authorization) = http::bearer(token) {
+        request = request.header("Authorization", authorization);
     }
     let started = Instant::now();
     let mut response = request.call().map_err(|e| format!("Cannot reach the server: {e}"))?;
@@ -230,8 +204,8 @@ fn speed(bytes: u64, seconds: f64) -> f64 {
 /// has read everything (the limit of the size) closes the connection: that is said, not hidden.
 fn upload(url: &str, source: &str, token: Option<&str>) -> Result<String, String> {
     let mut request = agent().post(url);
-    if token.is_some() {
-        request = request.header("Authorization", authorization(token));
+    if let Some(authorization) = http::bearer(token) {
+        request = request.header("Authorization", authorization);
     }
     let started = Instant::now();
     let sent = if source == "-" {

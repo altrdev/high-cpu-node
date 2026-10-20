@@ -1,9 +1,9 @@
 //! `torchio watch`: what a server is doing, in the terminal. On a terminal it also takes keys that
 //! start tests (see `interactive`), unless `--read-only` says it must only look.
-use super::info::{self, Info};
 use super::interactive;
-use super::view::{History, Style, render};
-use super::{USAGE, http};
+use super::terminal::{ENTER_SCREEN, LEAVE_SCREEN, colors_wanted, frame, sample};
+use super::view::{History, Style};
+use super::{common, http};
 use std::io::{IsTerminal, Write};
 use std::process::ExitCode;
 use std::time::{Duration, Instant};
@@ -18,25 +18,15 @@ struct Options {
 }
 
 fn parse_options(args: &[String], env_token: Option<String>) -> Result<Options, String> {
-    let mut options = Options {
-        url: format!("http://127.0.0.1:{}", http::port()),
-        interval: "1".into(),
-        token: env_token,
-        once: false,
-        read_only: false,
-        help: false,
-    };
+    let mut options =
+        Options { url: http::local_url(), interval: "1".into(), token: env_token, once: false, read_only: false, help: false };
     let mut args = args.iter();
     while let Some(arg) = args.next() {
-        let (name, inline) = match arg.split_once('=') {
-            Some((name, value)) if name.starts_with("--") => (name, Some(value.to_string())),
-            _ => (arg.as_str(), None),
-        };
-        let mut value = |what: &str| inline.clone().or_else(|| args.next().cloned()).ok_or(format!("Option '{what}' argument missing"));
+        let (name, inline) = common::split(arg);
         match name {
-            "--url" => options.url = value("--url <url>")?,
-            "--interval" => options.interval = value("--interval <seconds>")?,
-            "--token" => options.token = Some(value("--token <token>")?),
+            "--url" => options.url = common::value(inline, &mut args, "--url <url>")?,
+            "--interval" => options.interval = common::value(inline, &mut args, "--interval <seconds>")?,
+            "--token" => options.token = Some(common::value(inline, &mut args, "--token <token>")?),
             "--once" => options.once = true,
             "--read-only" => options.read_only = true,
             "--help" | "-h" => options.help = true,
@@ -54,37 +44,24 @@ fn interval(text: &str) -> Duration {
 
 /// Restores the terminal when Ctrl+C or SIGTERM ends the view: show the cursor, leave the alternate screen
 extern "C" fn restore_terminal_and_exit(_: libc::c_int) {
-    const RESTORE: &[u8] = b"\x1b[?25h\x1b[?1049l";
     // SAFETY: write and _exit are async-signal-safe, and RESTORE is a valid buffer
     unsafe {
-        libc::write(1, RESTORE.as_ptr().cast(), RESTORE.len());
+        libc::write(1, LEAVE_SCREEN.as_ptr().cast(), LEAVE_SCREEN.len());
         libc::_exit(0);
     }
 }
 
-/// One frame: the view of a sample, or why there is none
-fn frame(style: &Style, url: &str, history: &mut History) -> Result<String, String> {
-    let info: Info = info::fetch(url)?;
-    history.record(&info);
-    Ok(render(style, url, &info, history))
-}
-
 pub fn run(args: &[String]) -> ExitCode {
-    let options = match parse_options(args, std::env::var("TOKEN").ok().filter(|token| !token.is_empty())) {
+    let options = match parse_options(args, common::env_token()) {
         Ok(options) => options,
-        Err(message) => {
-            eprintln!("{message}");
-            eprintln!("{USAGE}");
-            return ExitCode::FAILURE;
-        }
+        Err(message) => return common::usage_error(&message),
     };
     if options.help {
-        println!("{USAGE}");
-        return ExitCode::SUCCESS;
+        return common::help();
     }
 
     let stdout = std::io::stdout();
-    let style = Style::new(stdout.is_terminal() && std::env::var("NO_COLOR").map_or(true, |value| value.is_empty()));
+    let style = Style::new(stdout.is_terminal() && colors_wanted());
     let mut history = History::default();
 
     if options.once {
@@ -105,7 +82,7 @@ pub fn run(args: &[String]) -> ExitCode {
         return interactive::run(&options.url, options.token.as_deref(), interval(&options.interval));
     }
     if screen {
-        print!("\x1b[?1049h\x1b[?25l"); // alternate screen, hide cursor
+        print!("{ENTER_SCREEN}");
         // SAFETY: the handler only calls async-signal-safe functions
         unsafe {
             libc::signal(libc::SIGINT, restore_terminal_and_exit as *const () as libc::sighandler_t);
@@ -115,7 +92,7 @@ pub fn run(args: &[String]) -> ExitCode {
     let interval = interval(&options.interval);
     let mut next = Instant::now();
     loop {
-        let view = frame(&style, &options.url, &mut history).unwrap_or_else(|message| format!("Cannot reach {}: {message}", options.url));
+        let view = sample(&style, &options.url, &mut history);
         let text = if screen { format!("\x1b[H\x1b[J{view}\n\nCtrl+C to quit\n") } else { format!("\n{view}\n") };
         let mut out = stdout.lock();
         if out.write_all(text.as_bytes()).and_then(|_| out.flush()).is_err() {

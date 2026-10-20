@@ -9,11 +9,13 @@
 //! - `torchio cpu 80`, `torchio memory 512`…: start a test on a running server.
 mod action;
 mod body;
+mod common;
 mod completions;
 mod healthcheck;
 mod http;
 mod info;
 mod interactive;
+mod terminal;
 mod view;
 mod watch;
 
