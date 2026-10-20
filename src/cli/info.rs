@@ -13,11 +13,11 @@ pub struct Info {
     pub delay: Delay,
     pub memory: Memory,
     pub disk: Disk,
-    pub fd: Option<Fd>,
-    pub connections: Option<Connections>,
-    pub ready: Option<Ready>,
+    pub fd: Fd,
+    pub connections: Connections,
+    pub ready: Ready,
     pub log: Option<Log>,
-    pub scenario: Option<Scenario>,
+    pub scenario: Scenario,
 }
 
 #[derive(Debug, Deserialize)]
@@ -34,8 +34,8 @@ pub struct Stress {
 pub struct Burn {
     pub percent: i64,
     pub seconds_left: i64,
-    /// How many workers are loaded; a server that does not say loads all of them
-    pub workers: Option<i64>,
+    /// How many workers are loaded, the first ones
+    pub workers: i64,
 }
 
 #[derive(Debug, Deserialize)]

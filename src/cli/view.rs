@@ -23,8 +23,8 @@ impl History {
             (&mut self.held, info.memory.held_mb),
             (&mut self.rss, info.memory.process_rss_mb),
             (&mut self.disk, info.disk.held_mb),
-            (&mut self.fd, info.fd.as_ref().map_or(0, |fd| fd.held)),
-            (&mut self.connections, info.connections.as_ref().map_or(0, |c| c.held)),
+            (&mut self.fd, info.fd.held),
+            (&mut self.connections, info.connections.held),
         ];
         for (values, sample) in samples {
             values.push(sample);
@@ -40,7 +40,7 @@ impl History {
 fn cpu_load(info: &Info) -> i64 {
     let burn = info.stress.burn.as_ref();
     let percent = burn.map_or(0, |burn| burn.percent.clamp(0, 100));
-    let burned = burn.map_or(0, |burn| burn.workers.unwrap_or(info.stress.workers));
+    let burned = burn.map_or(0, |burn| burn.workers);
     (0..info.stress.workers)
         .map(|index| match info.stress.per_worker.get(index as usize) {
             Some(n) if *n > 0 => 100,
@@ -52,9 +52,10 @@ fn cpu_load(info: &Info) -> i64 {
 
 /// Which workers `/cpu` loads: every one, or how many of them
 fn burned(info: &Info, burn: &super::info::Burn) -> String {
-    match burn.workers {
-        Some(n) if n < info.stress.workers => format!("{n} of {} workers", info.stress.workers),
-        _ => "every worker".to_string(),
+    if burn.workers < info.stress.workers {
+        format!("{} of {} workers", burn.workers, info.stress.workers)
+    } else {
+        "every worker".to_string()
     }
 }
 
@@ -275,14 +276,12 @@ fn rows(style: &Style, info: &Info, history: &History) -> Vec<String> {
             false,
         ),
     ];
-    if let Some(fd) = &info.fd {
-        let (ceiling, by_process) = fd.ceiling();
-        let text = format!("{} / {}{}", fd.held, ceiling, if by_process { " (ulimit)" } else { "" });
-        rows.push(style.row("FDs held", fd.held, ceiling, &text, &history.fd, false));
-    }
-    if let Some(c) = &info.connections {
-        rows.push(style.row("Connections", c.held, c.limit, &format!("{} / {}", c.held, c.limit), &history.connections, false));
-    }
+    let fd = &info.fd;
+    let (ceiling, by_process) = fd.ceiling();
+    let text = format!("{} / {}{}", fd.held, ceiling, if by_process { " (ulimit)" } else { "" });
+    rows.push(style.row("FDs held", fd.held, ceiling, &text, &history.fd, false));
+    let c = &info.connections;
+    rows.push(style.row("Connections", c.held, c.limit, &format!("{} / {}", c.held, c.limit), &history.connections, false));
     rows
 }
 
@@ -296,15 +295,11 @@ fn holds(info: &Info) -> Vec<(u8, &'static str, String)> {
     if let Some(left) = info.disk.seconds_left {
         holds.push((180, "/disk", format!("{} MB, {left} s left", info.disk.held_mb)));
     }
-    if let Some(fd) = &info.fd
-        && let Some(left) = fd.seconds_left
-    {
-        holds.push((141, "/fd", format!("{}, {left} s left", fd.held)));
+    if let Some(left) = info.fd.seconds_left {
+        holds.push((141, "/fd", format!("{}, {left} s left", info.fd.held)));
     }
-    if let Some(connections) = &info.connections
-        && let Some(left) = connections.seconds_left
-    {
-        holds.push((75, "/connections", format!("{}, {left} s left", connections.held)));
+    if let Some(left) = info.connections.seconds_left {
+        holds.push((75, "/connections", format!("{}, {left} s left", info.connections.held)));
     }
     holds
 }
@@ -328,12 +323,10 @@ pub fn render(style: &Style, url: &str, info: &Info, history: &History) -> Strin
     if let Some(log) = &info.log {
         lines.push(format!("/log: {} of {} lines, {} lines/s", log.sent, log.lines, log.rate));
     }
-    if let Some(text) = info.scenario.as_ref().and_then(scenario_line) {
+    if let Some(text) = scenario_line(&info.scenario) {
         lines.push(format!("/scenario: {text}"));
     }
-    if let Some(ready) = &info.ready {
-        lines.push(readiness(ready));
-    }
+    lines.push(readiness(&info.ready));
     lines.push(format!("disk dir: {}   {free}", disk_dir(info)));
     lines.join("\n")
 }
@@ -341,14 +334,12 @@ pub fn render(style: &Style, url: &str, info: &Info, history: &History) -> Strin
 /// The same view with colours: a header, smooth bars, badges and lit-up activity
 fn render_color(style: &Style, url: &str, info: &Info, history: &History) -> String {
     let free = free_space(info);
-    let ready = info.ready.as_ref().map(|ready| {
-        if ready.ready {
-            style.badge(35, 16, "● READY")
-        } else {
-            let back = ready.seconds_left.map_or("until /ready/on".to_string(), |s| format!("back in {s} s"));
-            style.badge(160, 15, &format!("● NOT READY · {back}"))
-        }
-    });
+    let ready = if info.ready.ready {
+        style.badge(35, 16, "● READY")
+    } else {
+        let back = info.ready.seconds_left.map_or("until /ready/on".to_string(), |s| format!("back in {s} s"));
+        style.badge(160, 15, &format!("● NOT READY · {back}"))
+    };
     let mut lines = vec![
         format!(
             " {} {}  {}  {}",
@@ -384,16 +375,11 @@ fn render_color(style: &Style, url: &str, info: &Info, history: &History) -> Str
     if let Some(log) = &info.log {
         lines.push(activity(true, 177, format!("/log {} of {} lines, {} lines/s", log.sent, log.lines, log.rate)));
     }
-    if let Some(scenario) = &info.scenario
-        && let Some(text) = scenario_line(scenario)
-    {
-        lines.push(activity(scenario.state == "running", 117, format!("/scenario {text}")));
+    if let Some(text) = scenario_line(&info.scenario) {
+        lines.push(activity(info.scenario.state == "running", 117, format!("/scenario {text}")));
     }
     let place = format!("{}   {}", style.dim(&format!("disk dir {}", disk_dir(info))), style.dim(&free));
-    lines.push(match ready {
-        Some(ready) => format!(" {ready}   {place}"),
-        None => format!(" {place}"),
-    });
+    lines.push(format!(" {ready}   {place}"));
     lines.join("\n")
 }
 
@@ -403,12 +389,14 @@ mod tests {
 
     const INFO: &str = r#"{
         "name": "torchio", "version": "3.5.0", "uptimeSeconds": 3725, "auth": false,
-        "stress": {"workers": 4, "inFlight": 1, "perWorker": [1, 0, 0, 0], "burn": {"percent": 30, "secondsLeft": 12}},
+        "stress": {"workers": 4, "inFlight": 1, "perWorker": [1, 0, 0, 0], "burn": {"percent": 30, "secondsLeft": 12, "workers": 4}},
         "delay": {"inFlight": 2},
         "memory": {"heldMb": 150, "limitMb": 300, "processRssMb": 180, "containerLimitMb": 256},
         "disk": {"heldMb": 0, "limitMb": 300, "dir": "/tmp", "freeMb": null},
         "fd": {"held": 40, "limit": 10000},
+        "connections": {"held": 0, "limit": 500},
         "ready": {"ready": false, "secondsLeft": 20},
+        "scenario": {"state": "idle"},
         "log": {"sent": 10, "lines": 1000, "rate": 10}
     }"#;
 
@@ -469,15 +457,18 @@ mod tests {
     fn the_cpu_row_counts_what_stress_keeps_busy_and_what_cpu_burns() {
         let info = |stress: &str| -> Info {
             let json = INFO.replace(
-                r#""stress": {"workers": 4, "inFlight": 1, "perWorker": [1, 0, 0, 0], "burn": {"percent": 30, "secondsLeft": 12}}"#,
+                r#""stress": {"workers": 4, "inFlight": 1, "perWorker": [1, 0, 0, 0], "burn": {"percent": 30, "secondsLeft": 12, "workers": 4}}"#,
                 stress,
             );
             serde_json::from_str(&json).unwrap()
         };
         let idle = info(r#""stress": {"workers": 4, "inFlight": 0, "perWorker": [0, 0, 0, 0], "burn": null}"#);
-        let burning =
-            info(r#""stress": {"workers": 4, "inFlight": 0, "perWorker": [0, 0, 0, 0], "burn": {"percent": 80, "secondsLeft": 9}}"#);
-        let both = info(r#""stress": {"workers": 4, "inFlight": 1, "perWorker": [1, 0, 0, 0], "burn": {"percent": 80, "secondsLeft": 9}}"#);
+        let burning = info(
+            r#""stress": {"workers": 4, "inFlight": 0, "perWorker": [0, 0, 0, 0], "burn": {"percent": 80, "secondsLeft": 9, "workers": 4}}"#,
+        );
+        let both = info(
+            r#""stress": {"workers": 4, "inFlight": 1, "perWorker": [1, 0, 0, 0], "burn": {"percent": 80, "secondsLeft": 9, "workers": 4}}"#,
+        );
         assert_eq!((cpu_load(&idle), cpu_load(&burning), cpu_load(&both)), (0, 320, 340));
         // /cpu on 2 of the 4 workers: a worker that runs a /stress counts 100 wherever it is
         let some = info(
@@ -500,24 +491,15 @@ mod tests {
     }
 
     #[test]
-    fn connections_have_a_row_when_the_server_reports_them() {
-        let view = |json: &str| {
-            let info: Info = serde_json::from_str(json).unwrap();
-            let mut history = History::default();
-            history.record(&info);
-            render(&Style::new(false), "u", &info, &history)
-        };
-        let with = INFO.replace(
-            r#""fd": {"held": 40, "limit": 10000},"#,
-            r#""fd": {"held": 40, "limit": 10000}, "connections": {"held": 25, "limit": 500},"#,
-        );
-        assert!(view(&with).contains("25 / 500"));
-        assert!(!view(INFO).contains("Connections"), "a server that does not report them has no row");
+    fn connections_have_a_row_with_what_they_hold() {
+        let with = INFO.replace(r#""connections": {"held": 0, "limit": 500}"#, r#""connections": {"held": 25, "limit": 500}"#);
+        assert!(plain(&with).contains("25 / 500"));
+        assert!(plain(INFO).contains("Connections   "), "a row even when nothing is held");
     }
 
     #[test]
     fn the_scenario_is_a_line_while_it_runs_and_after_it_ends() {
-        let with = |scenario: &str| INFO.replace(r#""log": {"#, &format!(r#""scenario": {scenario}, "log": {{"#));
+        let with = |scenario: &str| INFO.replace(r#""scenario": {"state": "idle"}"#, &format!(r#""scenario": {scenario}"#));
         let running = plain(&with(r#"{"state": "running", "step": 2, "steps": 3, "secondsLeft": 12, "remainingSeconds": 40}"#));
         assert!(running.contains("/scenario: step 2 of 3, 12 s left in it, 40 s in all\n"), "{running}");
         let failed = plain(&with(r#"{"state": "failed", "step": 1, "steps": 2, "error": "step 1: no memory"}"#));
@@ -525,19 +507,7 @@ mod tests {
         assert!(plain(&with(r#"{"state": "stopped", "step": 2, "steps": 3}"#)).contains("/scenario: stopped at step 2 of 3\n"));
         assert!(plain(&with(r#"{"state": "finished", "step": 3, "steps": 3}"#)).contains("/scenario: finished, 3 steps\n"));
         assert!(!plain(&with(r#"{"state": "idle"}"#)).contains("/scenario"), "nothing to say when there is none");
-        assert!(!plain(INFO).contains("/scenario"), "an older server has none");
-    }
-
-    #[test]
-    fn an_older_server_has_no_fd_ready_or_log() {
-        let older = r#"{"name":"torchio","version":"3.0.0","uptimeSeconds":5,
-            "stress":{"workers":2,"inFlight":0,"perWorker":[0,0],"burn":null},"delay":{"inFlight":0},
-            "memory":{"heldMb":0,"limitMb":512,"processRssMb":60,"containerLimitMb":null},
-            "disk":{"heldMb":0,"limitMb":1024,"dir":"/tmp","freeMb":1000}}"#;
-        let view = plain(older);
-        assert!(!view.contains("FDs held") && !view.contains("readiness") && !view.contains("/log:"));
-        assert!(view.contains("60 MB (no limit)"));
-        assert!(view.contains("1000 MB free"));
+        assert!(!plain(INFO).contains("/scenario"), "an idle one is not shown");
     }
 
     #[test]
@@ -620,7 +590,7 @@ mod tests {
         let idle = INFO
             .replace("\"inFlight\": 1", "\"inFlight\": 0")
             .replace("\"inFlight\": 2", "\"inFlight\": 0")
-            .replace(", \"burn\": {\"percent\": 30, \"secondsLeft\": 12}", "")
+            .replace(", \"burn\": {\"percent\": 30, \"secondsLeft\": 12, \"workers\": 4}", "")
             .replace("\"ready\": false, \"secondsLeft\": 20", "\"ready\": true");
         let view = coloured(&idle);
         assert!(text(&view).contains("◇ /stress 0 running   /delay 0 waiting") && text(&view).contains("◇ /cpu idle"));
