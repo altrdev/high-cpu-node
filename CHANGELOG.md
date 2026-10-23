@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented here. The GitHub release of each version uses the matching section.
 
+## Unreleased
+
+### Documentation
+- The site has a `sitemap.xml` and a `robots.txt` that points to it, so that search engines can index every page.
+
 ## 4.6.2 - 2026-10-20
 
 ### Changed

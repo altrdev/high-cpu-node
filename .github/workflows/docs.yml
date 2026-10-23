@@ -78,6 +78,10 @@ jobs:
           cp skills/torchio/SKILL.md book/book/SKILL.md
           grep -q '^name: torchio$' book/book/SKILL.md
 
+      # for search engines: the list of the pages, and the robots.txt that points to it
+      - name: Publish sitemap.xml and robots.txt next to the pages
+        run: python3 book/sitemap.py book/book
+
       - name: Every link between the pages has a target
         run: python3 book/check-links.py book/book
 
