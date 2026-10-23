@@ -5,6 +5,7 @@ All notable changes to this project are documented here. The GitHub release of e
 ## Unreleased
 
 ### Documentation
+- The home of the site declares its name (`torchio`) for search engines, so that the result does not show the name of `altr.dev` above it.
 - The site has a `sitemap.xml` and a `robots.txt` that points to it, so that search engines can index every page.
 
 ## 4.6.2 - 2026-10-20

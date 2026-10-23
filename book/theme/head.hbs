@@ -14,3 +14,7 @@
 <!-- the documentation for language models (llmstxt.org): the index of the pages, and all of them in one file -->
 <link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt">
 <link rel="alternate" type="text/plain" href="/llms-full.txt" title="llms-full.txt">
+<!-- the name of the site for search engines, on the home only: without it Google shows the name of altr.dev above the result -->
+{{#if (or (eq path "introduction.md") (eq path "index.md"))}}
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"torchio","alternateName":"Torchio","url":"https://torchio.altr.dev/"}</script>
+{{/if}}
